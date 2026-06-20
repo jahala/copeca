@@ -1,15 +1,14 @@
 """Test pricing YAML — structure, field presence, and value correctness."""
 
 import datetime
-from pathlib import Path
 
 import pytest
 import yaml
 
+from copeca.config.resources import data_path
 
-# Resolve the defaults directory relative to the project root
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-DEFAULTS_DIR = PROJECT_ROOT / "defaults"
+# Resolve the bundled defaults directory (works from a checkout or a wheel)
+DEFAULTS_DIR = data_path("defaults")
 
 
 @pytest.fixture

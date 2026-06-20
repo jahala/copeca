@@ -153,14 +153,21 @@ Built-in parser: `stream_json` (Claude Code JSON event stream). Additional parse
 
 ## Install
 
-Copeca currently requires a source checkout — the wheel does not yet bundle
-the `schemas/`, `tasks/`, and `defaults/` directories (packaging is in progress;
-see [docs/known-limitations.md](docs/known-limitations.md)).
+A built wheel bundles its runtime data (`schemas/`, `tasks/`, `defaults/`, and
+`repos.yaml`), so a pip install is fully functional — `copeca init`, `validate`,
+and `run` work off the packaged corpus. Copeca is **not** published on PyPI yet,
+so install from git or a source checkout:
+
+```bash
+pip install git+https://github.com/jahala/copeca
+```
+
+Or from a clone (use `-e` for development):
 
 ```bash
 git clone https://github.com/jahala/copeca
 cd copeca
-pip install -e .
+pip install .
 ```
 
 Requires Python ≥ 3.11. See [docs/runner-configuration.md](docs/runner-configuration.md)

@@ -8,7 +8,9 @@ import yaml
 
 from scripts.contamination_check import build_probe, check_contamination
 
-TASKS_DIR = Path(__file__).resolve().parent.parent.parent / "tasks"
+from copeca.config.resources import data_path
+
+TASKS_DIR = data_path("tasks")
 SCRIPTS_DIR = Path(__file__).resolve().parent.parent.parent / "scripts"
 BLOCKLIST_FILE = SCRIPTS_DIR / "contamination_blocklist.txt"
 

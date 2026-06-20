@@ -11,6 +11,7 @@ from pydantic import ValidationError
 
 from copeca.config.loader import load_scenario
 from copeca.config.models import Scenario
+from copeca.config.resources import data_path
 
 FIXTURES = Path(__file__).resolve().parent.parent / "fixtures"
 SCENARIO_DIR = Path(__file__).resolve().parent.parent.parent / "scenarios"
@@ -112,9 +113,7 @@ class TestShippedScenario:
     def test_example_scenario_tasks_exist_in_corpus(self) -> None:
         """Tasks referenced in example.yaml should exist in tasks/."""
         scenario = load_scenario(SCENARIO_DIR / "example.yaml")
-        tasks_dir = (
-            Path(__file__).resolve().parent.parent.parent / "tasks"
-        )
+        tasks_dir = data_path("tasks")
         available: set[str] = set()
         for yf in tasks_dir.rglob("*.yaml"):
             doc = yaml.safe_load(yf.read_text())

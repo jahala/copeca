@@ -16,10 +16,10 @@ from copeca.config.loader import (
     load_tasks_from_dir,
 )
 from copeca.config.models import ComprehensionGroundTruth, Mode, Task, TaskType
+from copeca.config.resources import data_path
 
 FIXTURES = Path(__file__).resolve().parent.parent / "fixtures" / "tasks"
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-DEFAULT_MODES_DIR = PROJECT_ROOT / "defaults" / "modes"
+DEFAULT_MODES_DIR = data_path("defaults", "modes")
 
 
 class TestLoadTask:
@@ -90,11 +90,13 @@ class TestLoadMode:
         assert isinstance(mode, Mode)
         assert mode.name == "baseline"
 
-    def test_load_mode_default_dir_resolves_from_cwd(self):
-        """With no modes_dirs, load_mode resolves defaults/modes relative to cwd.
+    def test_load_mode_default_dir_resolves_regardless_of_cwd(self, monkeypatch, tmp_path):
+        """With no modes_dirs, load_mode resolves the packaged defaults/modes.
 
-        Mirrors how the CLI resolves defaults/ — pytest runs from the repo root.
+        The default anchors on the installed package (data_path), so it works
+        from any working directory — not just a source checkout's repo root.
         """
+        monkeypatch.chdir(tmp_path)
         mode = load_mode("baseline")
         assert mode.name == "baseline"
 

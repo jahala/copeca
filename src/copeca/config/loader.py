@@ -12,6 +12,7 @@ from jsonschema import ValidationError as JsonschemaValidationError
 from jsonschema import validate
 
 from copeca.config.models import Mode, Repo, Scenario, Task
+from copeca.config.resources import data_path
 
 
 class LoadError(Exception):
@@ -29,7 +30,7 @@ class SchemaValidationError(LoadError):
         super().__init__(path, message)
 
 
-_SCHEMA_PATH = Path(__file__).resolve().parent.parent.parent.parent / "schemas" / "task.schema.json"
+_SCHEMA_PATH = data_path("schemas", "task.schema.json")
 
 # Load schema once at module level
 with open(_SCHEMA_PATH) as f:
@@ -168,7 +169,8 @@ def load_mode(name: str, modes_dirs: list[Path] | None = None) -> Mode:
     Args:
         name: Mode name (e.g. "baseline"). Resolved to ``<dir>/<name>.yaml``
               by searching ``modes_dirs`` in order; the first existing file wins.
-        modes_dirs: Directories to search. Defaults to ``[Path("defaults/modes")]``.
+        modes_dirs: Directories to search. Defaults to the packaged
+                    ``defaults/modes`` (resolved via ``data_path``).
 
     Returns:
         A validated Mode model instance.
@@ -179,7 +181,7 @@ def load_mode(name: str, modes_dirs: list[Path] | None = None) -> Mode:
         pydantic.ValidationError: If the YAML fails Mode model validation.
     """
     if modes_dirs is None:
-        modes_dirs = [Path("defaults/modes")]
+        modes_dirs = [data_path("defaults", "modes")]
 
     for modes_dir in modes_dirs:
         candidate = modes_dir / f"{name}.yaml"

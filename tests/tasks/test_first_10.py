@@ -9,8 +9,10 @@ from pathlib import Path
 
 import yaml
 
-TASKS_DIR = Path(__file__).resolve().parent.parent.parent / "tasks"
-PROJECT_ROOT = TASKS_DIR.parent
+from copeca.config.resources import data_path
+
+TASKS_DIR = data_path("tasks")
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 COPECA = PROJECT_ROOT / ".venv" / "bin" / "copeca"
 
 # Approved source families — sources that tasks may draw from.
@@ -183,7 +185,7 @@ class TestLanguages:
 class TestRepos:
     def test_all_repos_referenced_exist_in_repos_yaml(self):
         """Every task's repo key exists in repos.yaml."""
-        repos_yaml = PROJECT_ROOT / "repos.yaml"
+        repos_yaml = data_path("repos.yaml")
         with open(repos_yaml) as f:
             repo_data = yaml.safe_load(f)
         known_repos = set(repo_data.keys())

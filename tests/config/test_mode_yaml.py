@@ -2,11 +2,11 @@
 validate as a copeca.config.models.Mode."""
 
 import yaml
-from pathlib import Path
 
 from copeca.config.models import Mode
+from copeca.config.resources import data_path
 
-MODES_DIR = Path(__file__).resolve().parent.parent.parent / "defaults" / "modes"
+MODES_DIR = data_path("defaults", "modes")
 
 
 def _load_mode(name: str) -> Mode:

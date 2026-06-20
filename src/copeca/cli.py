@@ -13,6 +13,7 @@ from copeca.config.loader import (
     load_tasks_from_dir,
 )
 from copeca.config.models import Repo
+from copeca.config.resources import data_path
 from copeca.results.writer import append_jsonl
 from copeca.runners.parsers.stream_json import StreamJsonParser
 
@@ -155,7 +156,7 @@ def run(
 
     # ── Bug 2: Load pricing from defaults/runners/ YAML ──────────────────
     pricing: dict[str, dict[str, float]] | None = None
-    pricing_path = Path("defaults") / "runners" / f"{runner}.yaml"
+    pricing_path = data_path("defaults", "runners", f"{runner}.yaml")
     if pricing_path.exists():
         with open(pricing_path) as pf:
             runner_doc = yaml.safe_load(pf)
@@ -193,13 +194,13 @@ def run(
 
         tasks_dir = task.parent.parent / "tasks" if task.parent.parent.name else Path("tasks")
         if not tasks_dir.is_dir():
-            tasks_dir = Path("tasks")
+            tasks_dir = data_path("tasks")
         loaded_tasks = load_tasks_from_dir(tasks_dir)
         task_names = {t.name for t in loaded_tasks}
 
         # Load each mode's YAML into a Mode model so run_matrix can apply its
         # integration paths. An unknown mode (no YAML) fails loudly here.
-        modes_dirs = [task.parent.parent / "defaults" / "modes", Path("defaults") / "modes"]
+        modes_dirs = [task.parent.parent / "defaults" / "modes", data_path("defaults", "modes")]
         try:
             mode_defs = load_modes(scenario.modes, modes_dirs=modes_dirs)
         except FileNotFoundError as e:
@@ -472,19 +473,17 @@ def init(
     target = Path(path)
     target.mkdir(parents=True, exist_ok=True)
 
-    project_root = Path(__file__).resolve().parents[2]
-
-    package_tasks = project_root / "tasks"
+    package_tasks = data_path("tasks")
     if package_tasks.is_dir():
         dest_tasks = target / "tasks"
         if not dest_tasks.exists():
             shutil.copytree(package_tasks, dest_tasks)
 
-    package_repos = project_root / "repos.yaml"
+    package_repos = data_path("repos.yaml")
     if package_repos.exists():
         shutil.copy2(package_repos, target / "repos.yaml")
 
-    package_defaults = project_root / "defaults"
+    package_defaults = data_path("defaults")
     if package_defaults.is_dir():
         dest_defaults = target / "defaults"
         if not dest_defaults.exists():

@@ -1,15 +1,13 @@
-"""Test the root repos.yaml registry file."""
-
-from pathlib import Path
+"""Test the bundled repos.yaml registry file."""
 
 import pytest
 import yaml
 
 from copeca.config.loader import load_repos
 from copeca.config.models import Repo
+from copeca.config.resources import data_path
 
-ROOT = Path(__file__).resolve().parent.parent.parent
-REPOS_YAML = ROOT / "repos.yaml"
+REPOS_YAML = data_path("repos.yaml")
 
 REQUIRED_FIELDS = ("url", "commit", "language")
 EXPECTED_REPOS = ("ripgrep", "fastapi", "gin", "express")

@@ -5,12 +5,13 @@ from pathlib import Path
 
 import yaml
 
+from copeca.config.resources import data_path
+
 FIXTURES = Path(__file__).resolve().parent.parent / "fixtures"
 VALID_DIR = FIXTURES / "valid_tasks"
 INVALID_DIR = FIXTURES / "invalid"
 FIXTURE_REPOS = FIXTURES / "repos.yaml"
 INVALID_REPO_DIR = FIXTURES / "invalid_repo_only"
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 
 
 def copeca(*args):
@@ -25,7 +26,7 @@ def copeca(*args):
 
 def test_default_pricing_yaml_parseable():
     """Bug 2: verify that defaults/runners/claude.yaml loads and has pricing models."""
-    pricing_path = PROJECT_ROOT / "defaults" / "runners" / "claude.yaml"
+    pricing_path = data_path("defaults", "runners", "claude.yaml")
     assert pricing_path.exists(), f"Missing pricing file: {pricing_path}"
 
     with open(pricing_path) as f:

@@ -18,8 +18,10 @@ from pathlib import Path
 
 import yaml
 
+from copeca.config.resources import data_path
+
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-TASKS_DIR = PROJECT_ROOT / "tasks"
+TASKS_DIR = data_path("tasks")
 COPECA = PROJECT_ROOT / ".venv" / "bin" / "copeca"
 SCRIPTS_DIR = PROJECT_ROOT / "scripts"
 

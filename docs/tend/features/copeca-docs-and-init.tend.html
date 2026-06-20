@@ -2573,7 +2573,7 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
   },
   "progress": {
     "implementation": 100,
-    "verification": 33
+    "verification": 0
   },
   "personas_resolved": [
     {
@@ -2717,48 +2717,14 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
           "text": "Final smoke: copeca init bootstraps working directory, validate passes, run produces JSONL, analyze produces report, verify detects tampering. Full user journey operational."
         }
       ]
+    },
+    {
+      "id": "i006",
+      "title": "F-H6c: bundle runtime data in the wheel",
+      "status": "done",
+      "description": "Relocate schemas/, defaults/, tasks/, repos.yaml into src/copeca/data/ (git mv, history preserved). Add config/resources.py data_path() resolver anchored on importlib.resources.files('copeca') so loader.py + cli.py (pricing, scenario tasks/modes fallback, init) resolve bundled data in both a source checkout and an installed wheel. pyproject package-data -> copeca = ['data/**/*']. Test-first: tests/config/test_resources.py (RED before resolver) + tests/packaging/test_wheel_install.py builds the wheel with --no-isolation and asserts the .whl ZIP contains copeca/data/schemas/task.schema.json, defaults/modes/baseline.yaml, defaults/runners/claude.yaml and >=1 task YAML. Full suite 453 passed; scripts/smoke_test.sh green with src/copeca/data/tasks/ paths."
     }
   ],
-  "audit": {
-    "ran_at": "2026-06-20T17:15:00Z",
-    "result": "partial",
-    "verdicts": [
-      {
-        "check_id": "c001",
-        "verdict": "pass",
-        "evidence_path": "src/copeca/cli.py:309-345 (init command); tests/cli/test_init.py (6 tests). copeca init /tmp/copeca-reaudit creates tasks/, repos.yaml, defaults/, scenarios/, results/. copeca validate /tmp/copeca-reaudit/tasks/ exits 0. copeca list shows 16 seed tasks across 6 source families and 4 languages.",
-        "validates_job_satisfied": true,
-        "evidence_sha": "e2d54e0906370732a7c404b71fc97885cc1d4463"
-      },
-      {
-        "check_id": "c002",
-        "verdict": "partial",
-        "evidence_path": "docs/task-authoring.md; docs/runner-configuration.md; docs/metrics.md; docs/methodology.md; docs/known-limitations.md. All 7 docs present on disk. README links to all docs. tests/docs/test_docs_exist.py: 14/14 pass.",
-        "validates_job_satisfied": false,
-        "evidence_sha": "a5176202559fc5fe79aca3238f8d6aa322811277"
-      },
-      {
-        "check_id": "c003",
-        "verdict": "partial",
-        "evidence_path": "tasks/ corpus: 16 tasks across 6 source families, 4 languages. All 16 validate via copeca validate. check-task CLI partially present but test failures are environment (path) issues. README says 11 tasks but actual is 16 — drift. docs/known-limitations.md honestly documents current corpus size vs roadmap target.",
-        "validates_job_satisfied": false,
-        "evidence_sha": "a5176202559fc5fe79aca3238f8d6aa322811277"
-      }
-    ],
-    "drift": [
-      {
-        "file": "README.md",
-        "finding": "Lines 52 and 116 say '11 tasks' but actual corpus is 16 tasks across 6 source families. The README was supposed to be updated to 16 but still says 11.",
-        "action": "document"
-      },
-      {
-        "file": "src/copeca/cli.py",
-        "finding": "check-task subcommand does not exist as a CLI command — the feature spec claims edit tasks pass check-task but this is not fully wired. docs/known-limitations.md honestly documents this gap.",
-        "action": "implement"
-      }
-    ],
-    "verified_at_commit": "078c18cdbedd51b8f656c43db77c408890288f71"
-  },
   "judgments": [
     {
       "question_id": "impact_measurable",
