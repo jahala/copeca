@@ -1,0 +1,17 @@
+name: rg_trait_implementors
+description: "Find all implementors of the Matcher trait"
+source: "SWE-QA (Apache-2.0)"
+repo: ripgrep
+type: comprehension
+language: rust
+difficulty: hard
+version: 1
+prompt: "Find the Matcher trait definition and list all implementors."
+ground_truth:
+  required_strings:
+    - Matcher
+    - find_at
+  all_of:
+    - RegexMatcher
+  forbidden_strings:
+    - I cannot

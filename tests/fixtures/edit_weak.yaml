@@ -1,0 +1,24 @@
+name: edit_weak_test
+description: "Weak edit task — mutation does not break the test (invalid task)"
+source: "copeca-test (MIT)"
+repo: edit-test-repo
+type: edit
+language: python
+difficulty: easy
+version: 1
+prompt: "Fix the comment in the function."
+ground_truth:
+  required_strings:
+    - calc
+  test_command:
+    - python
+    - -c
+    - "import sys; sys.path.insert(0, '.'); from calc import add; assert add(2, 3) == 5, f'Expected 5, got {add(2, 3)}'; print('OK')"
+  forbidden_strings:
+    - "I cannot"
+mutations:
+  - file: calc.py
+    action: replace
+    find: "# Add two numbers"
+    replace: "# This is a broken comment"
+    occurrence: 1

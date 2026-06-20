@@ -1,0 +1,11 @@
+name: rg_test
+source: ""
+repo: ripgrep
+type: comprehension
+language: rust
+difficulty: hard
+version: 1
+prompt: test
+ground_truth:
+  required_strings:
+    - test

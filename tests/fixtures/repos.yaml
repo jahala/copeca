@@ -1,0 +1,23 @@
+ripgrep:
+  url: https://github.com/BurntSushi/ripgrep.git
+  commit: 0a88cccd5188074de96f54a4b6b44a63971ac157
+  language: rust
+  toolchain:
+    rust: "1.80.0"
+  setup_command:
+    - cargo
+    - fetch
+
+fastapi:
+  url: https://github.com/tiangolo/fastapi.git
+  commit: 6fa573ce0bc16fe445f93db413d20146dd9ff35d
+  language: python
+  toolchain:
+    python: "3.11"
+  setup_command:
+    - python
+    - -m
+    - pip
+    - install
+    - -e
+    - "."
