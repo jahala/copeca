@@ -344,3 +344,54 @@ class TestGenerateReport:
         # Report should still be valid
         assert "Copeca Report" in report
         assert "Cost Per Correct Answer" in report
+
+    # ── Bug F-C1: zero-correct mode must not render as $0.0000 or -100% ──────
+
+    def test_report_zero_correct_experimental_shows_na(self):
+        """Experimental mode with 0 correct answers must show 'n/a' not '$0.0000'.
+
+        Repro: experimental gets everything wrong at 5× baseline spend.
+        A $0.0000 CPC entry and a -100% delta would make the WORSE tool look BETTER.
+        """
+        records = [
+            # baseline: 2 runs, both correct
+            _make_record(task="task_a", mode="baseline", total_cost_usd=0.10, correct=True),
+            _make_record(task="task_b", mode="baseline", total_cost_usd=0.10, correct=True),
+            # experimental: 2 runs, NONE correct, 5× spend
+            _make_record(task="task_a", mode="experimental", total_cost_usd=0.50, correct=False),
+            _make_record(task="task_b", mode="experimental", total_cost_usd=0.50, correct=False),
+        ]
+        report = generate_report(records)
+
+        # (i) Cost-per-correct column shows n/a for the 0-correct mode
+        assert "n/a" in report.lower()
+        # (ii) Must NOT show a negative percentage delta (the inversion)
+        assert "-100" not in report
+        # (iii) Accuracy column must be present
+        assert "accuracy" in report.lower() or "rate" in report.lower()
+
+    def test_report_zero_correct_headline_describes_situation(self):
+        """When experimental has 0 correct overall, the delta headline says so explicitly."""
+        records = [
+            _make_record(task="task_a", mode="baseline", total_cost_usd=0.10, correct=True),
+            _make_record(task="task_a", mode="experimental", total_cost_usd=0.50, correct=False),
+        ]
+        report = generate_report(records)
+
+        # Headline must not claim a percentage improvement
+        assert "-100" not in report
+        # Headline must communicate that 0/N were correct
+        assert "0/" in report or "0 correct" in report.lower() or "n/a" in report.lower()
+
+    def test_report_accuracy_shown_alongside_cost_per_correct(self):
+        """Accuracy (correct/total) must appear as a column next to cost-per-correct."""
+        records = [
+            _make_record(task="task_a", mode="baseline", total_cost_usd=0.10, correct=True),
+            _make_record(task="task_a", mode="baseline", total_cost_usd=0.10, correct=False),
+            _make_record(task="task_a", mode="experimental", total_cost_usd=0.05, correct=True),
+            _make_record(task="task_a", mode="experimental", total_cost_usd=0.05, correct=True),
+        ]
+        report = generate_report(records)
+
+        # accuracy/rate column must appear in the Cost Per Correct Answer section header
+        assert "accuracy" in report.lower() or "rate" in report.lower()

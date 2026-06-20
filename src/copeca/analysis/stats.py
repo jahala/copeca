@@ -60,14 +60,14 @@ def compute_stats(records: list[dict[str, Any]], field: str = "total_cost_usd") 
     }
 
 
-def cost_per_correct(records: list[dict[str, Any]]) -> float:
+def cost_per_correct(records: list[dict[str, Any]]) -> float | None:
     """Total cost divided by number of correct answers.
 
     Args:
         records: List of dicts with 'total_cost_usd' and 'correct' fields.
 
     Returns:
-        USD cost per correct answer. Returns 0.0 if no correct answers.
+        USD cost per correct answer, or None if no correct answers (metric undefined).
     """
     correct_count = 0
     total_cost = 0.0
@@ -77,7 +77,7 @@ def cost_per_correct(records: list[dict[str, Any]]) -> float:
             correct_count += 1
 
     if correct_count == 0:
-        return 0.0
+        return None
 
     return total_cost / correct_count
 

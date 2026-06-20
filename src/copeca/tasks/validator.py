@@ -59,8 +59,9 @@ def check_correctness(
 
     # forbidden_strings (applies to both)
     if ground_truth.forbidden_strings:
-        detail.forbidden_strings_passed = not _check_strings(
-            result_text, ground_truth.forbidden_strings
+        lowered = result_text.lower()
+        detail.forbidden_strings_passed = not any(
+            s.lower() in lowered for s in ground_truth.forbidden_strings
         )
 
     if isinstance(ground_truth, ComprehensionGroundTruth):

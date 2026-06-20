@@ -74,6 +74,23 @@ class TestForbiddenStrings:
         assert detail.forbidden_strings_passed is False
         assert "contains forbidden strings" in detail.reason
 
+    def test_partial_refusal_one_forbidden_present_fails(self):
+        """ANY forbidden phrase must trip the guard, not just when ALL are present.
+
+        Regression for F-H3: forbidden_strings used AND logic (via _check_strings/all()),
+        so a partial refusal like "I cannot be certain" scored correct=True when the
+        second phrase ("unable to") was absent.
+        """
+        gt = ComprehensionGroundTruth(
+            required_strings=["Matcher"],
+            forbidden_strings=["I cannot", "unable to"],
+        )
+        answer = "I cannot be certain, but the Matcher type is the answer"
+        correct, detail = check_correctness(gt, answer)
+        assert correct is False
+        assert detail.forbidden_strings_passed is False
+        assert "contains forbidden strings" in detail.reason
+
 
 class TestComprehensionCorrect:
     def test_all_strategies_pass_returns_true(self):

@@ -35,23 +35,27 @@ Copeca reports:
 
 ---
 
-## Independent governance
+## Corpus governance
 
-The task corpus draws from six independent source families, chosen to avoid
-the contamination and provenance problems that forced the deprecation of
-other benchmarks:
+The seed corpus is 16 tasks spanning six source families, but it is heavily
+weighted toward SWE-QA (11 of 16) and draws on only four repositories
+(express, fastapi, gin, ripgrep). The methodology targets balanced coverage
+across these families to avoid the contamination and provenance problems that
+forced the deprecation of other benchmarks:
 
-| Source family | Task type | License |
+| Source family | License | Tasks (current) |
 |---|---|---|
-| SWE-QA | Comprehension | Apache-2.0 |
-| Long Code Arena | Comprehension | MIT |
-| CrossCodeEval | Comprehension, Edit | MIT |
-| SWE-bench-Live | Edit | MIT |
-| SCBench | Comprehension | CC BY 4.0 |
-| Terminal-Bench 2.0 | Edit | MIT |
+| SWE-QA | Apache-2.0 | 11 |
+| Long Code Arena | Apache-2.0 | 1 |
+| CrossCodeEval | Apache-2.0 | 1 |
+| SWE-bench-Live | MIT | 1 |
+| SCBench | MIT | 1 |
+| Terminal-Bench 2.0 | Apache-2.0 | 1 |
 
-No source family dominates. If one source's tasks systematically favor a
-particular tool, the other five dilute the effect.
+A corpus this small and this skewed toward one source risks overfitting — a
+tool that performs well on SWE-QA tasks may not generalize. Balancing the
+families and growing to ~85 tasks is the primary corpus roadmap item (see
+`known-limitations.md`).
 
 ---
 
@@ -76,9 +80,11 @@ Each mode (baseline and experimental) runs with its own:
 - Environment variables (no ambient API keys or proxy URLs)
 - Git worktree (no shared mutation state)
 
-The baseline is provably clean: it gets an empty config directory and no mode
-provisioning. If the experimental mode's tool leaks into the baseline, the
-measurement is contaminated and the delta is meaningless.
+The baseline gets an empty config directory and no mode provisioning. (Today the
+child process still inherits the host's ambient environment — full baseline env
+isolation is being wired; see known-limitations.) If the experimental mode's tool
+leaks into the baseline, the measurement is contaminated and the delta is
+meaningless.
 
 ---
 
@@ -110,7 +116,7 @@ independence assumption is imperfect. The bootstrap is still more honest
 than parametric CIs on ratio statistics.
 
 2. **Adversarial flags are heuristics.** — `token_snowball`, `talkative_failure`,
-and `tool_storm` use configurable thresholds. They catch obvious patterns
+and `tool_storm` use hardcoded thresholds (per-scenario configuration is planned). They catch obvious patterns
 but may miss subtle waste or flag borderline cases. Threshold tuning is
 task-corpus-dependent.
 
@@ -130,7 +136,8 @@ same model from the same runner. Cross-provider comparison (Claude vs
 Codex) requires separate scenarios with identical task sets. Cost
 normalization uses one pricing table per runner.
 
-6. **Task corpus is a sample.** — ~85 tasks cannot represent every coding
+6. **Task corpus is a small, uneven sample.** — The corpus is 16 tasks today
+(roadmap: ~85), weighted toward SWE-QA and four repos, so it cannot represent every coding
 domain. Results may not generalize to tasks unlike those in the corpus.
 This is inherent to all benchmarks and not a copeca-specific limitation,
 but it is worth stating.

@@ -29,45 +29,63 @@ pricing table is older than 30 days but does not block runs. A pricing change
 between two runs of the same scenario breaks comparability — use the same
 pricing table version for all modes in a comparison.
 
-## Seed corpus is 16 tasks from 1 source family (planned: 5 more)
+## Seed corpus is 16 tasks, heavily skewed toward one source family
 
-The current seed corpus contains 16 tasks, all from the `SWE-QA (Apache-2.0)`
-source family. The roadmap targets approximately 85 tasks drawn from 6 independent
-source families (SWE-QA, SCBench, Long Code Arena, CrossCodeEval,
-SWE-bench-Live, Terminal-Bench 2.0). A corpus dominated by one source risks
-overfitting — a tool that performs well on SWE-QA tasks may not generalize.
+The current seed corpus contains 16 tasks spanning six source families, but
+11 of 16 are from `SWE-QA (Apache-2.0)` and all target just four repositories
+(express, fastapi, gin, ripgrep). The roadmap targets approximately 85 tasks
+balanced across the six families (SWE-QA, SCBench, Long Code Arena,
+CrossCodeEval, SWE-bench-Live, Terminal-Bench 2.0). A corpus this small and
+this dominated by one source risks overfitting — a tool that performs well on
+SWE-QA tasks may not generalize.
 
-## check-task mutation validity CLI not yet built
+## Repo cross-validation is skipped when no repos.yaml is present
 
-The `check-task` subcommand that pre-verifies edit task mutations (test passes
-on clean code, fails on mutated code) is not yet implemented as a CLI command.
-The mutation engine itself (`src/copeca/tasks/mutations.py`) is complete and
-tested. Until the CLI wrapper is built, mutation validity must be verified
-manually or via the orchestrator's edit-task pipeline.
+The `copeca validate` command checks task YAML against the JSON Schema and
+auto-discovers a `repos.yaml` in the working directory to cross-reference repo
+references. If no `repos.yaml` is present (and `--repos` is not passed), the
+cross-reference is skipped: tasks referencing repos not in any registry pass
+schema validation and only fail at runtime when the worktree manager cannot
+find a bare clone.
 
-## Matrix runner is sequential
+## Baseline env isolation is not yet complete
 
-The `max_workers` field in scenario YAML is acknowledged but deferred.
-`orchestration/run.py:run_matrix()` iterates tasks x modes x reps sequentially
-in nested loops. Parallel workers would reduce wall-clock time for large
-scenarios (~200+ runs) but are not yet wired.
+The "provably clean baseline" is the design goal, not yet the current behavior.
+The subprocess runner passes the host's full environment (minus one key) to the
+agent, and the per-arm provisioning hook (`provision_arm`) is not yet wired into
+the run path, so a globally-configured hook, MCP server, proxy, or `CLAUDE_*`
+variable on the host can leak into the baseline arm. Allow-listing the child
+environment and wiring per-arm provisioning is in progress; until it lands, run
+on a clean host for trustworthy baselines.
 
-## test_command_passed always None in orchestrator
+## Correctness grading uses substring matching (gameable)
 
-In `orchestration/run.py:run_single()`, the call to `check_correctness` passes
-`test_command_passed=None` with a comment: `# mode-mechanism will wire this
-from subprocess`. The mode mechanism that would run the test command as a
-subprocess and pass the exit code is deferred. In practice this means edit
-tasks are currently graded only by `required_strings`, not by the test
-command exit code.
+Comprehension task grading is case-insensitive substring matching on
+`required_strings` and `forbidden_strings`. This is gameable: a wrong answer
+that happens to contain the required keywords passes, and a correct paraphrase
+that omits an exact token fails. Single-task verdicts are therefore noisy; the
+intended signal is the aggregate delta across the corpus, where random noise
+averages out. Semantic grading (embedding similarity, LLM judge) is planned but
+is not in the scoring path (see `architecture.md` §8 — LLM judge is
+deliberately excluded from scoring).
 
-## Layer 3 repo validation requires --repos flag on validate
+## Cost is computed from self-reported token counts
 
-The `copeca validate` command checks task YAML against the JSON Schema but
-does not automatically cross-reference the `repos.yaml` registry unless the
-`--repos` flag is provided. Tasks referencing repos not in `repos.yaml` will
-pass schema validation and only fail at runtime when the worktree manager
-cannot find a bare clone.
+Cost (USD) is recomputed by copeca from token counts using a fixed price table —
+never taken from a vendor dollar figure. However, the token counts themselves
+come from the agent CLI's own output and are not independently re-tokenized by
+copeca. A runner that misreports token counts would mislead cost figures without
+triggering the >5% vendor-cost cross-check (which compares computed cost against
+the vendor's self-reported dollar figure, not against independently counted
+tokens). Transcript re-tokenization is planned.
+
+## Edit task correctness is decided solely by test command exit code
+
+For edit tasks, `check_correctness` treats the test command exit code as
+authoritative (`validator.py:96-113`). Any `required_strings` or
+`forbidden_strings` on an edit task are evaluated and stored in the result
+record for diagnostics, but they do not affect the verdict. Only the test
+command exit code determines whether an edit task run is counted as correct.
 
 ---
 

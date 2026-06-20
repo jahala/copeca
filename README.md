@@ -60,11 +60,11 @@ limited — small N means wide confidence intervals. See
 
 | Dimension | How |
 |---|---|
-| **Cost** | `Σ tokens × runner.pricing[model]` — computed, never trusted from vendor self-reported numbers |
-| **Correctness** | String matching (comprehension tasks) or test-command exit codes (edit tasks) |
+| **Cost** | `Σ tokens × runner.pricing[model]` — computed, never trusted from vendor self-reported numbers (USD is recomputed by copeca; token counts are read from the agent CLI and not re-tokenized — see known-limitations) |
+| **Correctness** | String matching (comprehension tasks) or test-command exit codes (edit tasks) (case-insensitive substring matching — gameable on single tasks; see known-limitations) |
 | **Completeness** | `all_of` field verifies the agent listed *everything* — not just *something* |
 | **Futility** | Adversarial flags: token snowball, talkative failure, tool storm, budget exhaustion, timeout |
-| **Integrity** | `.copeca` artifact zips with SHA-256 hash chains; `copeca verify --batch` proves nothing was cherry-picked |
+| **Integrity** | Each result is packaged with an integrity manifest — a SHA-256 hash of every file in the artifact. `copeca verify ARTIFACT` recomputes these to detect accidental corruption or modification of a downloaded artifact. The manifest lives inside the artifact, so it detects accidental damage, not deliberate tampering by someone who can recompute it; cryptographic signing and external anchoring are planned. |
 
 ---
 
@@ -81,8 +81,9 @@ on it. Copeca normalizes cost across providers and warns when pricing data is
 stale.
 
 **Skeptical evaluators** — Researchers, reviewers, procurement leads. You've
-been burned by contaminated benchmarks and cherry-picked results. Copeca's
-artifact model and batch completeness verification let you check every claim.
+been burned by contaminated benchmarks and selectively reported results. Copeca's
+artifact model lets you verify any individual result; batch completeness verification
+(confirming all expected runs are present) is planned.
 
 ---
 
@@ -105,8 +106,9 @@ experimental. They cover all five integration types real tools use:
 | Process wrapper | `wrapper` | `headroom wrap claude` |
 | Pre-run index | `setup` | claude-context, GrepAI |
 
-Copeca provisions each arm with its own config directory and environment, so
-the baseline is provably clean — it never inherits the host's ambient hooks.
+Copeca provisions each arm with its own config directory. Full environment
+isolation — so the baseline never inherits the host's ambient hooks — is being
+wired and is not yet complete (see known-limitations).
 
 ---
 
@@ -114,9 +116,9 @@ the baseline is provably clean — it never inherits the host's ambient hooks.
 
 Tasks are YAML data — no embedded code, no Docker per task. They target real
 open-source repos at pinned commits. The current seed corpus is **16 tasks**
-from the `SWE-QA (Apache-2.0)` source family, with **5 additional source
-families planned** (SCBench, Long Code Arena, CrossCodeEval,
-SWE-bench-Live, Terminal-Bench 2.0). Each task carries a
+spanning six source families but heavily weighted toward `SWE-QA (Apache-2.0)`
+(11 of 16) and only four repos; broader, balanced coverage (~85 tasks) is
+planned. Each task carries a
 `source:` field with provenance attribution. Every edit task is verified by
 `copeca check-task`: the test must pass on clean code and fail on mutated
 code, proving the mutation actually bites.
@@ -141,8 +143,7 @@ all derived — never trusted from vendor self-reports.
 {"type": "result", "total_cost_usd": 0.0734, "duration_ms": 45230}
 ```
 
-Built-in parsers: `stream_json` (Claude Code), `codex_json` (Codex), `generic`
-(configurable JSONPath mappings).
+Built-in parser: `stream_json` (Claude Code JSON event stream). Additional parsers are planned.
 
 ---
 

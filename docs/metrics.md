@@ -40,18 +40,18 @@ cost-per-correct values are shown, but the delta is the headline.
 
 ## Bootstrap 95% confidence interval
 
-Because cost-per-correct is a ratio statistic, its sampling distribution is
-not normal. Copeca uses the percentile bootstrap method:
+The delta CI is a paired bootstrap over per-task deltas:
 
-1. Pool all (cost, correct) pairs from the N runs in a mode.
-2. Resample N pairs with replacement, compute cost_per_correct for the
-   resample, and repeat 10,000 times.
-3. The 95% CI is the 2.5th and 97.5th percentiles of the bootstrap
-   distribution.
+1. For each task, compute cost-per-correct for both modes and their percentage
+   delta: `((cpc_exp - cpc_base) / cpc_base) × 100`.
+2. Resample the resulting list of per-task deltas with replacement and compute
+   the mean of each resample. Repeat 10,000 times.
+3. The 95% CI is the 2.5th and 97.5th percentiles of those resampled means.
 
-The same resamples produce a CI on the delta between modes. Overlapping CIs
-do not mean the delta is non-significant — the delta CI is computed directly
-from the paired bootstrap.
+Pairing the two modes within each task removes cross-mode variance and makes
+the CI sensitive to the within-task difference rather than to task difficulty.
+Overlapping per-mode CIs do not mean the delta is non-significant — the delta
+CI is computed directly from the paired per-task deltas.
 
 ---
 
@@ -114,8 +114,9 @@ detected.
 | `budget_exhausted` | The agent hit the cost budget before producing a result | cost >= budget AND result is missing or empty |
 | `timeout` | The agent exceeded the time limit | duration_ms >= timeout_seconds × 1000 |
 
-All thresholds are configurable in the scenario YAML. Flags are null (not
-false) when the runner doesn't provide the data needed to compute them.
+Thresholds are currently hardcoded; making them configurable per scenario is
+planned. Flags are null (not false) when the runner doesn't provide the data
+needed to compute them.
 
 ---
 

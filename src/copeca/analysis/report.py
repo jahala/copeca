@@ -48,6 +48,9 @@ def _compute_per_task_deltas(
             continue
         cpc0 = cost_per_correct(mode0_recs)
         cpc1 = cost_per_correct(mode1_recs)
+        # Exclude tasks where either mode has no correct answers (undefined CPC)
+        if cpc0 is None or cpc1 is None:
+            continue
         if cpc0 > 0:
             deltas.append(((cpc1 - cpc0) / cpc0) * 100)
 
@@ -171,7 +174,8 @@ def _per_category_section(
         row = f"| {cat_val} |"
         for mode in modes:
             cpc = cost_per_correct(by_mode_cat.get(mode, []))
-            row += f" ${cpc:.4f} |"
+            cpc_cell = f"${cpc:.4f}" if cpc is not None else "n/a (0 correct)"
+            row += f" {cpc_cell} |"
         lines.append(row)
 
     lines.append("")
@@ -216,15 +220,21 @@ def generate_report(records: list[dict[str, Any]]) -> str:
     # ── 1. Delta-headline: cost-per-correct for each mode + delta + CI ─────
     lines.append("### Cost Per Correct Answer")
     lines.append("")
-    lines.append("| Mode | Cost per Correct |")
-    lines.append("|------|----------------:|")
+    lines.append("| Mode | Cost per Correct | Accuracy |")
+    lines.append("|------|----------------:|---------:|")
 
-    cpc_by_mode: dict[str, float] = {}
+    cpc_by_mode: dict[str, float | None] = {}
+    correct_by_mode: dict[str, tuple[int, int]] = {}
     for mode in modes:
         mode_records = by_mode[mode]
         cpc = cost_per_correct(mode_records)
+        correct_count = sum(1 for r in mode_records if r.get("correct"))
+        total_count = len(mode_records)
         cpc_by_mode[mode] = cpc
-        lines.append(f"| {mode} | ${cpc:.4f} |")
+        correct_by_mode[mode] = (correct_count, total_count)
+        accuracy = f"{correct_count}/{total_count}"
+        cpc_cell = f"${cpc:.4f}" if cpc is not None else "n/a (0 correct)"
+        lines.append(f"| {mode} | {cpc_cell} | {accuracy} |")
 
     lines.append("")
 
@@ -234,28 +244,43 @@ def generate_report(records: list[dict[str, Any]]) -> str:
         m0, m1 = modes[0], modes[1]
         cpc0 = cpc_by_mode[m0]
         cpc1 = cpc_by_mode[m1]
-        if cpc0 > 0:
-            delta_pct = ((cpc1 - cpc0) / cpc0) * 100
-        elif cpc1 > 0:
-            delta_pct = float("inf")
-        else:
-            delta_pct = 0.0
-        direction = "lower" if delta_pct < 0 else "higher"
 
-        # Compute bootstrap CI on per-task deltas
+        # Compute bootstrap CI on per-task deltas (excludes tasks where either CPC is None)
         per_task_deltas = _compute_per_task_deltas(records, modes)
-        if per_task_deltas:
-            ci_lo, ci_hi, _, _ = bootstrap_ci(per_task_deltas)
+
+        if cpc1 is None:
+            # Experimental got 0 correct — delta is undefined, not a bargain
+            n_correct, n_total = correct_by_mode[m1]
             lines.append(
-                f"**Delta:** {m1} is {delta_pct:+.1f}% {direction} than {m0} "
-                f"(${cpc1:.4f} vs ${cpc0:.4f}) "
-                f"[95% CI: {ci_lo:+.1f}%, {ci_hi:+.1f}%]"
+                f"**Delta:** n/a — {m1} got {n_correct}/{n_total} correct"
+            )
+        elif cpc0 is None:
+            # Baseline got 0 correct — experimental is strictly better, but no ratio
+            n_correct, n_total = correct_by_mode[m0]
+            lines.append(
+                f"**Delta:** n/a — {m0} (baseline) got {n_correct}/{n_total} correct"
             )
         else:
-            lines.append(
-                f"**Delta:** {m1} is {delta_pct:+.1f}% {direction} than {m0} "
-                f"(${cpc1:.4f} vs ${cpc0:.4f})"
-            )
+            if cpc0 > 0:
+                delta_pct = ((cpc1 - cpc0) / cpc0) * 100
+            elif cpc1 > 0:
+                delta_pct = float("inf")
+            else:
+                delta_pct = 0.0
+            direction = "lower" if delta_pct < 0 else "higher"
+
+            if per_task_deltas:
+                ci_lo, ci_hi, _, _ = bootstrap_ci(per_task_deltas)
+                lines.append(
+                    f"**Delta:** {m1} is {delta_pct:+.1f}% {direction} than {m0} "
+                    f"(${cpc1:.4f} vs ${cpc0:.4f}) "
+                    f"[95% CI: {ci_lo:+.1f}%, {ci_hi:+.1f}%]"
+                )
+            else:
+                lines.append(
+                    f"**Delta:** {m1} is {delta_pct:+.1f}% {direction} than {m0} "
+                    f"(${cpc1:.4f} vs ${cpc0:.4f})"
+                )
         lines.append("")
 
     # ── 2. Per-task table ──────────────────────────────────────────────────
@@ -285,26 +310,23 @@ def generate_report(records: list[dict[str, Any]]) -> str:
         by_mode_in_task = group_by(task_records, key="mode")
 
         row = f"| {task} |"
-        costs: list[float] = []
+        costs: list[float | None] = []
         for mode in modes:
             mode_recs = by_mode_in_task.get(mode, [])
             cpc = cost_per_correct(mode_recs)
             costs.append(cpc)
-            row += f" ${cpc:.4f} |"
+            cpc_cell = f"${cpc:.4f}" if cpc is not None else "n/a (0 correct)"
+            row += f" {cpc_cell} |"
 
         if len(modes) == 2:
             c0, c1 = costs
-            if c0 > 0:
+            if c0 is None or c1 is None:
+                row += " N/A |"
+            elif c0 > 0:
                 delta = ((c1 - c0) / c0) * 100
-                if per_task_deltas:
-                    row += f" {delta:+.1f}% |"
-                else:
-                    row += f" {delta:+.1f}% |"
+                row += f" {delta:+.1f}% |"
             else:
-                if per_task_deltas:
-                    row += " N/A |"
-                else:
-                    row += " N/A |"
+                row += " N/A |"
 
         lines.append(row)
 

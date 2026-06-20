@@ -17,8 +17,8 @@ them, it's architecturally wrong regardless of implementation quality.
 | Property | What it means | What enforces it |
 |---|---|---|
 | **Reproducible** | Same inputs → same outputs within stochastic bounds | Pinned commits, declared toolchains, per-arm isolation, `check-task` mutation validity |
-| **Verifiable** | Outputs carry their own proof of authenticity | `.copeca` zips with SHA-256 hash chains, batch completeness verification |
-| **Isolated** | The instrument doesn't contaminate the measurement | Git worktrees, per-arm config dirs, baseline arm is provably clean |
+| **Verifiable** | Outputs carry their own proof of integrity | `.copeca` zips with a SHA-256 integrity manifest that detects accidental corruption; cryptographic signing and batch completeness verification are planned |
+| **Isolated** | The instrument doesn't contaminate the measurement | Git worktrees, per-arm config dirs; full baseline env isolation is planned (see known-limitations) |
 | **Comparable** | Numbers from different runs use the same methodology | Cost computed from tokens × one pricing source, same tasks/baseline/metric |
 | **Extensible** | New runners, parsers, modes, tasks without changing the core | YAML-driven config, ABC-based port/adapter boundaries, invoke_template escape hatch |
 
@@ -92,10 +92,11 @@ via architecture tests (import-linter or a simple grep in CI).
 
 **Adapters (concrete implementations):**
 - `runners/subprocess.py:SubprocessRunner` — spawns CLI agent as subprocess
-- `runners/parsers/stream_json.py` — Claude Code output parser
-- `runners/parsers/codex_json.py` — Codex output parser
-- `runners/parsers/generic.py` — JSONPath-configurable parser
+- `runners/parsers/stream_json.py` — built-in parser (Claude Code stream-json output)
 - `repos/manager.py:GitWorktreeManager` — git bare clone + worktree operations
+
+Additional parsers (for other CLI agents) are planned; the extension point is
+`runners/parsers/base.py:BaseParser`.
 
 The orchestration layer imports ports (ABCs), never adapters directly. The CLI
 instantiates adapters based on runner config and injects them.
@@ -254,8 +255,8 @@ touching the core.
 
 ### New runner CLI
 
-Add a YAML file to `defaults/runners/`. If the output format matches an existing
-parser (`stream_json`, `codex_json`), no code change is needed. If custom:
+Add a YAML file to `defaults/runners/`. If the output format matches the built-in
+parser (`stream_json`), no code change is needed. If custom:
 
 1. Implement `BaseParser.parse(stdout: str, supported_events: list[str]) -> RunResult`
    in `runners/parsers/`
@@ -289,7 +290,7 @@ formats: HTML, PDF, CI annotations (GitHub Actions summary).
 
 Add a computation function in `orchestration/` that takes a `RunResult` and
 returns `bool | null`. Register it in the flag registry. Thresholds are
-configurable in the scenario YAML.
+currently hardcoded; making them per-scenario configurable is planned.
 
 ---
 
@@ -307,9 +308,10 @@ or "guidelines" — they are the definition of what copeca IS.
    from `Σ tokens × pricing`. Vendor cost is `vendor_cost_usd` — a cross-check
    only. This is the only basis for cross-provider comparison.
 
-3. **The baseline is provably clean.** Every A/B comparison runs baseline with
-   its own config dir, its own env, and zero inherited hooks. If the baseline
-   inherits the host's ambient tooling, the measurement is contaminated.
+3. **The baseline must be clean.** Every A/B comparison must run baseline with
+   its own config dir, its own env, and zero inherited hooks. Today the child
+   still inherits the host's ambient env (see known-limitations); wiring full
+   env isolation so this invariant actually holds is in progress.
 
 4. **One execution path.** There is no `if docker:` branch. If Docker execution
    is added later, it replaces the subprocess execution path — it doesn't sit

@@ -107,8 +107,8 @@ These are the invariants that make copeca numbers trustworthy:
   a staleness warning.
 - **Reproducibility over convenience.** Every run records the repo commit SHA,
   verified toolchain versions, runner config with pricing, and task definition.
-  A `.copeca` zip (opt-in via `--artifacts`) carries all of this with a SHA-256
-  hash chain.
+  A `.copeca` zip (opt-in via `--artifacts`) carries all of this with an
+  integrity manifest (a SHA-256 hash of every file).
 - **No network during measurement.** The agent may use the network (it's a real
   coding agent), but copeca itself does not. Repos are pre-cloned. Pricing tables
   are local YAML. Schemas are local JSON.
@@ -154,7 +154,7 @@ Reviewer checks (CI enforces where possible):
 2. **Boundaries respected.** I/O stays in `runners/`, `repos/`, `results/`. Config
    and analysis compute on data.
 3. **Correctness invariants hold.** Edit tasks pass `check-task`. Cost is computed,
-   not trusted. The hash chain covers every artifact file.
+   not trusted. The integrity manifest covers every artifact file.
 4. **No task corpus contamination.** New tasks carry a `source:` field with license
    and commit. Tasks from blocked sources (SWE-bench Verified, RepoBench, ClassEval,
    DevEval, CoderEval) are rejected before review.

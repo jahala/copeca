@@ -9,6 +9,11 @@ from typing import Any
 from copeca.analysis.stats import cost_per_correct
 
 
+def _fmt_cpc(cpc: float | None) -> str:
+    """Format a cost-per-correct value for display."""
+    return f"${cpc:.4f}" if cpc is not None else "n/a (0 correct)"
+
+
 def compare_runs(before: list[dict[str, Any]], after: list[dict[str, Any]]) -> str:
     """Compare two JSONL result sets, produce markdown with per-task deltas.
 
@@ -48,45 +53,52 @@ def compare_runs(before: list[dict[str, Any]], after: list[dict[str, Any]]) -> s
         before_task = [r for r in before if r["task"] == task]
         after_task = [r for r in after if r["task"] == task]
 
-        cpc_before = cost_per_correct(before_task) if before_task else float("nan")
-        cpc_after = cost_per_correct(after_task) if after_task else float("nan")
+        cpc_before: float | None = cost_per_correct(before_task) if before_task else None
+        cpc_after: float | None = cost_per_correct(after_task) if after_task else None
 
-        import math
-
-        if before_task and after_task and not (math.isnan(cpc_before) or math.isnan(cpc_after)):
-            if cpc_before > 0:
-                delta_pct = ((cpc_after - cpc_before) / cpc_before) * 100
-            elif cpc_after > 0:
-                delta_pct = float("inf")
+        if before_task and after_task:
+            if cpc_before is None or cpc_after is None:
+                # At least one side has 0 correct — delta is undefined
+                lines.append(
+                    f"| {task} | {_fmt_cpc(cpc_before)} | {_fmt_cpc(cpc_after)} | N/A |"
+                )
             else:
-                delta_pct = 0.0
+                if cpc_before > 0:
+                    delta_pct = ((cpc_after - cpc_before) / cpc_before) * 100
+                elif cpc_after > 0:
+                    delta_pct = float("inf")
+                else:
+                    delta_pct = 0.0
 
-            flag = ""
-            if abs(delta_pct) > 10:
-                flags.append((task, delta_pct))
-                flag = " **>10%**"
+                flag = ""
+                if abs(delta_pct) > 10:
+                    flags.append((task, delta_pct))
+                    flag = " **>10%**"
 
-            lines.append(f"| {task} | ${cpc_before:.4f} | ${cpc_after:.4f} | {delta_pct:+.1f}%{flag} |")
+                lines.append(
+                    f"| {task} | {_fmt_cpc(cpc_before)} | {_fmt_cpc(cpc_after)} "
+                    f"| {delta_pct:+.1f}%{flag} |"
+                )
 
         elif before_task and not after_task:
-            lines.append(f"| {task} | ${cpc_before:.4f} | *missing* | N/A |")
+            lines.append(f"| {task} | {_fmt_cpc(cpc_before)} | *missing* | N/A |")
 
         elif not before_task and after_task:
-            lines.append(f"| {task} | *missing* | ${cpc_after:.4f} | N/A |")
+            lines.append(f"| {task} | *missing* | {_fmt_cpc(cpc_after)} | N/A |")
 
     lines.append("")
 
     # ── Overall stats ──────────────────────────────────────────────────────
-    cpc_all_before = cost_per_correct(before) if before else 0.0
-    cpc_all_after = cost_per_correct(after) if after else 0.0
+    cpc_all_before: float | None = cost_per_correct(before) if before else None
+    cpc_all_after: float | None = cost_per_correct(after) if after else None
     lines.append("## Overall")
     lines.append("")
     lines.append(f"- **Before:** {len(before)} records across {len(before_tasks)} tasks")
     lines.append(f"- **After:** {len(after)} records across {len(after_tasks)} tasks")
-    lines.append(f"- **Overall CPC before:** ${cpc_all_before:.4f}")
-    lines.append(f"- **Overall CPC after:** ${cpc_all_after:.4f}")
+    lines.append(f"- **Overall CPC before:** {_fmt_cpc(cpc_all_before)}")
+    lines.append(f"- **Overall CPC after:** {_fmt_cpc(cpc_all_after)}")
 
-    if cpc_all_before > 0 and cpc_all_after > 0:
+    if cpc_all_before is not None and cpc_all_after is not None and cpc_all_before > 0:
         overall_delta = ((cpc_all_after - cpc_all_before) / cpc_all_before) * 100
         lines.append(f"- **Overall delta:** {overall_delta:+.1f}%")
     lines.append("")

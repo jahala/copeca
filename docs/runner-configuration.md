@@ -76,13 +76,15 @@ It spawns the CLI agent as a subprocess with process-group isolation:
 
 Each runner gets a parser that transforms raw stdout into a `RunResult`:
 
-- **`StreamJsonParser`** (`stream_json`) — Parses Claude Code's verbose
-  stream-json output (`--output-format stream-json --verbose`). Extracts
-  `Turn` objects (token counts per turn), `ToolCall` objects, and the final
-  result text.
-- **`CodexJsonParser`** (`codex_json`) — Parses Codex output format.
-- **`GenericParser`** (`generic`) — Configurable JSONPath mappings for custom
-  CLI agents.
+- **`StreamJsonParser`** (`stream_json`) — The built-in parser. Parses Claude
+  Code's verbose stream-json output (`--output-format stream-json --verbose`).
+  Extracts `Turn` objects (token counts per turn), `ToolCall` objects, and the
+  final result text.
+
+Parsers for other CLI agents are planned. To add one, implement
+`BaseParser.parse(stdout: str, supported_events: list[str]) -> RunResult`
+in `runners/parsers/`, set `parser: <name>` in the runner YAML, and register
+it in the runner factory.
 
 The parser is injected at construction: `SubprocessRunner(parser=StreamJsonParser())`.
 If no parser is provided, the raw stdout becomes `result_text` with zero token counts.
@@ -123,9 +125,9 @@ survey (`README.md`):
 | Process wrapper | `wrapper` | Prefix the runner command (e.g. `headroom wrap claude`) |
 | Pre-run index | `setup` | Run a per-worktree pre-step command |
 
-Each mode arm gets its own config directory and environment. The baseline
-arm is provably clean — it gets an empty config directory and no mode
-provisioning.
+Each mode arm gets its own config directory. (Full environment isolation for the
+baseline arm is still being wired — see known-limitations; today the child
+inherits the host's ambient environment.)
 
 ---
 

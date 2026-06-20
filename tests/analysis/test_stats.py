@@ -98,19 +98,19 @@ class TestCostPerCorrect:
         result = cost_per_correct(records)
         assert result == pytest.approx(0.15)
 
-    def test_cost_per_correct_zero_correct_returns_zero(self):
-        """When no records are correct, return 0.0."""
+    def test_cost_per_correct_zero_correct_returns_none(self):
+        """When no records are correct, return None (undefined — cost per correct is meaningless)."""
         records = [
             {"total_cost_usd": 0.10, "correct": False},
             {"total_cost_usd": 0.20, "correct": False},
         ]
         result = cost_per_correct(records)
-        assert result == 0.0
+        assert result is None
 
-    def test_cost_per_correct_empty_records(self):
-        """Empty records list returns 0.0."""
+    def test_cost_per_correct_empty_records_returns_none(self):
+        """Empty records list returns None (no correct answers, metric is undefined)."""
         result = cost_per_correct([])
-        assert result == 0.0
+        assert result is None
 
 
 class TestGroupBy:

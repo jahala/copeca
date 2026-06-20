@@ -2535,7 +2535,7 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
   "impact": "A tool builder sees exactly where their tool helps. A skeptical evaluator sees the CI on the delta and per-task breakdown. A platform builder sees cost composition and adversarial flag rates.",
   "fit": "Phase 3. ADAPT from tilth's analyze.py (~75% reusable: compute_stats, sparklines, format_delta). BUILD bootstrap CI, delta-headline, adversarial summary.",
   "where": "src/copeca/analysis/stats.py, src/copeca/analysis/report.py, src/copeca/analysis/compare.py, src/copeca/cli.py",
-  "how": "stats.py: median, mean, stdev, bootstrapped 95% CI. report.py: markdown with delta-headline, per-task table, cost breakdown, sparklines, tool adoption, adversarial summary. compare.py: run-to-run comparison with per-task deltas. CI limitation documented: bootstraps assume i.i.d.; model runs are correlated.",
+  "how": "stats.py: median, mean, stdev, bootstrapped 95% CI. report.py: markdown with delta-headline, per-task table, cost breakdown, sparklines, tool adoption, adversarial summary. compare.py: run-to-run comparison with per-task deltas. CI limitation documented: bootstraps assume i.i.d.; model runs are correlated. Zero-correct cost-per-correct is undefined: it renders 'n/a (0 correct)' (never $0.0000), is excluded from the headline delta and the bootstrap, and accuracy (correct/total) is shown alongside cost so the metric cannot invert under failure (F-C1 fix).",
   "coverage_files": [
     "src/copeca/analysis/stats.py",
     "src/copeca/analysis/report.py",
@@ -2565,6 +2565,14 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
       "method": "synthetic-test",
       "validates_job": "platform-builder:1",
       "verification_recipe": "Run copeca compare on two JSONL result files from the same scenario. Verify the comparison shows per-task deltas and flags any task where cost-per-correct changed by >10% between runs."
+    },
+    {
+      "id": "c004",
+      "description": "Zero-correct mode renders n/a and never inverts the metric; accuracy shown alongside cost-per-correct",
+      "validates": "why",
+      "method": "synthetic-test",
+      "validates_job": "skeptical-evaluator:0",
+      "verification_recipe": "Generate a report where the experimental mode is 0/N correct at higher spend. Verify: (a) its cost-per-correct cell shows 'n/a (0 correct)', not $0.0000; (b) NO negative delta / '-100%' is emitted from the zero denominator; (c) accuracy (correct/total) is shown alongside cost-per-correct. Covered by tests/analysis/test_report.py::test_report_zero_correct_experimental_shows_na and tests/analysis/test_stats.py::test_cost_per_correct_zero_correct_returns_none."
     }
   ],
   "smoke": {
@@ -2572,7 +2580,7 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
   },
   "progress": {
     "implementation": 100,
-    "verification": 100
+    "verification": 0
   },
   "personas_resolved": [
     {
@@ -2740,51 +2748,6 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
       ]
     }
   ],
-  "audit": {
-    "ran_at": "2026-06-20T17:00:00Z",
-    "result": "pass",
-    "verdicts": [
-      {
-        "check_id": "c001",
-        "verdict": "pass",
-        "evidence_path": "src/copeca/analysis/report.py:181-414; src/copeca/analysis/stats.py:146-187; tests/analysis/test_report.py::test_report_contains_cost_per_correct_headline; tests/analysis/test_report.py::test_report_contains_per_task_table; tests/analysis/test_report.py::test_report_contains_ci_in_headline",
-        "validates_job_satisfied": true,
-        "evidence_sha": "f3572167c435e8974e8262bf523f1cbf74eace85"
-      },
-      {
-        "check_id": "c002",
-        "verdict": "pass",
-        "evidence_path": "src/copeca/analysis/report.py:348-412",
-        "validates_job_satisfied": true,
-        "evidence_sha": "f3572167c435e8974e8262bf523f1cbf74eace85"
-      },
-      {
-        "check_id": "c003",
-        "verdict": "pass",
-        "evidence_path": "src/copeca/analysis/compare.py",
-        "validates_job_satisfied": true,
-        "evidence_sha": "1816ce9978b8a808d555720c88e5911cb1c72b5f"
-      }
-    ],
-    "drift": [
-      {
-        "file": "src/copeca/analysis/report.py",
-        "finding": "Tool adoption rate is mentioned in the feature spec but not implemented in generate_report(). No section counts tool usage per mode.",
-        "action": "implement"
-      },
-      {
-        "file": "src/copeca/analysis/report.py",
-        "finding": "Per-category aggregation (by language, framework, etc.) is claimed in check c001 but generate_report() only aggregates per-task.",
-        "action": "implement"
-      },
-      {
-        "file": "tests/analysis/test_compare.py",
-        "finding": "test_compare_flags_large_changes asserts '>' in result which is trivially true for any markdown table — does not discriminate whether >10% flagging actually works.",
-        "action": "investigate"
-      }
-    ],
-    "verified_at_commit": "078c18cdbedd51b8f656c43db77c408890288f71"
-  },
   "judgments": [
     {
       "question_id": "impact_measurable",
