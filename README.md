@@ -134,11 +134,18 @@ by their own creators (SWE-bench Verified, Feb 2026) are explicitly blocked.
 
 ---
 
-## Runner output contract
+## Runners
 
-To add a new runner, its CLI must output JSON events on stdout. Copeca
-requires the *minimum*: token counts. Cost, duration, and completion are
-all derived — never trusted from vendor self-reports.
+The runner interface is **config-driven**: a runner is a YAML file in
+`defaults/runners/` declaring the CLI binary, its argument mapping, its config-dir
+env var, and which output parser to use — plus a pricing table. Copeca builds the
+subprocess invocation from that YAML, so adding an agent CLI means writing a YAML,
+not editing copeca's code. See
+[docs/runner-configuration.md](docs/runner-configuration.md).
+
+To compute cost, copeca requires the *minimum* from the agent's output: token
+counts. Cost, duration, and completion are derived — never trusted from vendor
+self-reports.
 
 ```jsonl
 {"type": "turn", "input_tokens": 5000, "output_tokens": 200,
@@ -147,7 +154,10 @@ all derived — never trusted from vendor self-reports.
 {"type": "result", "total_cost_usd": 0.0734, "duration_ms": 45230}
 ```
 
-Built-in parser: `stream_json` (Claude Code JSON event stream). Additional parsers are planned.
+The `stream_json` parser (Claude Code's JSON event stream) ships today. A CLI
+with a different output format needs a matching parser; those aren't built yet,
+and a runner YAML naming an unbuilt parser fails loudly rather than silently
+miscounting.
 
 ---
 
@@ -170,8 +180,10 @@ cd copeca
 pip install .
 ```
 
-Requires Python ≥ 3.11. See [docs/runner-configuration.md](docs/runner-configuration.md)
-for setting up runners (Claude Code, Codex, etc.).
+Requires Python ≥ 3.11. The Claude Code runner ships ready to use; the runner
+interface is config-driven so other CLIs are added by writing a YAML (and, if
+their output format differs, a parser). See
+[docs/runner-configuration.md](docs/runner-configuration.md).
 
 ---
 

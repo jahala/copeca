@@ -11,7 +11,7 @@ import yaml
 from jsonschema import ValidationError as JsonschemaValidationError
 from jsonschema import validate
 
-from copeca.config.models import Mode, Repo, Scenario, Task
+from copeca.config.models import Mode, Repo, RunnerConfig, Scenario, Task
 from copeca.config.resources import data_path
 
 
@@ -219,3 +219,60 @@ def load_modes(
         FileNotFoundError: If any name has no resolvable YAML (via load_mode).
     """
     return {name: load_mode(name, modes_dirs=modes_dirs) for name in names}
+
+
+def load_runner(name: str, runner_dirs: list[Path] | None = None) -> RunnerConfig:
+    """Load a runner config by name, resolving across runner dirs.
+
+    The runner YAML carries two things: a top-level ``pricing`` table and a
+    ``runner:`` interface block (``cli``, ``default_args``, ``arg_map``,
+    ``invoke_template``, ``config_dir_env``, ``parser``). This returns a single
+    RunnerConfig combining both, so build_runner can construct a SubprocessRunner
+    entirely from data — no agent's flags hardcoded.
+
+    Args:
+        name: Runner name (e.g. "claude"). Resolved to ``<dir>/<name>.yaml`` by
+              searching ``runner_dirs`` in order; the first existing file wins.
+              Doubles as the default ``cli`` binary name when the YAML omits it.
+        runner_dirs: Directories to search. Defaults to the packaged
+                     ``defaults/runners`` (resolved via ``data_path``).
+
+    Returns:
+        A validated RunnerConfig with the CLI interface and pricing.
+
+    Raises:
+        FileNotFoundError: If no ``<dir>/<name>.yaml`` exists in any runner_dir.
+        LoadError: If the YAML is malformed or not a mapping.
+        pydantic.ValidationError: If the YAML fails RunnerConfig validation
+            (e.g. an interface with neither arg_map nor invoke_template).
+    """
+    if runner_dirs is None:
+        runner_dirs = [data_path("defaults", "runners")]
+
+    for runner_dir in runner_dirs:
+        candidate = runner_dir / f"{name}.yaml"
+        if candidate.exists():
+            try:
+                with open(candidate) as f:
+                    doc = yaml.safe_load(f)
+            except yaml.YAMLError as e:
+                raise LoadError(candidate, f"YAML parse error: {e}") from e
+
+            if not isinstance(doc, dict):
+                raise LoadError(
+                    candidate, f"Expected a YAML mapping, got {type(doc).__name__}"
+                )
+
+            interface = doc.get("runner") or {}
+            if not isinstance(interface, dict):
+                raise LoadError(
+                    candidate,
+                    f"'runner' must be a mapping, got {type(interface).__name__}",
+                )
+
+            # cli defaults to the runner name (the file stem) when not declared.
+            fields = {"cli": name, **interface, "pricing": doc.get("pricing")}
+            return RunnerConfig.model_validate(fields)
+
+    searched = ", ".join(str(d / f"{name}.yaml") for d in runner_dirs)
+    raise FileNotFoundError(f"Runner '{name}' not found. Searched: {searched}")

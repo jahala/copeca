@@ -7,11 +7,30 @@ that wrap CLI coding agents as subprocesses.
 
 ## Runner YAML structure
 
-Runner configs live in `defaults/runners/`. Each file defines a runner's CLI,
-invocation conventions, pricing, and output parser:
+Runner configs live in `defaults/runners/`. Each file is **the** definition of a
+runner — its CLI interface and its pricing both come from this YAML, so you add
+a new agent CLI by writing a YAML file, not by editing any Python. The file has
+two top-level keys: a `runner:` interface block and a `pricing:` table.
 
 ```yaml
 # defaults/runners/claude.yaml
+runner:
+  cli: claude                      # binary name; defaults to the file stem
+  default_args:                    # args always prepended to the command
+    - -p
+    - --output-format
+    - stream-json
+    - --verbose
+    - --dangerously-skip-permissions
+  arg_map:                         # copeca parameter -> CLI flag
+    model: --model
+    budget: --max-budget-usd
+    system_prompt: --system-prompt
+    mcp_config: --mcp-config
+    prompt_separator: --
+  config_dir_env: CLAUDE_CONFIG_DIR  # env var carrying the per-arm config dir
+  parser: stream_json              # output parser name (see Parser registry)
+
 pricing:
   claude-sonnet-4-6:
     input: 3.00
@@ -21,19 +40,31 @@ pricing:
     updated: "2026-06-19"
 ```
 
-The runner is wired in `cli.py` at startup with `arg_map` and `invoke_template`:
+`copeca run --runner <name>` resolves `<name>.yaml` (project-local
+`defaults/runners/` first, then the packaged defaults) via `load_runner`, then
+`build_runner` constructs a `SubprocessRunner` from it. An unknown runner name
+fails loudly (exit 2); an unknown `parser` name fails loudly too.
 
-- **`arg_map`** — Dict mapping copeca parameters to CLI flags. The built-in
-  Claude runner uses `{"model": "--model", "budget": "--max-budget-usd",
-  "system_prompt": "--system-prompt", "prompt_separator": "--"}`.
-  `prompt_separator` is special: it goes before the positional prompt.
-- **`invoke_template`** — Escape hatch for non-standard CLI conventions.
-  Example: `"{cli} exec --json -m {model} -- {prompt}"`. Available
-  placeholders: `{cli}`, `{model}`, `{prompt}`, `{budget}`, `{system_prompt}`,
-  `{tools}`, `{mcp_config}`. When present, `invoke_template` takes precedence
-  over `arg_map`.
-- **`default_args`** — Args always prepended to the command.
-  Example: `["-p", "--output-format", "stream-json", "--verbose"]`.
+### `runner:` interface fields
+
+- **`cli`** — The binary to exec. Optional; defaults to the file's stem (so
+  `claude.yaml` → `claude`).
+- **`default_args`** — Args always prepended to the command, e.g.
+  `["-p", "--output-format", "stream-json", "--verbose"]`.
+- **`arg_map`** — Maps copeca parameters to this CLI's flags. Recognized keys:
+  `model`, `budget`, `system_prompt`, `tools`, `mcp_config`, and the special
+  `prompt_separator` (emitted right before the positional prompt, e.g. `--`).
+  A flag is only emitted when copeca has a value for it.
+- **`invoke_template`** — Escape hatch for CLIs whose argument shape `arg_map`
+  can't express. Example: `"{cli} exec --json -m {model} -- {prompt}"`.
+  Placeholders: `{cli}`, `{model}`, `{prompt}`, `{budget}`, `{system_prompt}`,
+  `{tools}`, `{mcp_config}`. When present, it takes precedence over `arg_map`.
+  A runner must declare **either** `arg_map` **or** `invoke_template`.
+- **`config_dir_env`** — Name of the env var through which copeca delivers each
+  arm's isolated agent config directory (Claude: `CLAUDE_CONFIG_DIR`). Omit for
+  CLIs without a config-dir concept.
+- **`parser`** — The name of the output parser (see Parser registry below). The
+  named parser must be built, or `build_runner` raises.
 
 ---
 
@@ -74,22 +105,28 @@ It spawns the CLI agent as a subprocess with process-group isolation:
 
 ---
 
-## Parser injection
+## Parser registry
 
-Each runner gets a parser that transforms raw stdout into a `RunResult`:
+A runner names its output parser by string (`parser: <name>` in the YAML). The
+registry in `src/copeca/runners/parsers/__init__.py` maps that name to a `Parser`
+implementation; `build_runner` resolves it via `get_parser(name)` and injects the
+instance into the `SubprocessRunner`.
 
-- **`StreamJsonParser`** (`stream_json`) — The built-in parser. Parses Claude
-  Code's verbose stream-json output (`--output-format stream-json --verbose`).
-  Extracts `Turn` objects (token counts per turn), `ToolCall` objects, and the
-  final result text.
+Shipped parsers:
 
-Parsers for other CLI agents are planned. To add one, implement
-`BaseParser.parse(stdout: str, supported_events: list[str]) -> RunResult`
-in `runners/parsers/`, set `parser: <name>` in the runner YAML, and register
-it in the runner factory.
+- **`stream_json`** (`StreamJsonParser`) — Parses Claude Code's verbose
+  stream-json output (`--output-format stream-json --verbose`). Extracts `Turn`
+  objects (token counts per turn), `ToolCall` objects, and the final result text.
 
-The parser is injected at construction: `SubprocessRunner(parser=StreamJsonParser())`.
-If no parser is provided, the raw stdout becomes `result_text` with zero token counts.
+A CLI with a different output format needs a matching parser — these are not yet
+built. `get_parser` raises `ParserNotFoundError` for an unknown name, so a runner
+YAML pointing at an unbuilt parser fails loudly instead of silently producing a
+parserless (zero-token) result. To add one:
+
+1. Implement `parse(stdout: str, supported_events: list[str] | None) -> RunResult`
+   (the `Parser` protocol) in `runners/parsers/`.
+2. Register it in `_PARSERS` in `runners/parsers/__init__.py` (`name -> class`).
+3. Set `parser: <name>` in the runner YAML.
 
 ---
 
@@ -158,4 +195,4 @@ null (`architecture.md` invariant 2 — cost is always computed).
 
 - [architecture.md](architecture.md) §2 — ports-and-adapters, extension points
 - [engineering.md](engineering.md) §4 — MCP & subprocess rules
-- [README.md](../README.md) — runner output contract, install
+- [README.md](../README.md) — runners (config-driven), output contract, install

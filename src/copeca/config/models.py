@@ -5,6 +5,7 @@ repos/, results/, or orchestration/. It is mechanically enforceable in CI.
 """
 
 from enum import Enum
+from typing import Any
 
 from pydantic import BaseModel, Field, ValidationInfo, field_validator, model_validator
 
@@ -162,6 +163,39 @@ class Mode(BaseModel):
             raise ValueError(
                 "at least one integration path or tools list is required"
             )
+        return self
+
+
+# ── Runner ────────────────────────────────────────────────────────────────────
+
+
+class RunnerConfig(BaseModel):
+    """A loaded runner config — the CLI interface plus pricing.
+
+    Data, not code: the interface fields (``cli``, ``default_args``, ``arg_map``,
+    ``invoke_template``, ``config_dir_env``, ``parser``) come from the runner
+    YAML's ``runner:`` block; ``pricing`` comes from its top-level ``pricing``
+    key. copeca's build_runner reads this and constructs a SubprocessRunner — no
+    agent's flags are hardcoded. ``parser`` is a NAME resolved via the parser
+    registry. ``cli`` defaults to the runner file's stem (filled by the loader).
+    """
+
+    cli: str = ""  # binary name; loader fills the file stem when left empty
+    default_args: list[str] = Field(default_factory=list)
+    arg_map: dict[str, str] = Field(default_factory=dict)
+    invoke_template: str = ""
+    config_dir_env: str | None = None
+    parser: str = ""
+    # Raw pricing as authored: each model -> {input, output, cache_*: float,
+    # updated: str}. Kept as-is so the cost model and staleness check (which read
+    # it by key name) consume the same shape they always have.
+    pricing: dict[str, dict[str, Any]] | None = None
+
+    @model_validator(mode="after")
+    def arg_map_or_invoke_template(self) -> "RunnerConfig":
+        """A runner must declare how to build its command (arg_map or template)."""
+        if not self.arg_map and not self.invoke_template:
+            raise ValueError("runner interface needs either 'arg_map' or 'invoke_template'")
         return self
 
 

@@ -10,12 +10,14 @@ import typer
 from copeca.config.loader import (
     LoadError,
     SchemaValidationError,
+    load_runner,
     load_tasks_from_dir,
 )
 from copeca.config.models import Repo
 from copeca.config.resources import data_path
 from copeca.results.writer import append_jsonl
-from copeca.runners.parsers.stream_json import StreamJsonParser
+from copeca.runners.parsers import get_parser
+from copeca.runners.subprocess import SubprocessRunner
 
 
 # ── Cost-safeguard helpers (pure logic + thin I/O) ─────────────────────────
@@ -45,6 +47,46 @@ def emit_staleness_warnings(warnings: list[str]) -> None:
     """Echo each pricing staleness warning to stderr."""
     for w in warnings:
         typer.echo(f"Warning: {w}", err=True)
+
+
+def build_runner(
+    runner_name: str,
+    timeout: int,
+    runner_dirs: list[Path] | None = None,
+) -> SubprocessRunner:
+    """Construct a SubprocessRunner from a runner YAML — config-driven.
+
+    The CLI interface (cli, default_args, arg_map, invoke_template,
+    config_dir_env) and the output parser come entirely from
+    ``<runner_name>.yaml``; no agent's flags are hardcoded here. This is what
+    makes copeca genuinely multi-CLI: a new agent is added by writing a YAML,
+    not by editing this function.
+
+    Args:
+        runner_name: Runner name; resolves ``<dir>/<runner_name>.yaml``.
+        timeout: Max wall time in seconds for the subprocess.
+        runner_dirs: Directories to search for the runner YAML (defaults to the
+            packaged ``defaults/runners`` via load_runner).
+
+    Returns:
+        A SubprocessRunner wired with the YAML's interface and parser.
+
+    Raises:
+        FileNotFoundError: If no runner YAML resolves for ``runner_name``.
+        ParserNotFoundError: If the YAML names a parser that isn't built.
+    """
+    cfg = load_runner(runner_name, runner_dirs=runner_dirs)
+    return SubprocessRunner(
+        name=runner_name,
+        cli=cfg.cli,
+        timeout=timeout,
+        default_args=cfg.default_args,
+        arg_map=cfg.arg_map,
+        invoke_template=cfg.invoke_template,
+        parser=get_parser(cfg.parser),
+        config_dir_env=cfg.config_dir_env,
+    )
+
 
 app = typer.Typer(
     name="copeca",
@@ -136,7 +178,6 @@ def run(
     from copeca.orchestration.run import run_matrix, run_single as run_single_task
     from copeca.orchestration.validation import validate_scenario
     from copeca.repos.manager import GitWorktreeManager
-    from copeca.runners.subprocess import SubprocessRunner
 
     import yaml
 
@@ -154,38 +195,20 @@ def run(
         repos_path = task.parent.parent / "repos.yaml" if task.parent.parent.name else Path("repos.yaml")
     repos = load_repos(repos_path) if repos_path.exists() else {}
 
-    # ── Bug 2: Load pricing from defaults/runners/ YAML ──────────────────
-    pricing: dict[str, dict[str, float]] | None = None
-    pricing_path = data_path("defaults", "runners", f"{runner}.yaml")
-    if pricing_path.exists():
-        with open(pricing_path) as pf:
-            runner_doc = yaml.safe_load(pf)
-            if isinstance(runner_doc, dict) and "pricing" in runner_doc:
-                pricing = runner_doc["pricing"]
-                from copeca.orchestration.validation import check_pricing_staleness
-                emit_staleness_warnings(check_pricing_staleness(pricing))
+    # ── Resolve runner dirs: project-local first, then the packaged defaults.
+    # The runner's CLI interface AND pricing come from <name>.yaml (config-driven
+    # — no agent's flags are hardcoded here). An unknown runner fails loudly.
+    runner_dirs = [task.parent.parent / "defaults" / "runners", data_path("defaults", "runners")]
+    try:
+        runner_cfg = load_runner(runner, runner_dirs=runner_dirs)
+    except FileNotFoundError as e:
+        typer.echo(f"Error: {e}", err=True)
+        raise typer.Exit(2)
 
-    # ── Shared: build a real runner with the stream-json parser ──────────
-    # Default Claude Code interface — verify/override per agent
-    # (config-dir via CLAUDE_CONFIG_DIR env, MCP via --mcp-config).
-    # These are runner-config values, not hardcoded core behavior.
-    def build_runner(cli_name: str = runner) -> SubprocessRunner:
-        r = SubprocessRunner(
-            name=cli_name,
-            cli=cli_name,
-            timeout=timeout,
-            default_args=["-p", "--output-format", "stream-json", "--verbose", "--no-session-persistence"],
-            arg_map={
-                "model": "--model",
-                "budget": "--max-budget-usd",
-                "system_prompt": "--system-prompt",
-                "mcp_config": "--mcp-config",
-                "prompt_separator": "--",
-            },
-            parser=StreamJsonParser(),
-            config_dir_env="CLAUDE_CONFIG_DIR",
-        )
-        return r
+    pricing = runner_cfg.pricing
+    if pricing is not None:
+        from copeca.orchestration.validation import check_pricing_staleness
+        emit_staleness_warnings(check_pricing_staleness(pricing))
 
     if is_scenario:
         # ── Scenario mode ───────────────────────────────────────────────
@@ -231,7 +254,9 @@ def run(
             scenario=scenario,
             tasks=loaded_tasks,
             modes=scenario.modes,
-            runner_factory=lambda mode_name, model_name: build_runner(runner),
+            runner_factory=lambda mode_name, model_name: build_runner(
+                runner, timeout=timeout, runner_dirs=runner_dirs
+            ),
             repo_mgr=repo_mgr,
             repos=repos,
             results_path=results_path,
@@ -258,7 +283,7 @@ def run(
         # ── Single-task mode ────────────────────────────────────────────
         task_obj = load_task(task)
 
-        runner_instance = build_runner(runner)
+        runner_instance = build_runner(runner, timeout=timeout, runner_dirs=runner_dirs)
 
         repo_mgr = GitWorktreeManager(repos_dir=Path("repos"))
         repo_uri: str | None = None

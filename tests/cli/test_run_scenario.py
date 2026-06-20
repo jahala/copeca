@@ -89,7 +89,7 @@ class TestRunScenario:
         scenario = _write_scenario_yaml(tmp_path, "test_scenario")
 
         result = copeca("run", "--task", str(scenario),
-                        "--runner", "echo", "--model", "test-model")
+                        "--runner", "claude", "--model", "test-model")
 
         combined = result.stdout + result.stderr
         # The key assertion: scenario detection happened
@@ -118,7 +118,7 @@ repetitions: 1
 """
         )
         result = copeca("run", "--task", str(s),
-                        "--runner", "echo", "--model", "m")
+                        "--runner", "claude", "--model", "m")
 
         combined = result.stdout + result.stderr
         assert "Detected scenario file" in combined, (
@@ -151,7 +151,7 @@ ground_truth:
 """
         )
         result = copeca("run", "--task", str(task_yaml),
-                        "--runner", "echo", "--model", "test-model")
+                        "--runner", "claude", "--model", "test-model")
 
         combined = result.stdout + result.stderr
         assert "Detected scenario file" not in combined, (
@@ -175,7 +175,7 @@ repetitions: 1
 """
         )
         result = copeca("run", "--task", str(s),
-                        "--runner", "echo", "--model", "m")
+                        "--runner", "claude", "--model", "m")
 
         combined = result.stdout + result.stderr
         # Detection should still fire — the 'tasks' key is present
@@ -199,7 +199,7 @@ repetitions: 1
 """
         )
         result = copeca("run", "--task", str(s),
-                        "--runner", "echo", "--model", "m")
+                        "--runner", "claude", "--model", "m")
 
         combined = result.stdout + result.stderr
         assert "Detected scenario file" in combined, (
@@ -230,7 +230,7 @@ ground_truth:
 """
         )
         result = copeca("run", "--task", str(task_yaml),
-                        "--runner", "echo", "--model", "test-model")
+                        "--runner", "claude", "--model", "test-model")
 
         combined = result.stdout + result.stderr
         # Should NOT be detected as scenario — 'tasks' is nested
@@ -264,7 +264,7 @@ repetitions: 1
 """
         )
         result = copeca("run", "--task", str(s),
-                        "--runner", "echo", "--model", "m")
+                        "--runner", "claude", "--model", "m")
 
         combined = result.stdout + result.stderr
         assert result.returncode == 1, (
