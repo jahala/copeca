@@ -1,0 +1,25 @@
+name: lca_bug_localization
+description: "Locate path parameter extraction logic in FastAPI request handling."
+source: "Long Code Arena (Apache-2.0)"
+repo: fastapi
+type: comprehension
+language: python
+difficulty: medium
+version: 1
+prompt: |
+  In FastAPI's request handling pipeline, locate where path parameters are
+  extracted from the URL path. What function or method does the actual
+  extraction? Report the file path and the function name. Then explain
+  what happens when a path parameter fails to match the declared type.
+ground_truth:
+  required_strings:
+    - path_params
+    - path
+    - params
+    - "def"
+  all_of:
+    - path_params
+    - "def"
+  forbidden_strings:
+    - "I cannot"
+    - "unable to"

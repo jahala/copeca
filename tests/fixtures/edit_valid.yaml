@@ -1,0 +1,24 @@
+name: edit_valid_test
+description: "Valid edit task — mutation breaks the test (test passes on clean, fails on mutated)"
+source: "copeca-test (MIT)"
+repo: edit-test-repo
+type: edit
+language: python
+difficulty: easy
+version: 1
+prompt: "Fix the broken function so that it returns the correct value."
+ground_truth:
+  required_strings:
+    - calc
+  test_command:
+    - python
+    - -c
+    - "import sys; sys.path.insert(0, '.'); from calc import add; assert add(2, 3) == 5, f'Expected 5, got {add(2, 3)}'; print('OK')"
+  forbidden_strings:
+    - "I cannot"
+mutations:
+  - file: calc.py
+    action: replace
+    find: "return a + b"
+    replace: "return a * b"
+    occurrence: 1

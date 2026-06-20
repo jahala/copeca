@@ -1,0 +1,44 @@
+ripgrep:
+  url: https://github.com/BurntSushi/ripgrep.git
+  commit: 82313cf95849bfe425109ad9506a52154879b1b1
+  language: rust
+  toolchain:
+    rust: "1.80.0"
+  setup_command:
+    - cargo
+    - fetch
+
+fastapi:
+  url: https://github.com/tiangolo/fastapi.git
+  commit: 2d0047087526d2af3eca4cee77d56539c52651d1
+  language: python
+  toolchain:
+    python: "3.11"
+  setup_command:
+    - python
+    - -m
+    - pip
+    - install
+    - -e
+    - .
+
+gin:
+  url: https://github.com/gin-gonic/gin.git
+  commit: d75fcd4c9ab260e5225de590f1f0f8c0e0e12d11
+  language: go
+  toolchain:
+    go: "1.23.0"
+  setup_command:
+    - go
+    - mod
+    - download
+
+express:
+  url: https://github.com/expressjs/express.git
+  commit: 18e5985b8a9d5e8423db0a9121f22bdaecd5b120
+  language: javascript
+  toolchain:
+    node: "22.0.0"
+  setup_command:
+    - npm
+    - install

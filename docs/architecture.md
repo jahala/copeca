@@ -1,0 +1,438 @@
+# Copeca — Architecture
+
+How copeca is structured, why, and what must hold true regardless of implementation.
+`engineering.md` says how we write code; `agent-bench-plan.md` says what we're
+building. This document says how the pieces fit together, what depends on what,
+where extension happens, and which invariants survive every change.
+
+---
+
+## 1. Copeca is a measurement instrument
+
+Every architectural decision traces to this: copeca measures things. A measurement
+instrument must be reproducible, verifiable, isolated, comparable, and extensible.
+These five properties are the architectural invariants — if a change breaks any of
+them, it's architecturally wrong regardless of implementation quality.
+
+| Property | What it means | What enforces it |
+|---|---|---|
+| **Reproducible** | Same inputs → same outputs within stochastic bounds | Pinned commits, declared toolchains, per-arm isolation, `check-task` mutation validity |
+| **Verifiable** | Outputs carry their own proof of authenticity | `.copeca` zips with SHA-256 hash chains, batch completeness verification |
+| **Isolated** | The instrument doesn't contaminate the measurement | Git worktrees, per-arm config dirs, baseline arm is provably clean |
+| **Comparable** | Numbers from different runs use the same methodology | Cost computed from tokens × one pricing source, same tasks/baseline/metric |
+| **Extensible** | New runners, parsers, modes, tasks without changing the core | YAML-driven config, ABC-based port/adapter boundaries, invoke_template escape hatch |
+
+These five constrain every design decision. When two values conflict (e.g.
+isolation vs. simplicity — Docker is more isolated, git worktrees are simpler),
+the one that better serves the invariants wins.
+
+---
+
+## 2. Layer architecture
+
+Copeca follows a ports-and-adapters pattern. The dependency direction is strictly
+inward: domain ← orchestration ← adapters. The CLI wires adapters to ports at
+startup.
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│ CLI (typer)                                                      │
+│   cli.py — wires adapters to ports, dispatches subcommands      │
+└──────────────────────┬───────────────────────────────────────────┘
+                       │ depends on everything below
+┌──────────────────────▼───────────────────────────────────────────┐
+│ ORCHESTRATION (coordinates; holds no I/O of its own)             │
+│   orchestration/run.py     — matrix loop + worker pool           │
+│   orchestration/state.py   — worktree lifecycle                 │
+│   orchestration/validation.py — compat warnings                 │
+└──────┬──────────────────────────────────┬───────────────────────┘
+       │ depends on domain + port interfaces
+       │
+┌──────▼──────────┐  ┌─────────────────────┐
+│ DOMAIN (pure)   │  │ PORTS (ABCs /       │
+│   config/       │  │   Protocols)         │
+│   tasks/        │  │   runners/base.py    │
+│   analysis/     │  │   runners/parsers/   │
+│                 │  │     base.py          │
+│ No imports from │  │   repos/manager.py   │
+│ runners/,       │  │     (interface)      │
+│ repos/, or      │  └─────────────────────┘
+│ results/        │           ▲
+└─────────────────┘           │ implements
+                    ┌─────────┴─────────────┐
+                    │ ADAPTERS (I/O)        │
+                    │   runners/subprocess  │
+                    │   runners/parsers/    │
+                    │   repos/manager (git) │
+                    │   results/writer      │
+                    │   results/artifact    │
+                    └───────────────────────┘
+```
+
+**Domain layer (pure computation, deterministic given inputs):**
+- `config/models.py` — Pydantic dataclasses for Task, Runner, Mode, Scenario, Repo
+- `config/loader.py` — YAML/JSON deserialization + jsonschema validation
+- `tasks/validator.py` — correctness checking: takes (task, repo_path, agent_output),
+  returns (correct, reason). Pure function — no subprocess, no git, no network.
+- `tasks/mutations.py` — find/replace/delete/insert operations on file content.
+  Pure string/file operations.
+- `analysis/stats.py` — median, mean, stdev, bootstrapped CI on already-loaded
+  JSONL data. Pure math.
+- `analysis/report.py` — takes stats objects, produces markdown string. Pure text
+  generation.
+
+**Domain-layer rule:** No file in `config/`, `tasks/`, or `analysis/` may import
+from `runners/`, `repos/`, `results/`, or `orchestration/`. This is enforceable
+via architecture tests (import-linter or a simple grep in CI).
+
+**Ports (abstract interfaces):**
+- `runners/base.py:BaseRunner` — `run(command_spec) -> RunResult`
+- `runners/parsers/base.py:BaseParser` — `parse(stdout: str) -> RunResult`
+- `repos/manager.py:RepoManager` — clone, checkout, create_worktree, reset, remove_worktree
+
+**Adapters (concrete implementations):**
+- `runners/subprocess.py:SubprocessRunner` — spawns CLI agent as subprocess
+- `runners/parsers/stream_json.py` — Claude Code output parser
+- `runners/parsers/codex_json.py` — Codex output parser
+- `runners/parsers/generic.py` — JSONPath-configurable parser
+- `repos/manager.py:GitWorktreeManager` — git bare clone + worktree operations
+
+The orchestration layer imports ports (ABCs), never adapters directly. The CLI
+instantiates adapters based on runner config and injects them.
+
+---
+
+## 3. Domain model
+
+The core entities and their cardinality:
+
+```
+Scenario 1──* Task       (one scenario references many tasks)
+Scenario 1──* Mode        (one scenario references many modes)
+Scenario 1──* Model       (one scenario references many models)
+Model    *──1 Runner      (model_runner_map: each model maps to one runner)
+
+Run = (Task, Mode, Model, Runner, repetition_index)
+  → produces one Result (JSONL record)
+  → optionally produces one Artifact (.copeca zip)
+
+Report = aggregate of Results grouped by (Mode, Model) within a Scenario
+```
+
+**Key invariants in the domain model:**
+
+- A Task is data, not code. Correctness is always strings + test_command —
+  nothing else. If something needs custom code to grade, it isn't a copeca task.
+- A Runner declares what it supports (`supported_events`). The orchestrator
+  validates task↔runner compatibility before any agent runs — comprehension
+  tasks require `assistant_message` events; tool-storm detection requires
+  `tool_call` events.
+- A Mode expresses *one variable* — the integration path that changes between
+  baseline and experimental. Modes are declarative YAML, not code. The five
+  integration paths (MCP, env, agent_config, wrapper, setup) cover every real
+  tool found in the landscape survey.
+- Cost is derived, never trusted. There is no `cost` field on Run — there are
+  token counts and a pricing table. The cost computation is a pure function:
+  `tokens × pricing → usd`.
+
+---
+
+## 4. Data flow — single run
+
+```
+CLI parses args
+  │
+  ▼
+Loader reads YAML: task, runner, mode, repos
+  │
+  ▼
+Orchestrator validates: task↔runner compat, mode↔runner compat, toolchain present
+  │
+  ▼
+Repo manager: create worktree at pinned commit, run setup_command
+  │
+  ▼
+Mode: provision arm harness
+  │  ├── mcp_config    → write MCP config into worktree
+  │  ├── env           → set env vars for subprocess
+  │  ├── agent_config   → overlay settings.json into arm's config dir
+  │  ├── wrapper       → prefix runner command
+  │  └── setup          → run per-worktree pre-step
+  │
+  ▼
+Mutations (edit tasks only): apply find/replace/delete/insert,
+    git commit, verify no unmatched finds. Abort on failure.
+  │
+  ▼
+Runner: construct CLI command from arg_map or invoke_template,
+    spawn subprocess with process-group isolation
+  │
+  ▼
+Parser: parse agent stdout → RunResult(turns[], tool_calls[], tokens, result_text)
+  │
+  ▼
+Validator: check correctness
+  │  ├── required_strings → all present? (case-insensitive, substring)
+  │  ├── all_of          → every canonical entry present?
+  │  ├── forbidden_strings → none present?
+  │  └── test_command     → exit 0? (edit tasks only)
+  │
+  ▼
+Cost model: total_cost_usd = Σ(tokens × pricing[model])
+    vendor_cost_usd = parsed (cross-check only, >5% → warning)
+  │
+  ▼
+Writer: append JSONL record
+  │
+  ▼
+Artifact builder (--artifacts flag): create .copeca zip
+  │  ├── result.json, stdout.txt, stderr.txt, session.json
+  │  ├── post_mutation.diff (edit tasks only)
+  │  ├── manifest.json (SHA-256 hashes + content_hash + repo commit)
+  │  ├── task.yaml, runner.yaml, repos.yaml
+  │  └── compute content_hash, record in manifest
+  │
+  ▼
+State machine: reset worktree (git reset --hard HEAD, git clean -fd)
+    → ready for next run
+```
+
+**Adversarial flags** are computed during the run from the parsed RunResult:
+
+| Flag | Computed from | Formula |
+|---|---|---|
+| token_snowball | per_turn_context_tokens | max(per_turn) > num_turns × avg(first_3) × factor |
+| talkative_failure | output_tokens, correct | output_tokens > threshold AND correct == false |
+| tool_storm | num_tool_calls | num_tool_calls > threshold |
+| budget_exhausted | total_cost_usd, result_text | cost >= budget AND result_text is null/empty |
+| timeout | duration_ms | duration >= timeout_seconds × 1000 |
+
+Flags that depend on data the runner doesn't provide are `null` (not `false`).
+
+---
+
+## 5. Data flow — scenario (matrix)
+
+```
+CLI: copeca run scenarios/my.yaml
+  │
+  ▼
+Loader: parse scenario YAML → resolve task globs → compute run matrix
+  │  tasks: [t1, t2, ..., tN]
+  │  modes: [baseline, experimental]
+  │  models: [claude-sonnet-4-6]
+  │  reps: 5
+  │  total_runs = N × 2 × 1 × 5
+  │
+  ▼
+Validate: schema validation, compat warnings, toolchain check (once per repo)
+  │
+  ▼
+Worker pool: distribute runs across max_workers
+  │  workers are repo-affine (assigned to one repo for lifetime)
+  │  each worker runs the single-run pipeline (section 4)
+  │  results accumulate in one JSONL file (atomic appends)
+  │
+  ▼
+On timeout/crash: SIGKILL process group → git worktree remove --force
+    → fresh worktree → re-setup. Affected run records error, not retried.
+  │
+  ▼
+All runs complete → Analysis → Report
+```
+
+**Concurrency invariant:** Two workers never share a worktree. Mutations in one
+worker are invisible to all others. The bare clone provides a shared object
+database; each worktree has an independent working directory.
+
+---
+
+## 6. Extension points
+
+These are the deliberately-designed seams where new things slot in without
+touching the core.
+
+### New runner CLI
+
+Add a YAML file to `defaults/runners/`. If the output format matches an existing
+parser (`stream_json`, `codex_json`), no code change is needed. If custom:
+
+1. Implement `BaseParser.parse(stdout: str, supported_events: list[str]) -> RunResult`
+   in `runners/parsers/`
+2. Set `parser: <name>` in the runner YAML
+3. Register the parser in the runner factory
+
+The `invoke_template` field handles non-standard CLI argument conventions without
+code: `"{cli} exec --json -m {model} -- {prompt}"`.
+
+### New mode (integration path)
+
+Add a YAML file. No code change unless it uses a new integration path beyond the
+five covered (MCP, env, agent_config, wrapper, setup). The five paths were chosen
+because the landscape survey found every real tool falls into one of them — a
+sixth path is possible but unlikely.
+
+### New task
+
+Add a YAML file. Comprehension tasks (string-checked) and edit tasks
+(test-command-validated) cover everything. If a task seems to need custom
+correctness logic, treat it as a signal the task may not be objectively gradeable
+(design decision #15).
+
+### New report format
+
+Add a renderer in `analysis/` that consumes the same `ReportData` object as the
+markdown report. The JSON export already exists (`--format json`). Future
+formats: HTML, PDF, CI annotations (GitHub Actions summary).
+
+### New adversarial flag
+
+Add a computation function in `orchestration/` that takes a `RunResult` and
+returns `bool | null`. Register it in the flag registry. Thresholds are
+configurable in the scenario YAML.
+
+---
+
+## 7. Invariants that survive every change
+
+These are the non-negotiable architectural rules. They are not "best practices"
+or "guidelines" — they are the definition of what copeca IS.
+
+1. **Tasks are data, never code.** No embedded Python. No eval. Correctness is
+   always strings + test commands. This protects supply-chain safety (a shared
+   task set must be safe to load) and objectivity (if you need code to grade it,
+   it probably isn't objective).
+
+2. **Cost is computed, never trusted.** The JSONL `total_cost_usd` field comes
+   from `Σ tokens × pricing`. Vendor cost is `vendor_cost_usd` — a cross-check
+   only. This is the only basis for cross-provider comparison.
+
+3. **The baseline is provably clean.** Every A/B comparison runs baseline with
+   its own config dir, its own env, and zero inherited hooks. If the baseline
+   inherits the host's ambient tooling, the measurement is contaminated.
+
+4. **One execution path.** There is no `if docker:` branch. If Docker execution
+   is added later, it replaces the subprocess execution path — it doesn't sit
+   alongside it. "Which path did this result come from?" must never be a question.
+
+5. **Every edit task proves its mutation bites.** `check-task` verifies the test
+   passes on clean code and fails on mutated code. A task that passes on mutated
+   code has a weak test and must not enter the corpus.
+
+6. **The repository is pinned.** Every run records the repo commit SHA in the
+   manifest. Toolchain versions are declared and verified. A result without
+   provenance is not a copeca result.
+
+7. **Task corpus provenance is mandatory.** Every task carries a `source:` field
+   with license and commit. Tasks from blocked sources (NC/ND/no-license,
+   confirmed-contaminated) are rejected.
+
+8. **The domain layer has no I/O.** Files in `config/`, `tasks/`, and `analysis/`
+   never import from `runners/`, `repos/`, `results/`, or `orchestration/`. This
+   is mechanically enforceable.
+
+---
+
+## 8. What we explicitly chose NOT to build
+
+These decisions are architectural, not scope-deferred. They define what copeca
+is not.
+
+| Non-feature | Why not |
+|---|---|
+| **Code execution sandbox (Docker)** | One execution path. Git worktrees provide sufficient isolation for the trust model (pinned repos, known commits). Docker would add a mode flag, create two result types, and break comparability. If isolation needs increase, Docker replaces subprocess — it doesn't join it. |
+| **Multi-episode / stateful tasks** | Cross-session state breaks the isolation model. Memory tools (mem0, Letta, Graphiti) need persistent stores across sessions — external databases, file systems, services. Adding them would require docker-compose fixtures, state snapshot/restore, and a fundamentally different correctness model. The memory space already has dedicated benchmarks (LoCoMo, LongMemEval). Explicitly out of scope. |
+| **LLM judge for correctness** | Non-deterministic (breaks reproducibility), self-preferring (a Claude judge favors Claude outputs), rewards verbosity (the exact pattern `talkative_failure` exists to catch). Allowed only for post-hoc failure analysis and authoring-time audits — never in the scoring path. |
+| **Web dashboard** | Not architecture — deployment. The artifact model and JSONL format already support it. A web layer that ingests .copeca zips and renders leaderboards is a deployment concern, not a core architecture change. |
+| **Real-time / streaming results** | Copeca is a batch benchmark. The JSONL file is append-only during a run; tailing it gives live progress. A streaming API would add complexity (WebSocket, partial aggregates) without changing what the instrument measures. |
+| **Pre-call prompt compression mode field** | The five integration paths cover it via `env` (proxy). Adding a dedicated field for it would be overfitting to a specific tool category that the proxy path already serves. |
+
+---
+
+## 9. Scaling model
+
+Copeca scales by adding workers, not by changing architecture.
+
+| Dimension | At launch (~85 tasks) | At scale (~500 tasks) | Limiting factor |
+|---|---|---|---|
+| Runs per scenario | ~200 | ~2,000 | API cost (~$150 at scale), not architecture |
+| Sequential wall time | ~3 hours | ~30 hours | Unacceptable at scale |
+| With 4 workers | ~45 minutes | ~8 hours | Worktree I/O becomes the bottleneck |
+| Disk (repos) | ~800MB | ~2GB | Acceptable |
+| Disk (artifacts) | ~10MB per scenario | ~100MB per scenario | Acceptable |
+| Memory | ~200MB per worker | Same | Per-worker overhead is constant |
+
+**What scales:** worker count (up to CPU cores), task count (JSONL is append-only),
+repo count (bare clones share disk).
+
+**What doesn't scale:** per-run cost (it's the measurement), per-repo setup time
+(one-time cost amortized over all runs targeting that repo).
+
+**The deliberate bottleneck:** we don't cache agent runs. The point is to measure
+them, and caching would measure the cache, not the agent. Fresh worktrees, fresh
+subprocess, every time.
+
+---
+
+## 10. Dependency graph (what can import what)
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ cli.py                                                      │
+│   may import: everything                                     │
+└──────────────────────────────┬──────────────────────────────┘
+                               │
+            ┌──────────────────┼──────────────────┐
+            ▼                  ▼                  ▼
+┌───────────────────┐ ┌───────────────┐ ┌───────────────────┐
+│ orchestration/    │ │ adapters      │ │ domain            │
+│   may import:     │ │ may import:   │ │ may import:       │
+│   domain, ports   │ │ ports, domain │ │ standard library  │
+│   never: nothing  │ │               │ │ pydantic, yaml    │
+│   above it        │ │               │ │ never: runners,   │
+└───────────────────┘ └───────────────┘ │   repos, results,  │
+                                        │   orchestration    │
+                                        └───────────────────┘
+```
+
+This is enforceable in CI:
+
+```bash
+# Domain layer must not import I/O
+! grep -r "from copeca.runners" src/copeca/config/ src/copeca/tasks/ src/copeca/analysis/
+! grep -r "from copeca.repos"   src/copeca/config/ src/copeca/tasks/ src/copeca/analysis/
+! grep -r "from copeca.results" src/copeca/config/ src/copeca/tasks/ src/copeca/analysis/
+```
+
+---
+
+## 11. Configuration layering
+
+Copeca's configuration resolves in this order (later overrides earlier):
+
+1. **Built-in defaults** — `defaults/runners/*.yaml`, `defaults/modes/*.yaml`
+2. **Project config** — `repos.yaml`, `tasks/**/*.yaml`
+3. **Scenario file** — specifies which tasks/modes/models/reps
+4. **CLI flags** — `--tasks`, `--modes`, `--models`, `--reps`, `--max-workers`,
+   `--budget`, `--timeout`, `--artifacts`
+
+There is no user-level config file (no `~/.copeca.yaml`). This is deliberate:
+a benchmark must be reproducible, and ambient user config breaks reproducibility.
+If two users run the same scenario, they should get comparable results regardless
+of their personal copeca settings.
+
+---
+
+## 12. Technology choices (with rationale)
+
+| Choice | Rationale |
+|---|---|
+| **Python 3.11+** | 3.10 EOL Oct 2026. 3.11 supported until Oct 2027. Widely deployed. |
+| **Typer** | Type-hinted CLI with auto-generated help. Active (0.26.x, fastapi org, vendored Click). |
+| **Pydantic v2** | Fast, well-maintained data validation for internal models. |
+| **jsonschema** | Standard, language-agnostic validation for user-facing YAML. |
+| **PyYAML** | Stable, universal YAML parser. |
+| **Git (system)** | The only binary dependency. Worktrees provide isolation without Docker. |
+| **No async** | Copeca is I/O-bound on subprocesses, not on concurrent connections. Worker pool uses `concurrent.futures.ProcessPoolExecutor` or `subprocess` directly — async adds complexity without benefit. |
+| **No database** | JSONL is the canonical data store. It's append-only, human-readable, `jq`-queryable, and trivially version-controlled. A database would add a schema migration problem for a write-once-read-many workload. |
+| **No web framework** | Copeca's API is its CLI. A web layer (leaderboard, dashboard) consumes JSONL + .copeca zips; it doesn't need to be in the same process or even the same repository. |

@@ -1,0 +1,11 @@
+name: valid_task
+source: "test"
+repo: nonexistent_repo
+type: comprehension
+language: python
+difficulty: easy
+version: 1
+prompt: test prompt
+ground_truth:
+  required_strings:
+    - test

@@ -1,0 +1,24 @@
+name: scbench_find_function
+description: "Find the function handling case-insensitive pattern matching in ripgrep."
+source: "SCBench (MIT)"
+repo: ripgrep
+type: comprehension
+language: rust
+difficulty: medium
+version: 1
+prompt: |
+  In the ripgrep codebase, find the function that handles case-insensitive
+  pattern matching. What file is it in and what is its full signature?
+  Explain how it decides whether to do a case-sensitive or case-insensitive match.
+ground_truth:
+  required_strings:
+    - case_insensitive
+    - CaseMatching
+    - insensitive
+    - "fn"
+  all_of:
+    - case_insensitive
+    - CaseMatching
+  forbidden_strings:
+    - "I cannot"
+    - "unable to"

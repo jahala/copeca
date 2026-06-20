@@ -1,0 +1,9 @@
+name: baseline
+description: Clean baseline with no tool integration — the control arm for A/B comparisons.
+tools:
+  - Bash
+  - Read
+  - Write
+  - Edit
+  - Glob
+  - Grep
