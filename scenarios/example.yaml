@@ -1,0 +1,14 @@
+name: example-benchmark
+description: Example benchmark scenario for copeca.
+tasks:
+  - t001_find_matcher_trait
+  - t002_fastapi_routing
+modes:
+  - baseline
+models:
+  - claude-sonnet-4-6
+repetitions: 1
+budget_usd: 2.0
+timeout_seconds: 600
+max_workers: 1
+output_dir: results
