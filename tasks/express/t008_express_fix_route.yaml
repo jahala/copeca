@@ -1,0 +1,30 @@
+name: t008_express_fix_route
+description: "Fix the route handler that returns wrong HTTP method error due to a misconfigured METHOD export."
+source: "SWE-QA (Apache-2.0)"
+repo: express
+type: edit
+language: javascript
+difficulty: medium
+version: 1
+prompt: |
+  An Express route handler is defined with `router.post()` but the exported
+  METHOD constant is set to `'get'` instead of `'post'`. This causes the
+  route to be registered under the wrong HTTP method. Find the route file
+  and fix the METHOD constant to match the router method.
+ground_truth:
+  required_strings:
+    - METHOD
+    - post
+    - router
+  test_command:
+    - node
+    - -e
+    - "const rt = require('./route'); console.assert(rt.METHOD === 'post', 'METHOD should be post');"
+  forbidden_strings:
+    - "I cannot"
+mutations:
+  - file: route.js
+    action: replace
+    find: "METHOD = 'post'"
+    replace: "METHOD = 'get'"
+    occurrence: 1
