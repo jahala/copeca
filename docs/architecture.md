@@ -17,8 +17,8 @@ them, it's architecturally wrong regardless of implementation quality.
 | Property | What it means | What enforces it |
 |---|---|---|
 | **Reproducible** | Same inputs → same outputs within stochastic bounds | Pinned commits, declared toolchains, per-arm isolation, `check-task` mutation validity |
-| **Verifiable** | Outputs carry their own proof of integrity | `.copeca` zips with a SHA-256 integrity manifest that detects accidental corruption; cryptographic signing and batch completeness verification are planned |
-| **Isolated** | The instrument doesn't contaminate the measurement | Git worktrees, per-arm config dirs; full baseline env isolation is planned (see known-limitations) |
+| **Verifiable** | Outputs carry their own proof of integrity | `.copeca` zips carry a SHA-256 integrity manifest; `copeca verify` checks single-artifact integrity and `copeca verify --batch --scenario` checks completeness (all expected runs present); cryptographic signing and external anchoring are planned |
+| **Isolated** | The instrument doesn't contaminate the measurement | Git worktrees, per-arm config dirs, allow-listed child environment (baseline inherits no ambient hooks) |
 | **Comparable** | Numbers from different runs use the same methodology | Cost computed from tokens × one pricing source, same tasks/baseline/metric |
 | **Extensible** | New runners, parsers, modes, tasks without changing the core | YAML-driven config, ABC-based port/adapter boundaries, invoke_template escape hatch |
 
@@ -43,7 +43,7 @@ startup.
 ┌──────────────────────▼───────────────────────────────────────────┐
 │ ORCHESTRATION (coordinates; holds no I/O of its own)             │
 │   orchestration/run.py     — matrix loop + worker pool           │
-│   orchestration/state.py   — worktree lifecycle                 │
+│   orchestration/state.py   — per-arm harness provisioning (ArmHarness, provision_arm) │
 │   orchestration/validation.py — compat warnings                 │
 └──────┬──────────────────────────────────┬───────────────────────┘
        │ depends on domain + port interfaces
@@ -154,7 +154,7 @@ Repo manager: create worktree at pinned commit, run setup_command
   │
   ▼
 Mode: provision arm harness
-  │  ├── mcp_config    → write MCP config into worktree
+  │  ├── mcp_config    → write MCP config JSON to <worktree>/.copeca-arms/<arm>/mcp.json; path passed to the runner as its configured MCP arg
   │  ├── env           → set env vars for subprocess
   │  ├── agent_config   → overlay settings.json into arm's config dir
   │  ├── wrapper       → prefix runner command
@@ -187,10 +187,11 @@ Writer: append JSONL record
   │
   ▼
 Artifact builder (--artifacts flag): create .copeca zip
-  │  ├── result.json, stdout.txt, stderr.txt, session.json
-  │  ├── post_mutation.diff (edit tasks only)
-  │  ├── manifest.json (SHA-256 hashes + content_hash + repo commit)
-  │  ├── task.yaml, runner.yaml, repos.yaml
+  │  ├── result.json (always)
+  │  ├── manifest.json (SHA-256 hashes + content_hash + repo commit) (always)
+  │  ├── task.yaml (if present in worktree)
+  │  ├── stdout.txt / stderr.txt (if present in worktree)
+  │  ├── session.json, post_mutation.diff, runner.yaml, repos.yaml — planned, not yet collected
   │  └── compute content_hash, record in manifest
   │
   ▼
@@ -309,9 +310,12 @@ or "guidelines" — they are the definition of what copeca IS.
    only. This is the only basis for cross-provider comparison.
 
 3. **The baseline must be clean.** Every A/B comparison must run baseline with
-   its own config dir, its own env, and zero inherited hooks. Today the child
-   still inherits the host's ambient env (see known-limitations); wiring full
-   env isolation so this invariant actually holds is in progress.
+   its own config dir, its own env, and zero inherited hooks. The subprocess
+   runner builds the child environment from an explicit allowlist (infra vars,
+   locale, and provider credentials only); everything else — `CLAUDECODE`,
+   `CLAUDE_*`, `MCP_*`, and arbitrary ambient hooks — is excluded. Experimental
+   mode env is merged on top via `provision_arm`, so only declared vars reach
+   the experimental child.
 
 4. **One execution path.** There is no `if docker:` branch. If Docker execution
    is added later, it replaces the subprocess execution path — it doesn't sit
@@ -435,6 +439,6 @@ of their personal copeca settings.
 | **jsonschema** | Standard, language-agnostic validation for user-facing YAML. |
 | **PyYAML** | Stable, universal YAML parser. |
 | **Git (system)** | The only binary dependency. Worktrees provide isolation without Docker. |
-| **No async** | Copeca is I/O-bound on subprocesses, not on concurrent connections. Worker pool uses `concurrent.futures.ProcessPoolExecutor` or `subprocess` directly — async adds complexity without benefit. |
+| **No async** | Copeca is I/O-bound on subprocesses, not on concurrent connections. The worker pool uses `concurrent.futures.ThreadPoolExecutor`; each thread spawns its own subprocess, so process-level isolation comes from the subprocesses, not the threading model. Async adds complexity without benefit. |
 | **No database** | JSONL is the canonical data store. It's append-only, human-readable, `jq`-queryable, and trivially version-controlled. A database would add a schema migration problem for a write-once-read-many workload. |
 | **No web framework** | Copeca's API is its CLI. A web layer (leaderboard, dashboard) consumes JSONL + .copeca zips; it doesn't need to be in the same process or even the same repository. |

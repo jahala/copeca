@@ -7,10 +7,52 @@ Never imports from orchestration/.
 from __future__ import annotations
 
 import hashlib
+import itertools
 import json
+import re
 import zipfile
 from pathlib import Path
 from typing import Any
+
+
+# Matches: {task}__{mode}__{model}__rep{NN}.copeca.zip
+_ARTIFACT_RE = re.compile(
+    r"^(?P<task>.+)__(?P<mode>.+)__(?P<model>.+)__rep(?P<rep>\d+)\.copeca\.zip$"
+)
+
+
+def _parse_artifact_identity(filename: str) -> dict[str, Any] | None:
+    """Parse a .copeca zip filename into its (task, mode, model, repetition) identity.
+
+    Returns None if the filename does not match the expected pattern.
+
+    Pure function — no I/O.
+    """
+    m = _ARTIFACT_RE.match(filename)
+    if not m:
+        return None
+    return {
+        "task": m.group("task"),
+        "mode": m.group("mode"),
+        "model": m.group("model"),
+        "repetition": int(m.group("rep")),
+    }
+
+
+def _expected_identities(scenario: Any) -> list[dict[str, Any]]:
+    """Build the full cross-product of expected (task, mode, model, rep) identities.
+
+    Pure function — no I/O.
+    """
+    return [
+        {"task": task, "mode": mode, "model": model, "repetition": rep}
+        for task, mode, model, rep in itertools.product(
+            scenario.tasks,
+            scenario.modes,
+            scenario.models,
+            range(scenario.repetitions),
+        )
+    ]
 
 
 def verify_artifact(path: Path) -> tuple[bool, str]:
@@ -108,40 +150,51 @@ def verify_batch(
 ) -> dict[str, object]:
     """Verify all .copeca zips in a directory.
 
+    When a scenario is provided, compares by IDENTITY: parses each artifact
+    filename into (task, mode, model, rep) and returns the specific missing
+    and unexpected run identities.
+
     Args:
         results_dir: Directory containing .copeca zip files.
-        scenario: Optional Scenario to compute expected run count.
-                  When provided, missing = expected - actual (minimum 0).
-                  When None, missing defaults to 0.
+        scenario: Optional Scenario for identity-based completeness checking.
+                  When None, missing/unexpected identity fields are empty lists.
 
     Returns:
-        {"authentic": N, "tampered": [...], "missing": N}
+        {
+            "authentic": N,
+            "tampered": [filename, ...],
+            "missing": N,               # len(missing_ids) for backward compat
+            "missing_ids": [...],       # specific absent identities (with scenario)
+            "unexpected_ids": [...],    # identities present but not in expected set
+        }
     """
     authentic = 0
     tampered: list[str] = []
-    actual_count = 0
+    found_ids: list[dict[str, Any]] = []
 
     if not results_dir.is_dir():
         if scenario is not None:
-            expected = (
-                len(scenario.tasks)
-                * len(scenario.modes)
-                * len(scenario.models)
-                * scenario.repetitions
-            )
+            expected_ids = _expected_identities(scenario)
             return {
                 "authentic": 0,
                 "tampered": [],
-                "missing": max(expected, 0),
+                "missing": len(expected_ids),
+                "missing_ids": expected_ids,
+                "unexpected_ids": [],
             }
-        return {"authentic": 0, "tampered": [], "missing": 0}
+        return {
+            "authentic": 0,
+            "tampered": [],
+            "missing": 0,
+            "missing_ids": [],
+            "unexpected_ids": [],
+        }
 
     for entry in sorted(results_dir.iterdir()):
         if not entry.is_file():
             continue
-        if entry.suffix != ".zip" and not entry.name.endswith(".copeca.zip"):
+        if not entry.name.endswith(".copeca.zip"):
             continue
-        actual_count += 1
         try:
             valid, message = verify_artifact(entry)
         except FileNotFoundError:
@@ -152,14 +205,44 @@ def verify_batch(
         else:
             tampered.append(entry.name)
 
-    missing = 0
-    if scenario is not None:
-        expected = (
-            len(scenario.tasks)
-            * len(scenario.modes)
-            * len(scenario.models)
-            * scenario.repetitions
-        )
-        missing = max(expected - actual_count, 0)
+        identity = _parse_artifact_identity(entry.name)
+        if identity is not None:
+            found_ids.append(identity)
 
-    return {"authentic": authentic, "tampered": tampered, "missing": missing}
+    if scenario is None:
+        return {
+            "authentic": authentic,
+            "tampered": tampered,
+            "missing": 0,
+            "missing_ids": [],
+            "unexpected_ids": [],
+        }
+
+    expected_ids = _expected_identities(scenario)
+    # Use frozensets of items for O(1) membership test
+    expected_set = {
+        (d["task"], d["mode"], d["model"], d["repetition"]) for d in expected_ids
+    }
+    found_set = {
+        (d["task"], d["mode"], d["model"], d["repetition"]) for d in found_ids
+    }
+
+    missing_keys = expected_set - found_set
+    unexpected_keys = found_set - expected_set
+
+    missing_ids = [
+        {"task": t, "mode": mo, "model": ml, "repetition": r}
+        for t, mo, ml, r in sorted(missing_keys)
+    ]
+    unexpected_ids = [
+        {"task": t, "mode": mo, "model": ml, "repetition": r}
+        for t, mo, ml, r in sorted(unexpected_keys)
+    ]
+
+    return {
+        "authentic": authentic,
+        "tampered": tampered,
+        "missing": len(missing_ids),
+        "missing_ids": missing_ids,
+        "unexpected_ids": unexpected_ids,
+    }

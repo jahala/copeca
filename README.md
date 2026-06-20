@@ -25,7 +25,8 @@ benchmark occupies that lane.
 ## Quick start
 
 ```bash
-pip install copeca
+git clone https://github.com/jahala/copeca && cd copeca
+pip install -e .
 copeca init ./my-benchmark
 copeca run scenarios/my-scenario.yaml
 copeca analyze results/bench.jsonl
@@ -83,7 +84,8 @@ stale.
 **Skeptical evaluators** — Researchers, reviewers, procurement leads. You've
 been burned by contaminated benchmarks and selectively reported results. Copeca's
 artifact model lets you verify any individual result; batch completeness verification
-(confirming all expected runs are present) is planned.
+(`copeca verify --batch --scenario <path>`) confirms all expected runs are present
+and names any specific missing runs.
 
 ---
 
@@ -106,9 +108,11 @@ experimental. They cover all five integration types real tools use:
 | Process wrapper | `wrapper` | `headroom wrap claude` |
 | Pre-run index | `setup` | claude-context, GrepAI |
 
-Copeca provisions each arm with its own config directory. Full environment
-isolation — so the baseline never inherits the host's ambient hooks — is being
-wired and is not yet complete (see known-limitations).
+Copeca provisions each arm with its own config directory and an allow-listed
+environment. The baseline arm receives only a minimal set of host vars (infra,
+locale, and provider credentials); all ambient hooks, `CLAUDE_*` vars, and
+`MCP_*` vars are excluded. Experimental modes may declare additional vars via
+`mode.env`, which are merged on top.
 
 ---
 
@@ -149,8 +153,14 @@ Built-in parser: `stream_json` (Claude Code JSON event stream). Additional parse
 
 ## Install
 
+Copeca currently requires a source checkout — the wheel does not yet bundle
+the `schemas/`, `tasks/`, and `defaults/` directories (packaging is in progress;
+see [docs/known-limitations.md](docs/known-limitations.md)).
+
 ```bash
-pip install copeca
+git clone https://github.com/jahala/copeca
+cd copeca
+pip install -e .
 ```
 
 Requires Python ≥ 3.11. See [docs/runner-configuration.md](docs/runner-configuration.md)

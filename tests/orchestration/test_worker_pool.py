@@ -277,7 +277,7 @@ class TestMatrixFailureIsolation:
             def build_command(self, model, prompt, **kwargs):
                 return ["echo", prompt]
 
-            def run(self, command, cwd=None):
+            def run(self, command, cwd=None, env=None):
                 self._commands.append(command)
                 if self._fail_on in command[1]:
                     raise RuntimeError("simulated runner failure")

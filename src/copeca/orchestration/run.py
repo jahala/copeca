@@ -11,7 +11,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from copeca.config.models import EditGroundTruth, Scenario, Task
+from copeca.config.models import EditGroundTruth, Mode, Scenario, Task
+from copeca.orchestration.state import provision_arm
 from copeca.runners.base import BaseRunner
 from copeca.runners.cost import compute_cost
 from copeca.tasks.mutations import apply_mutations
@@ -31,6 +32,7 @@ def run_single(
     pricing: dict[str, float] | None = None,
     artifacts: bool = False,
     timeout_seconds: int = 300,
+    mode: Mode | None = None,
 ) -> dict[str, Any]:
     """Execute a single copeca run — the complete measurement pipeline.
 
@@ -48,6 +50,8 @@ def run_single(
                  When None, total_cost_usd falls back to the parser's cost.
         artifacts: Whether to produce a .copeca zip.
         timeout_seconds: Wall-clock timeout for this run's subprocess.
+        mode: The Mode model for this arm. When provided, provision_arm applies
+              env overrides and config-dir isolation. None = clean baseline.
 
     Returns:
         The JSONL record as a dict. The caller is responsible for persisting it.
@@ -64,13 +68,33 @@ def run_single(
         # 3. Run setup
         repo_mgr.setup(worktree)
 
+        # 3.5. Provision arm harness — applies mode.env, config_dir, wrapper.
+        # Baseline (mode=None) → harness.env is empty → child gets allowlist only.
+        # Experimental mode → harness.env carries mode.env merged on top.
+        if mode is not None:
+            harness = provision_arm(mode, worktree=Path(worktree), arm_name=mode_name)
+        else:
+            from copeca.orchestration.state import ArmHarness
+            harness = ArmHarness()
+
         # 4. Apply mutations (edit tasks only) — run inside worktree
         if task.mutations:
             apply_mutations(task.mutations, base_path=Path(worktree))
 
-        # 5. Build command and run via subprocess
-        command = runner.build_command(model=model, prompt=task.prompt)
-        parsed = runner.run(command, cwd=str(worktree))
+        # 5. Build command (apply wrapper prefix if harness declares one) and run.
+        command = runner.build_command(
+            model=model,
+            prompt=task.prompt,
+            mcp_config=harness.mcp_config_path,
+        )
+        if harness.wrapper:
+            command = list(harness.wrapper) + command
+        # Build run env: start from mode.env overrides, then inject config dir if
+        # the runner declares a config_dir_env name (runner-config-driven, not hardcoded).
+        run_env = dict(harness.env or {})
+        if harness.config_dir and getattr(runner, "config_dir_env", None):
+            run_env[runner.config_dir_env] = str(harness.config_dir)
+        parsed = runner.run(command, cwd=str(worktree), env=run_env or None)
 
         # 5.5. Run test_command for edit tasks (P0 bug fix)
         test_command_passed: bool | None = None
@@ -254,6 +278,7 @@ def run_matrix(
     results_path: Path | None = None,
     max_workers: int = 1,
     pricing: dict[str, dict[str, float]] | None = None,
+    mode_defs: dict[str, Mode] | None = None,
 ) -> list[dict[str, Any]]:
     """Run a scenario matrix: tasks x modes x reps x models concurrently.
 
@@ -270,6 +295,10 @@ def run_matrix(
         repos: Dict mapping repo keys to Repo models (for URIs and commits).
         results_path: Path to the JSONL output file.
         max_workers: Maximum concurrent workers (default 1 = sequential).
+        mode_defs: Dict mapping mode names to Mode models. Each work item's
+                   mode_obj is resolved from here so provision_arm applies the
+                   mode's env/wrapper/setup. When None (or a name is absent),
+                   that arm runs the clean baseline harness.
 
     Returns:
         List of JSONL record dicts, one per run.
@@ -304,6 +333,7 @@ def run_matrix(
                         "rep": rep,
                         "repo_uri": repo_uri,
                         "repo_commit": repo_commit,
+                        "mode_obj": (mode_defs or {}).get(mode_name),
                     })
 
     logger.info(
@@ -372,6 +402,7 @@ def _run_one_work_item(
         item["task_name"], item["mode_name"], item["model"], item["rep"],
     )
 
+    mode_obj: Mode | None = item.get("mode_obj")
     record = run_single(
         task=item["task"],
         mode_name=item["mode_name"],
@@ -382,6 +413,7 @@ def _run_one_work_item(
         repo_commit=item["repo_commit"],
         pricing=model_pricing,
         timeout_seconds=scenario.timeout_seconds,
+        mode=mode_obj,
     )
     record["repetition"] = item["rep"]
     return record

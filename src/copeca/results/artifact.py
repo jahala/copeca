@@ -42,10 +42,11 @@ def build_artifact(record: dict[str, Any], worktree: Path, output_dir: Path) -> 
     task = str(record.get("task", "unknown"))
     mode = str(record.get("mode", "unknown"))
     model = str(record.get("model", "unknown"))
+    rep = int(record.get("repetition", 0))
     safe_task = _safe_filename(task)
     safe_mode = _safe_filename(mode)
     safe_model = _safe_filename(model)
-    zip_name = f"{safe_task}__{safe_mode}__{safe_model}.copeca.zip"
+    zip_name = f"{safe_task}__{safe_mode}__{safe_model}__rep{rep:02d}.copeca.zip"
     zip_path = output_dir / zip_name
 
     # Serialize result.json

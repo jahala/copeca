@@ -16,11 +16,11 @@ and the per-task breakdown in the report lets you spot correlated failures.
 
 ## Adversarial flags are heuristics, not proofs
 
-`token_snowball`, `talkative_failure`, and `tool_storm` use configurable
-thresholds. They catch obvious patterns (an agent burning 10x more tokens on
-turn 5 than turn 1) but may miss subtle waste or flag borderline cases.
-Threshold tuning is task-corpus-dependent. Flags that depend on data the
-runner does not provide are `null`, not `false`.
+`token_snowball`, `talkative_failure`, and `tool_storm` use hardcoded thresholds
+(per-scenario configuration is planned). They catch obvious patterns (an agent
+burning 10x more tokens on turn 5 than turn 1) but may miss subtle waste or flag
+borderline cases. Flags that depend on data the runner does not provide are
+`null`, not `false`.
 
 ## Pricing data goes stale
 
@@ -47,16 +47,6 @@ references. If no `repos.yaml` is present (and `--repos` is not passed), the
 cross-reference is skipped: tasks referencing repos not in any registry pass
 schema validation and only fail at runtime when the worktree manager cannot
 find a bare clone.
-
-## Baseline env isolation is not yet complete
-
-The "provably clean baseline" is the design goal, not yet the current behavior.
-The subprocess runner passes the host's full environment (minus one key) to the
-agent, and the per-arm provisioning hook (`provision_arm`) is not yet wired into
-the run path, so a globally-configured hook, MCP server, proxy, or `CLAUDE_*`
-variable on the host can leak into the baseline arm. Allow-listing the child
-environment and wiring per-arm provisioning is in progress; until it lands, run
-on a clean host for trustworthy baselines.
 
 ## Correctness grading uses substring matching (gameable)
 

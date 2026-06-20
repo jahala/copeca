@@ -39,6 +39,9 @@ copeca = "copeca.cli:app"
 [tool.setuptools.packages.find]
 where = ["src"]
 
+# KNOWN GAP: schemas/, tasks/, defaults/ live at the repo root (outside src/copeca/), so these
+# globs match nothing and a built wheel ships no data. copeca runs from a source checkout today;
+# relocating data into the package is a tracked task (see docs/known-limitations.md).
 [tool.setuptools.package-data]
 copeca = ["schemas/*.json", "tasks/**/*.yaml"]
 

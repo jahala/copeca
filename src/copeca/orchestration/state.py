@@ -22,6 +22,7 @@ class ArmHarness:
     env: dict[str, str] = field(default_factory=dict)
     config_dir: Path | None = None
     wrapper: list[str] | None = None
+    mcp_config_path: str | None = None
 
 
 def provision_arm(mode: Mode, worktree: Path, arm_name: str = "arm") -> ArmHarness:
@@ -68,6 +69,14 @@ def provision_arm(mode: Mode, worktree: Path, arm_name: str = "arm") -> ArmHarne
         src = Path(mode.agent_config)
         _copy_settings_file(src, config_dir)
 
+    # ── mcp_config: write dict as JSON → arms_dir/mcp.json ───────────
+    mcp_config_path: str | None = None
+    if mode.mcp_config is not None:
+        mcp_file = arms_dir / "mcp.json"
+        with open(mcp_file, "w", encoding="utf-8") as fh:
+            json.dump(mode.mcp_config, fh, indent=2)
+        mcp_config_path = str(mcp_file)
+
     # ── env: return as-is (caller applies during subprocess) ─────────
     env: dict[str, str] = dict(mode.env) if mode.env else {}
 
@@ -78,7 +87,12 @@ def provision_arm(mode: Mode, worktree: Path, arm_name: str = "arm") -> ArmHarne
     if mode.setup:
         _run_setup_commands(mode.setup, worktree)
 
-    return ArmHarness(env=env, config_dir=config_dir, wrapper=wrapper)
+    return ArmHarness(
+        env=env,
+        config_dir=config_dir,
+        wrapper=wrapper,
+        mcp_config_path=mcp_config_path,
+    )
 
 
 # ── I/O helpers (private, at the edge) ────────────────────────────────────────

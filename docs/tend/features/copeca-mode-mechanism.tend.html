@@ -2510,7 +2510,7 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
 {
   "id": "copeca-mode-mechanism",
   "title": "copeca-mode-mechanism",
-  "status": "verified",
+  "status": "in-progress",
   "priority": "high",
   "dependencies": [
     "copeca-single-run"
@@ -2533,8 +2533,12 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
   "how": "Mode declares which integration paths it uses. Orchestrator provisions per-arm: copies agent config overlay, sets env vars, prefixes wrapper command, runs setup pre-step. Pre-call prompt compression is deliberately omitted (low value on coding tasks; proxy path covers it).",
   "coverage_files": [
     "src/copeca/config/models.py",
+    "src/copeca/config/loader.py",
     "defaults/modes/",
-    "src/copeca/orchestration/validation.py"
+    "src/copeca/orchestration/validation.py",
+    "src/copeca/orchestration/run.py",
+    "src/copeca/orchestration/state.py",
+    "src/copeca/runners/subprocess.py"
   ],
   "checks": [
     {
@@ -2560,6 +2564,13 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
       "method": "synthetic-test",
       "validates_job": "tool-builder:2",
       "verification_recipe": "Define a mode with env: {ANTHROPIC_BASE_URL: 'http://localhost:9999/nonexistent'}. Run a task. Assert the agent fails (can't reach the proxy). Remove the env override. Re-run. Assert the agent succeeds. This proves env isolation works and doesn't leak between arms."
+    },
+    {
+      "id": "c004",
+      "description": "Experimental mode integration (env, config-dir, MCP) reaches the agent end-to-end via run_matrix — not just in isolation",
+      "validates": "what",
+      "method": "synthetic-test",
+      "verification_recipe": "Through the REAL run_matrix path (NOT hand-injected work items): (a) an experimental mode's env reaches the runner while baseline stays clean — tests/orchestration/test_provision_arm_wiring.py::TestMatrixPathModeWiring; (b) the per-arm config dir is delivered via the runner-declared config_dir_env when agent_config is set — tests/orchestration/test_config_dir_delivery.py; (c) mode.mcp_config is materialized to arms_dir/mcp.json and its path passed to build_command via the runner's arg_map — tests/orchestration/test_mcp_materialization.py + tests/runners/test_mcp_command_wiring.py; (d) mode names resolve from defaults/modes/<name>.yaml via load_mode — tests/config/test_loader.py. NOTE: prior checks c001-c003 only exercised Mode schema validation + provision_arm in isolation; this check covers the integration that was missing (the mechanism was built but disconnected from the run pipeline)."
     }
   ],
   "smoke": {
@@ -2567,7 +2578,7 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
   },
   "progress": {
     "implementation": 100,
-    "verification": 100
+    "verification": 0
   },
   "personas_resolved": [
     {
@@ -2694,46 +2705,6 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
       ]
     }
   ],
-  "audit": {
-    "ran_at": "2026-06-20T17:00:00Z",
-    "result": "pass",
-    "verdicts": [
-      {
-        "check_id": "c001",
-        "verdict": "pass",
-        "evidence_path": "Src: config/models.py:133-165 (Mode Pydantic model with 5 paths + name pattern ^[a-z][a-z0-9_-]*$). Tests: tests/config/test_mode_models.py 9/9 pass, tests/config/test_mode_yaml.py 6/6 pass. 5 YAMLs in defaults/modes/ all validate. NEGCTRL: removed validator → test_mode_with_none_of_any_raises FAILED (DISCRIMINATES). Run: 'pytest tests/config/test_mode_models.py tests/config/test_mode_yaml.py -v' → 15 passed. Mode name now allows hyphens (^[a-z][a-z0-9_-]*$).",
-        "validates_job_satisfied": false,
-        "evidence_sha": "93189ee32b7e8bcf6371f3bbd3273fb771b22957"
-      },
-      {
-        "check_id": "c002",
-        "verdict": "pass",
-        "evidence_path": "Src: state.py:27-81 (provision_arm with 5 paths). Tests: tests/orchestration/test_mode_isolation.py 16/16 pass. NEGCTRL: provision_arm always empty → test_gateway_mode_sets_env FAILED (DISCRIMINATES). Run: 'pytest tests/orchestration/test_mode_isolation.py -v' → 16 passed.",
-        "validates_job_satisfied": false,
-        "evidence_sha": "3476cc99747312f580ca03cc3cfd0c28ed898943"
-      },
-      {
-        "check_id": "c003",
-        "verdict": "pass",
-        "evidence_path": "Src: state.py:71-81 (env copy). Tests: TestEnvModeSetsEnv 2/2 pass (gateway_mode_sets_env proves env set; env-is-copy-not-reference proves no mutation leak). NEGCTRL: provision_arm broke → gateway env missing from harness, DISCRIMINATES. Run: 'pytest tests/orchestration/test_mode_isolation.py::TestEnvModeSetsEnv -v' → 2 passed.",
-        "validates_job_satisfied": false,
-        "evidence_sha": "3476cc99747312f580ca03cc3cfd0c28ed898943"
-      }
-    ],
-    "verified_at_commit": "078c18cdbedd51b8f656c43db77c408890288f71",
-    "drift": [
-      {
-        "file": "docs/tend/features/copeca-mode-mechanism.tend.html",
-        "finding": "smoke.cmd is 'copeca validate --modes defaults/modes/' but CLI has no --modes option. Actual validation via Pydantic in tests. Smoke command is stale.",
-        "action": "document"
-      },
-      {
-        "file": "docs/tend/features/copeca-mode-mechanism.tend.html",
-        "finding": "Step i002 references copeca mode-validate CLI command which doesn't exist. Tests use direct model_validate via load_modes.",
-        "action": "document"
-      }
-    ]
-  },
   "judgments": [
     {
       "question_id": "impact_measurable",

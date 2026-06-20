@@ -11,7 +11,7 @@ import yaml
 from jsonschema import ValidationError as JsonschemaValidationError
 from jsonschema import validate
 
-from copeca.config.models import Repo, Scenario, Task
+from copeca.config.models import Mode, Repo, Scenario, Task
 
 
 class LoadError(Exception):
@@ -160,3 +160,60 @@ def load_scenario(path: Path) -> Scenario:
         raise LoadError(path, f"Expected a YAML mapping, got {type(doc).__name__}")
 
     return Scenario.model_validate(doc)
+
+
+def load_mode(name: str, modes_dirs: list[Path] | None = None) -> Mode:
+    """Load a single mode definition by name, resolving across mode dirs.
+
+    Args:
+        name: Mode name (e.g. "baseline"). Resolved to ``<dir>/<name>.yaml``
+              by searching ``modes_dirs`` in order; the first existing file wins.
+        modes_dirs: Directories to search. Defaults to ``[Path("defaults/modes")]``.
+
+    Returns:
+        A validated Mode model instance.
+
+    Raises:
+        FileNotFoundError: If no ``<dir>/<name>.yaml`` exists in any modes_dir.
+        LoadError: If the YAML is malformed or not a mapping.
+        pydantic.ValidationError: If the YAML fails Mode model validation.
+    """
+    if modes_dirs is None:
+        modes_dirs = [Path("defaults/modes")]
+
+    for modes_dir in modes_dirs:
+        candidate = modes_dir / f"{name}.yaml"
+        if candidate.exists():
+            try:
+                with open(candidate) as f:
+                    doc = yaml.safe_load(f)
+            except yaml.YAMLError as e:
+                raise LoadError(candidate, f"YAML parse error: {e}") from e
+
+            if not isinstance(doc, dict):
+                raise LoadError(
+                    candidate, f"Expected a YAML mapping, got {type(doc).__name__}"
+                )
+
+            return Mode.model_validate(doc)
+
+    searched = ", ".join(str(d / f"{name}.yaml") for d in modes_dirs)
+    raise FileNotFoundError(f"Mode '{name}' not found. Searched: {searched}")
+
+
+def load_modes(
+    names: list[str], modes_dirs: list[Path] | None = None
+) -> dict[str, Mode]:
+    """Load multiple modes by name into a name -> Mode dict.
+
+    Args:
+        names: Mode names to load.
+        modes_dirs: Directories to search (passed through to load_mode).
+
+    Returns:
+        Dict mapping each name to its validated Mode model.
+
+    Raises:
+        FileNotFoundError: If any name has no resolvable YAML (via load_mode).
+    """
+    return {name: load_mode(name, modes_dirs=modes_dirs) for name in names}

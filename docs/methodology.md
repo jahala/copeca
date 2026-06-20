@@ -80,11 +80,13 @@ Each mode (baseline and experimental) runs with its own:
 - Environment variables (no ambient API keys or proxy URLs)
 - Git worktree (no shared mutation state)
 
-The baseline gets an empty config directory and no mode provisioning. (Today the
-child process still inherits the host's ambient environment — full baseline env
-isolation is being wired; see known-limitations.) If the experimental mode's tool
-leaks into the baseline, the measurement is contaminated and the delta is
-meaningless.
+The baseline gets an empty config directory and no mode provisioning. The child
+process receives an allow-listed environment: only infrastructure vars (`PATH`,
+`HOME`, `USER`, etc.), locale vars (`LC_*`), and provider credentials
+(`ANTHROPIC_API_KEY` and equivalents) are forwarded from the host. All ambient
+hooks, `CLAUDE_*` vars, and `MCP_*` vars are excluded. If the experimental
+mode's tool leaked into the baseline, the measurement would be contaminated and
+the delta meaningless — the allowlist prevents this at the subprocess boundary.
 
 ---
 

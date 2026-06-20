@@ -238,3 +238,39 @@ ground_truth:
             f"Nested tasks key incorrectly triggered scenario detection.\n"
             f"stdout={result.stdout}\nstderr={result.stderr}"
         )
+
+
+class TestRunScenarioUnknownMode:
+    """A scenario referencing a mode with no YAML must fail loudly."""
+
+    def test_unknown_mode_fails_with_exit_1(self, tmp_path: Path) -> None:
+        """run_matrix never sees the scenario: load_modes raises FileNotFoundError,
+        the CLI echoes a clear error and exits 1 (validation failure).
+
+        Without the tautology fix the scenario's own mode list was treated as
+        the 'available' set, so an unknown mode would silently slip through.
+        """
+        tasks_dir = tmp_path / "tasks"
+        tasks_dir.mkdir()
+        _write_task_yaml(tasks_dir, "task_a")
+
+        s = tmp_path / "bad_mode_scenario.yaml"
+        s.write_text(
+            """name: bad_mode_scenario
+tasks: [task_a]
+modes: [no-such-mode-xyz]
+models: [m]
+repetitions: 1
+"""
+        )
+        result = copeca("run", "--task", str(s),
+                        "--runner", "echo", "--model", "m")
+
+        combined = result.stdout + result.stderr
+        assert result.returncode == 1, (
+            f"Unknown mode must exit 1.\nstdout={result.stdout}\nstderr={result.stderr}"
+        )
+        assert "no-such-mode-xyz" in combined, (
+            f"Error must name the missing mode.\n"
+            f"stdout={result.stdout}\nstderr={result.stderr}"
+        )

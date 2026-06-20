@@ -13,5 +13,5 @@ coverage.json
 repos/_bare/
 repos/_worktrees/
 .claude/settings.local.json
-playwright-mcp/
+.playwright-mcp/
 .petalsrc

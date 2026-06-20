@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 import typer
 
@@ -14,6 +15,35 @@ from copeca.config.loader import (
 from copeca.config.models import Repo
 from copeca.results.writer import append_jsonl
 from copeca.runners.parsers.stream_json import StreamJsonParser
+
+
+# ── Cost-safeguard helpers (pure logic + thin I/O) ─────────────────────────
+
+
+def extract_vendor_divergence_warning(record: dict[str, Any]) -> str | None:
+    """Return the vendor cost divergence warning string from a record, or None.
+
+    The warning is stored in record["metadata"]["vendor_cost_divergence_warning"]
+    only when divergence exceeds the 5% threshold (see orchestration/run.py).
+
+    Pure function — no I/O.
+    """
+    metadata = record.get("metadata")
+    if not isinstance(metadata, dict):
+        return None
+    return metadata.get("vendor_cost_divergence_warning")
+
+
+def emit_vendor_divergence_warning(warning: str | None) -> None:
+    """Echo a vendor cost divergence warning to stderr, if present."""
+    if warning is not None:
+        typer.echo(f"Warning: {warning}", err=True)
+
+
+def emit_staleness_warnings(warnings: list[str]) -> None:
+    """Echo each pricing staleness warning to stderr."""
+    for w in warnings:
+        typer.echo(f"Warning: {w}", err=True)
 
 app = typer.Typer(
     name="copeca",
@@ -95,7 +125,13 @@ def run(
     or a filename containing 'scenario'), all tasks x modes x reps are run.
     Otherwise, the file is treated as a single task.
     """
-    from copeca.config.loader import load_repos, load_scenario, load_task, load_tasks_from_dir
+    from copeca.config.loader import (
+        load_modes,
+        load_repos,
+        load_scenario,
+        load_task,
+        load_tasks_from_dir,
+    )
     from copeca.orchestration.run import run_matrix, run_single as run_single_task
     from copeca.orchestration.validation import validate_scenario
     from copeca.repos.manager import GitWorktreeManager
@@ -125,16 +161,28 @@ def run(
             runner_doc = yaml.safe_load(pf)
             if isinstance(runner_doc, dict) and "pricing" in runner_doc:
                 pricing = runner_doc["pricing"]
+                from copeca.orchestration.validation import check_pricing_staleness
+                emit_staleness_warnings(check_pricing_staleness(pricing))
 
     # ── Shared: build a real runner with the stream-json parser ──────────
+    # Default Claude Code interface — verify/override per agent
+    # (config-dir via CLAUDE_CONFIG_DIR env, MCP via --mcp-config).
+    # These are runner-config values, not hardcoded core behavior.
     def build_runner(cli_name: str = runner) -> SubprocessRunner:
         r = SubprocessRunner(
             name=cli_name,
             cli=cli_name,
             timeout=timeout,
             default_args=["-p", "--output-format", "stream-json", "--verbose", "--no-session-persistence"],
-            arg_map={"model": "--model", "budget": "--max-budget-usd", "system_prompt": "--system-prompt", "prompt_separator": "--"},
+            arg_map={
+                "model": "--model",
+                "budget": "--max-budget-usd",
+                "system_prompt": "--system-prompt",
+                "mcp_config": "--mcp-config",
+                "prompt_separator": "--",
+            },
             parser=StreamJsonParser(),
+            config_dir_env="CLAUDE_CONFIG_DIR",
         )
         return r
 
@@ -149,8 +197,18 @@ def run(
         loaded_tasks = load_tasks_from_dir(tasks_dir)
         task_names = {t.name for t in loaded_tasks}
 
-        mode_names = set(scenario.modes)
-        issues = validate_scenario(scenario, task_names, mode_names)
+        # Load each mode's YAML into a Mode model so run_matrix can apply its
+        # integration paths. An unknown mode (no YAML) fails loudly here.
+        modes_dirs = [task.parent.parent / "defaults" / "modes", Path("defaults") / "modes"]
+        try:
+            mode_defs = load_modes(scenario.modes, modes_dirs=modes_dirs)
+        except FileNotFoundError as e:
+            typer.echo(f"Error: {e}", err=True)
+            raise typer.Exit(1)
+
+        # Tautology fix: validate against the set of modes that actually loaded,
+        # not the scenario's own mode list (which would always pass).
+        issues = validate_scenario(scenario, task_names, set(mode_defs))
         if issues:
             typer.echo("Scenario validation warnings:", err=True)
             for issue in issues:
@@ -178,10 +236,12 @@ def run(
             results_path=results_path,
             max_workers=scenario.max_workers,
             pricing=pricing,
+            mode_defs=mode_defs,
         )
 
         for record in records:
             append_jsonl(record, results_path)
+            emit_vendor_divergence_warning(extract_vendor_divergence_warning(record))
 
         if artifacts:
             for record in records:
@@ -226,6 +286,7 @@ def run(
 
         # I/O at the boundary (architecture.md §2):
         append_jsonl(record, results_path)
+        emit_vendor_divergence_warning(extract_vendor_divergence_warning(record))
         if artifacts:
             from copeca.results.artifact import build_artifact
             worktree = repo_mgr.create_worktree(task_obj.repo, commit=repo_commit, uri=repo_uri)
@@ -273,9 +334,74 @@ def check_task(
 
 @app.command()
 def verify(
-    artifact: Path = typer.Argument(..., help="Path to a .copeca artifact to verify"),
+    artifact: Path = typer.Argument(
+        None, help="Path to a .copeca artifact to verify (omit when using --batch)"
+    ),
+    batch: Path = typer.Option(
+        None, "--batch", help="Directory of .copeca zips to check for completeness"
+    ),
+    scenario: Path = typer.Option(
+        None, "--scenario", help="Scenario YAML to compare against (required with --batch)"
+    ),
 ) -> None:
-    """Verify a .copeca artifact's integrity hash chain."""
+    """Verify a .copeca artifact's integrity, or check batch completeness.
+
+    Single-artifact mode (default): verifies the content_hash chain of one zip.
+
+    Batch mode (--batch <dir> --scenario <path>): compares the artifacts present
+    in <dir> against the full expected set from <scenario> and reports missing
+    or unexpected runs.  Exits non-zero when any runs are missing.
+    """
+    if batch is not None:
+        # ── Batch completeness mode ──────────────────────────────────────────
+        if scenario is None:
+            typer.echo("Error: --scenario is required when using --batch", err=True)
+            raise typer.Exit(code=2)
+
+        from copeca.config.loader import load_scenario
+        from copeca.results.verification import verify_batch
+
+        try:
+            scn = load_scenario(scenario)
+        except FileNotFoundError:
+            typer.echo(f"Error: scenario not found: {scenario}", err=True)
+            raise typer.Exit(code=2)
+
+        result = verify_batch(batch, scenario=scn)
+
+        typer.echo(f"Authentic:  {result['authentic']}")
+        if result["tampered"]:
+            typer.echo(f"Tampered:   {', '.join(result['tampered'])}", err=True)  # type: ignore[arg-type]
+
+        missing_ids: list[dict[str, Any]] = result["missing_ids"]  # type: ignore[assignment]
+        unexpected_ids: list[dict[str, Any]] = result["unexpected_ids"]  # type: ignore[assignment]
+
+        if missing_ids:
+            typer.echo(f"Missing ({len(missing_ids)}):", err=True)
+            for ident in missing_ids:
+                typer.echo(
+                    f"  {ident['task']}  mode={ident['mode']}  model={ident['model']}"
+                    f"  rep{ident['repetition']:02d}",
+                    err=True,
+                )
+
+        if unexpected_ids:
+            typer.echo(f"Unexpected ({len(unexpected_ids)}):")
+            for ident in unexpected_ids:
+                typer.echo(
+                    f"  {ident['task']}  mode={ident['mode']}  model={ident['model']}"
+                    f"  rep{ident['repetition']:02d}"
+                )
+
+        if result["missing"] or result["tampered"]:
+            raise typer.Exit(code=1)
+        return
+
+    # ── Single-artifact mode ─────────────────────────────────────────────────
+    if artifact is None:
+        typer.echo("Error: provide ARTIFACT or --batch / --scenario", err=True)
+        raise typer.Exit(code=2)
+
     from copeca.results.verification import verify_artifact
 
     try:

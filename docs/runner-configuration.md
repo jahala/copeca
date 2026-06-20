@@ -64,9 +64,11 @@ It spawns the CLI agent as a subprocess with process-group isolation:
 - **Process-group isolation** — `preexec_fn=os.setsid` creates a new session.
   On timeout, `os.killpg()` kills the entire process group, not just the
   parent. No orphaned children.
-- **Env filtering** — The `CLAUDECODE` env var (used by Claude's nested-agent
-  detection) is stripped before subprocess launch, allowing `claude -p` to
-  run inside a Claude Code session.
+- **Env allowlist** — The child process receives an explicit, minimal
+  environment built from `BASE_ENV_ALLOWLIST` (infra vars, locale `LC_*`, and
+  provider credentials). Everything else — `CLAUDECODE`, `CLAUDE_*`, `MCP_*`,
+  and arbitrary ambient hooks — is excluded. Per-arm `mode.env` vars are merged
+  on top so only declared tool vars reach the experimental child.
 - **Timeout** — `subprocess.communicate(timeout=...)` with a configurable
   `timeout_seconds` (default 300). On expiry, the process group is SIGKILL'd.
 
@@ -119,15 +121,16 @@ survey (`README.md`):
 
 | Integration | Mode field | What it does |
 |---|---|---|
-| MCP server | `mcp_config` | Write MCP config JSON into the worktree |
+| MCP server | `mcp_config` | Write MCP config JSON to the per-arm dir; path passed via the runner's configured MCP arg |
 | API proxy | `env` | Set env vars for the subprocess |
 | Config-dir hook | `agent_config` | Overlay a `settings.json` into the arm's config dir |
 | Process wrapper | `wrapper` | Prefix the runner command (e.g. `headroom wrap claude`) |
 | Pre-run index | `setup` | Run a per-worktree pre-step command |
 
-Each mode arm gets its own config directory. (Full environment isolation for the
-baseline arm is still being wired — see known-limitations; today the child
-inherits the host's ambient environment.)
+Each mode arm gets its own config directory and an allow-listed environment.
+The baseline arm's child receives only the allowlist vars; the experimental
+arm's child receives the allowlist plus whatever its `mode.env` declares.
+Ambient host vars outside the allowlist never reach either arm.
 
 ---
 

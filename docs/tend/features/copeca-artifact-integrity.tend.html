@@ -2510,7 +2510,7 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
 {
   "id": "copeca-artifact-integrity",
   "title": "copeca-artifact-integrity",
-  "status": "verified",
+  "status": "in-progress",
   "priority": "high",
   "dependencies": [
     "copeca-single-run"
@@ -2527,12 +2527,12 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
   "solves": [
     "no-verifiable-results"
   ],
-  "what": "Tamper-evident `.copeca` artifact zips — every run optionally produces a SHA-256-hash-chained archive containing the full session (stdout, stderr, parsed turns), the task/runner/repos config, the post-mutation diff, and a manifest with content_hash. `copeca verify` detects any modification. `copeca verify --batch --scenario` proves nothing was cherry-picked.",
+  "what": "`.copeca` artifact zips — every run optionally produces a SHA-256 integrity manifest covering the full session (stdout, stderr, parsed turns), the task/runner/repos config, the post-mutation diff, and a manifest with content_hash. `copeca verify` recomputes the manifest to detect accidental corruption or post-run modification. `copeca verify --batch --scenario` checks run completeness against a scenario file.",
   "why": "Every tool's savings claim is a trust-me. SWE-bench Verified was deprecated after contamination was proven (gold patches from task IDs). A claim without a verifiable artifact is marketing. A `.copeca` zip is evidence.",
-  "impact": "A skeptic can check every claim. A reviewer can verify a batch against its scenario — 185/200 artifacts means 15 runs were dropped. Failed runs are reported separately from tampered ones.",
+  "impact": "A skeptic can check every claim. A reviewer can verify a batch against its scenario — 185/200 artifacts means 15 runs were dropped. Failed runs are reported separately from corrupt ones. Note: the manifest lives inside the zip, so the integrity guarantee is accidental-corruption detection, not protection against a motivated attacker who can recompute the manifest.",
   "fit": "Phase 1b/2. Opt-in via --artifacts flag. 1200 runs = 9600 files — that's noise for local iteration, essential for publication.",
   "where": "src/copeca/results/artifact.py (.copeca zip builder), src/copeca/results/verification.py (verify + batch completeness)",
-  "how": "content_hash = SHA-256(concat(sorted per-file hashes)). Every file in the zip is covered. Manifest records repo commit SHA + verified toolchain versions. copeca verify exits 0 (authentic) or 1 (tampered). batch mode computes expected runs from scenario file.",
+  "how": "content_hash = SHA-256(concat(sorted per-file hashes)). Every file in the zip is covered. Manifest records repo commit SHA + verified toolchain versions. copeca verify exits 0 (intact) or 1 (corrupted/modified). batch mode computes expected runs from scenario file. Cryptographic signing, external anchoring, and identity-based batch completeness are planned.",
   "coverage_files": [
     "src/copeca/results/artifact.py",
     "src/copeca/results/verification.py"
@@ -2540,11 +2540,11 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
   "checks": [
     {
       "id": "c001",
-      "description": "Single artifact creation and tamper detection",
+      "description": "Single artifact creation and corruption detection",
       "validates": "what",
       "method": "synthetic-test",
       "validates_job": "skeptical-evaluator:0",
-      "verification_recipe": "Run a task with --artifacts. Verify: (a) .copeca zip exists and contains all expected files, (b) copeca verify exits 0. Then modify one byte in result.json inside the zip. Re-run copeca verify. Assert exit 1 and message names the tampered file."
+      "verification_recipe": "Run a task with --artifacts. Verify: (a) .copeca zip exists and contains all expected files, (b) copeca verify exits 0. Then modify one byte in result.json inside the zip. Re-run copeca verify. Assert exit 1 and message names the mismatched file."
     },
     {
       "id": "c002",
@@ -2552,7 +2552,7 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
       "validates": "impact",
       "method": "synthetic-test",
       "validates_job": "skeptical-evaluator:0",
-      "verification_recipe": "Run a small scenario (2 tasks × 2 modes × 1 rep = 4 runs). Drop one .copeca zip. Run copeca verify --batch --scenario. Assert: reports 1 missing, 0 tampered, scenario expects 4 runs."
+      "verification_recipe": "Run a small scenario (2 tasks × 2 modes × 1 rep = 4 runs). Drop one .copeca zip. Run copeca verify --batch --scenario. Assert: reports 1 missing, 0 corrupt, scenario expects 4 runs."
     },
     {
       "id": "c003",
@@ -2568,7 +2568,7 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
   },
   "progress": {
     "implementation": 100,
-    "verification": 100
+    "verification": 0
   },
   "personas_resolved": [
     {
@@ -2599,7 +2599,7 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
       ]
     }
   ],
-  "narrative": "## The skeptic's receipt\n\nA tool vendor publishes \"−70% tokens!\" with a self-run benchmark. You've seen SWE-bench Verified get deprecated after gold patches turned out to be derivable from task IDs. You've read the [contamination-erodes-trust](contamination-erodes-trust.tend.html) postmortem. You don't want a claim — you want evidence.\n\nYou tell the vendor: run your tool against the copeca scenario. Ship me the `.copeca` zip. They do. You run:\n\n```\ncopeca verify --batch results/ --scenario scenarios/vendor-claim.yaml\n```\n\n`src/copeca/results/verification.py` checks every artifact in the batch against the scenario's expected cardinality. If the scenario called for 200 runs but only 185 `.copeca` zips exist, it reports 15 missing — not tampered, just absent. If any zip's content hash doesn't match its manifest, it names the tampered file and exits 1.\n\n## How the hash chain works\n\n`src/copeca/results/artifact.py` builds the zip at run time (opt-in via `--artifacts`). Every file inside — stdout, stderr, parsed turns JSON, task YAML, runner config, repos config, post-mutation diff — gets its SHA-256 computed. The per-file hashes are sorted by key, concatenated, and SHA-256'd again to produce `content_hash` in the manifest. A single byte flip in any file cascades to a manifest mismatch.\n\nThe manifest also records the repo commit SHA and verified toolchain versions (`copeca --version` output). A skeptic can extract the zip, recompute the hash chain independently (check c003), and verify the provenance.\n\n## Cherry-pick resistance\n\n`copeca verify --batch --scenario` gets expected run cardinality from the scenario file. If the scenario says 3 tasks × 2 modes × 5 reps = 30 runs, the batch must contain exactly 30 artifacts. Missing runs are reported separately from tampered runs — a vendor who drops their worst 15% gets `completeness: 85%`, not a passing grade. This is the [no-verifiable-results](no-verifiable-results.tend.html) countermeasure: make cherry-picking visible.\n\n## Why opt-in\n\n1200 runs produce 9600 files (8 per artifact). That's noise during local iteration and essential for publication. The `--artifacts` flag keeps the fast path fast.",
+  "narrative": "## The skeptic's receipt\n\nA tool vendor publishes \"−70% tokens!\" with a self-run benchmark. You've seen SWE-bench Verified get deprecated after gold patches turned out to be derivable from task IDs. You've read the [contamination-erodes-trust](contamination-erodes-trust.tend.html) postmortem. You don't want a claim — you want evidence.\n\nYou tell the vendor: run your tool against the copeca scenario. Ship me the `.copeca` zip. They do. You run:\n\n```\ncopeca verify --batch results/ --scenario scenarios/vendor-claim.yaml\n```\n\n`src/copeca/results/verification.py` checks every artifact in the batch against the scenario's expected cardinality. If the scenario called for 200 runs but only 185 `.copeca` zips exist, it reports 15 missing — not corrupt, just absent. If any zip's content hash doesn't match its manifest, it names the mismatched file and exits 1.\n\n## How the integrity manifest works\n\n`src/copeca/results/artifact.py` builds the zip at run time (opt-in via `--artifacts`). Every file inside — stdout, stderr, parsed turns JSON, task YAML, runner config, repos config, post-mutation diff — gets its SHA-256 computed. The per-file hashes are sorted by key, concatenated, and SHA-256'd again to produce `content_hash` in the manifest. A single byte flip in any file cascades to a manifest mismatch.\n\nThe manifest also records the repo commit SHA and verified toolchain versions (`copeca --version` output). A skeptic can extract the zip, recompute the integrity manifest independently (check c003), and verify the provenance.\n\n**Integrity scope and limitations.** The manifest lives inside the zip. `copeca verify` detects accidental corruption or post-run modification — it does not protect against a motivated attacker who edits a file and recomputes the manifest. Cryptographic signing, external timestamping, and identity-based batch completeness are on the roadmap.\n\n## Run-completeness checking\n\n`copeca verify --batch --scenario` gets expected run cardinality from the scenario file. If the scenario says 3 tasks × 2 modes × 5 reps = 30 runs, the batch must contain exactly 30 artifacts. Missing runs are reported separately from corrupt runs — a vendor who drops their worst 15% gets `completeness: 85%`, not a passing grade. This is the [no-verifiable-results](no-verifiable-results.tend.html) countermeasure: make selective omission visible.\n\n## Why opt-in\n\n1200 runs produce 9600 files (8 per artifact). That's noise during local iteration and essential for publication. The `--artifacts` flag keeps the fast path fast.",
   "thumbnail": {
     "kind": "svg",
     "content": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 200 120\" fill=\"none\">\n  <rect width=\"200\" height=\"120\" rx=\"8\" fill=\"#FAF5E9\"/>\n  <g transform=\"translate(50,20)\">\n    <rect x=\"0\" y=\"10\" width=\"48\" height=\"56\" rx=\"3\" fill=\"#3F7186\" opacity=\"0.1\" stroke=\"#3F7186\" stroke-width=\"2\"/>\n    <rect x=\"4\" y=\"14\" width=\"40\" height=\"5\" rx=\"1\" fill=\"#3A2718\" opacity=\"0.15\"/>\n    <rect x=\"4\" y=\"22\" width=\"30\" height=\"4\" rx=\"1\" fill=\"#3A2718\" opacity=\"0.12\"/>\n    <rect x=\"4\" y=\"28\" width=\"36\" height=\"4\" rx=\"1\" fill=\"#3A2718\" opacity=\"0.12\"/>\n    <line x1=\"4\" y1=\"36\" x2=\"44\" y2=\"36\" stroke=\"#3A2718\" stroke-width=\"0.5\" opacity=\"0.2\"/>\n    <rect x=\"4\" y=\"40\" width=\"28\" height=\"4\" rx=\"1\" fill=\"#E89227\" opacity=\"0.25\"/>\n    <rect x=\"4\" y=\"47\" width=\"34\" height=\"4\" rx=\"1\" fill=\"#E89227\" opacity=\"0.25\"/>\n    <rect x=\"4\" y=\"54\" width=\"22\" height=\"4\" rx=\"1\" fill=\"#E89227\" opacity=\"0.25\"/>\n    <circle cx=\"74\" cy=\"38\" r=\"8\" fill=\"none\" stroke=\"#3F7186\" stroke-width=\"2.5\"/>\n    <rect x=\"71\" y=\"35\" width=\"6\" height=\"6\" rx=\"1\" fill=\"none\" stroke=\"#3F7186\" stroke-width=\"1.5\"/>\n  </g>\n  <text x=\"85\" y=\"95\" text-anchor=\"middle\" font-family=\"system-ui, sans-serif\" font-size=\"9\" fill=\"#3A2718\" font-weight=\"600\">VERIFY</text>\n</svg>"
@@ -2715,41 +2715,6 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
       ]
     }
   ],
-  "audit": {
-    "ran_at": "2026-06-20T17:00:00Z",
-    "result": "pass",
-    "verdicts": [
-      {
-        "check_id": "c001",
-        "verdict": "pass",
-        "evidence_path": "Src: results/artifact.py (build_artifact — SHA-256 hash-chained zip with manifest.json containing content_hash). Src: results/verification.py:16-102 (verify_artifact — extracts zip, recomputes per-file hashes, compares to manifest.content_hash). Src: run.py:75-109 (test_command_passed NO LONGER hardcoded None — runs actual test_command from EditGroundTruth). Tests: tests/results/test_artifact.py 7/7 pass (zip creation, manifest hashes, content_hash algorithm, metadata, filename, empty record, task.yaml), tests/results/test_verify_single.py 5/5 pass (authentic passes, tampered fails naming file, corrupted manifest, nonexistent, non-zip). NEGCTRL: built .copeca zip, verified authentic (valid=True), modified result.json in situ via zipfile → verify_artifact returned False with 'Artifact tampered: hash mismatch in result.json'. DISCRIMINATES. Run: 'pytest tests/results/test_artifact.py tests/results/test_verify_single.py -v' → 12 passed.",
-        "validates_job_satisfied": false,
-        "evidence_sha": "5db89cb3f857d611d34f29dc39d393d84dc3ac8c"
-      },
-      {
-        "check_id": "c002",
-        "verdict": "pass",
-        "evidence_path": "Src: results/verification.py:105-165 (verify_batch — computes expected from scenario.tasks * modes * models * reps, NOT hardcoded to 0). Tests: tests/results/test_verify_batch.py 8/8 pass: TestVerifyBatch (4 tests: all authentic, tampered, empty dir, ignores non-zips), TestVerifyBatchWithScenario (4 tests: scenario-aware missing=4 when 0/4 present, без-scenario defaults missing=0, empty dir with scenario reports all missing, actual exceeds expected clamps to 0). NEGCTRL: hardcoded missing=0 bypass → test_batch_with_scenario_does_not_hardcode_missing FAILED (missing=0 when expected was 4 with empty dir + scenario). DISCRIMINATES. Run: 'pytest tests/results/test_verify_batch.py -v' → 8 passed.",
-        "validates_job_satisfied": false,
-        "evidence_sha": "85e9a896f157996c0f0f67d207058ea830dc9664"
-      },
-      {
-        "check_id": "c003",
-        "verdict": "pass",
-        "evidence_path": "Src: results/artifact.py (content_hash = SHA-256(sorted per-file hashes concatenated)). Src: results/verification.py:74-78 (recomputes content_hash identically). Tests: tests/results/test_artifact.py::test_content_hash_is_sha256_of_sorted_hashes — recomputes independently and asserts match. NEGCTRL: corrupted manifest.content_hash to '0'x64 → verify_artifact returned False with 'Artifact tampered: content_hash mismatch'. DISCRIMINATES. Run: 'pytest tests/results/test_artifact.py::test_content_hash_is_sha256_of_sorted_hashes -v' → 1 passed.",
-        "validates_job_satisfied": false,
-        "evidence_sha": "5db89cb3f857d611d34f29dc39d393d84dc3ac8c"
-      }
-    ],
-    "verified_at_commit": "078c18cdbedd51b8f656c43db77c408890288f71",
-    "drift": [
-      {
-        "file": "docs/tend/features/copeca-artifact-integrity.tend.html",
-        "finding": "smoke.cmd is 'copeca verify --batch results/ --scenario scenarios/smoke_test.yaml' but CLI verify command has no --batch or --scenario option. Actual verify_batch() works via Python API; --batch/--scenario flags not wired to CLI.",
-        "action": "document"
-      }
-    ]
-  },
   "judgments": [
     {
       "question_id": "impact_measurable",
