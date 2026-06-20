@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://copeca.dev/schemas/scenario.schema.json",
+  "title": "Copeca Scenario",
+  "description": "A benchmark scenario — tasks × modes × models × repetitions matrix.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "name",
+    "tasks"
+  ],
+  "properties": {
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Unique scenario identifier."
+    },
+    "description": {
+      "type": "string",
+      "description": "Human-readable description of what this scenario measures."
+    },
+    "tasks": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string" },
+      "description": "Task names or globs to include in this scenario."
+    },
+    "modes": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string" },
+      "default": ["baseline"],
+      "description": "Modes to run each task under. Default: [\"baseline\"]."
+    },
+    "models": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string" },
+      "default": ["claude-sonnet-4-6"],
+      "description": "Models to run. Default: [\"claude-sonnet-4-6\"]."
+    },
+    "repetitions": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 1,
+      "description": "Number of repetitions per (task, mode, model) combination."
+    },
+    "budget_usd": {
+      "type": "number",
+      "minimum": 0,
+      "default": 1.0,
+      "description": "Maximum USD cost per run before aborting."
+    },
+    "timeout_seconds": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 300,
+      "description": "Maximum seconds per run before timeout."
+    },
+    "max_workers": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 1,
+      "description": "Maximum number of concurrent workers."
+    },
+    "output_dir": {
+      "type": "string",
+      "default": "results",
+      "description": "Directory for output artifacts."
+    }
+  }
+}

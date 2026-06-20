@@ -1,0 +1,13 @@
+name: headroom
+description: Headroom process wrapper via command prefix.
+tools:
+  - Bash
+  - Read
+  - Write
+  - Edit
+  - Glob
+  - Grep
+wrapper:
+  - headroom
+  - run
+  - "--compress"

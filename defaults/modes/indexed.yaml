@@ -1,0 +1,12 @@
+name: indexed
+description: Code indexing via per-worktree setup step.
+tools:
+  - Bash
+  - Read
+  - Write
+  - Edit
+  - Glob
+  - Grep
+setup:
+  - python
+  - scripts/build_index.py
