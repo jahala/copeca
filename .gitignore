@@ -9,7 +9,7 @@ __pycache__/
 *.egg-info/
 .coverage
 coverage.json
-results/
+/results/
 repos/_bare/
 repos/_worktrees/
 .claude/settings.local.json
