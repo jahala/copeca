@@ -55,10 +55,10 @@ class TestBaselineModeCleanHarness:
 
 
 class TestEnvModeSetsEnv:
-    def test_gateway_mode_sets_env(self, tmp_path: Path) -> None:
-        """Gateway mode → env contains ANTHROPIC_BASE_URL."""
+    def test_proxy_mode_sets_env(self, tmp_path: Path) -> None:
+        """Proxy mode → env contains ANTHROPIC_BASE_URL."""
         mode = _mode(
-            name="gateway",
+            name="proxy",
             env={"ANTHROPIC_BASE_URL": "http://localhost:8080/v1"},
         )
         worktree = tmp_path / "repo"
@@ -71,7 +71,7 @@ class TestEnvModeSetsEnv:
     def test_env_is_a_copy_not_a_reference(self, tmp_path: Path) -> None:
         """Mutating the returned env dict does not affect the mode."""
         mode = _mode(
-            name="gateway",
+            name="proxy",
             env={"ANTHROPIC_BASE_URL": "http://localhost:8080/v1"},
         )
         worktree = tmp_path / "repo"
@@ -85,24 +85,24 @@ class TestEnvModeSetsEnv:
 
 
 class TestWrapperModeSetsWrapper:
-    def test_headroom_mode_sets_wrapper(self, tmp_path: Path) -> None:
-        """Headroom mode → wrapper list is returned."""
+    def test_wrapper_mode_sets_wrapper(self, tmp_path: Path) -> None:
+        """Wrapper mode → wrapper list is returned."""
         mode = _mode(
-            name="headroom",
-            wrapper=["headroom", "run", "--compress"],
+            name="wrapper",
+            wrapper=["my-wrapper-tool", "run", "--compress"],
         )
         worktree = tmp_path / "repo"
         worktree.mkdir()
 
         harness = provision_arm(mode, worktree)
 
-        assert harness.wrapper == ["headroom", "run", "--compress"]
+        assert harness.wrapper == ["my-wrapper-tool", "run", "--compress"]
 
     def test_wrapper_is_a_copy_not_a_reference(self, tmp_path: Path) -> None:
         """Mutating the returned wrapper list does not affect the mode."""
         mode = _mode(
-            name="headroom",
-            wrapper=["headroom", "run", "--compress"],
+            name="wrapper",
+            wrapper=["my-wrapper-tool", "run", "--compress"],
         )
         worktree = tmp_path / "repo"
         worktree.mkdir()
@@ -110,19 +110,19 @@ class TestWrapperModeSetsWrapper:
         harness = provision_arm(mode, worktree)
         harness.wrapper.append("--debug")  # type: ignore[union-attr]
 
-        assert mode.wrapper == ["headroom", "run", "--compress"]
+        assert mode.wrapper == ["my-wrapper-tool", "run", "--compress"]
 
 
 class TestAgentConfigCopiesSettings:
-    def test_rtk_mode_creates_config_dir_and_copies_settings(
+    def test_hook_mode_creates_config_dir_and_copies_settings(
         self, tmp_path: Path
     ) -> None:
-        """RTK mode creates config dir and copies settings file."""
-        settings = {"hooks": {"PreToolUse": [{"command": "rtk compress"}]}}
-        settings_file = tmp_path / "rtk-settings.json"
+        """Hook mode creates config dir and copies settings file."""
+        settings = {"hooks": {"PreToolUse": [{"command": "my-hook compress"}]}}
+        settings_file = tmp_path / "hook-settings.json"
         settings_file.write_text(json.dumps(settings))
 
-        mode = _mode(name="rtk", agent_config=str(settings_file))
+        mode = _mode(name="hook", agent_config=str(settings_file))
         worktree = tmp_path / "repo"
         worktree.mkdir()
 
@@ -133,7 +133,7 @@ class TestAgentConfigCopiesSettings:
         # The config dir should be under .copeca-arms/arm/config/
         assert ".copeca-arms" in harness.config_dir.parts
 
-        copied_file = harness.config_dir / "rtk-settings.json"
+        copied_file = harness.config_dir / "hook-settings.json"
         assert copied_file.exists()
         copied_data = json.loads(copied_file.read_text())
         assert copied_data == settings
@@ -141,7 +141,7 @@ class TestAgentConfigCopiesSettings:
     def test_missing_settings_file_raises(self, tmp_path: Path) -> None:
         """Nonexistent agent_config file raises FileNotFoundError."""
         mode = _mode(
-            name="rtk", agent_config=str(tmp_path / "nonexistent.json")
+            name="hook", agent_config=str(tmp_path / "nonexistent.json")
         )
         worktree = tmp_path / "repo"
         worktree.mkdir()
@@ -152,11 +152,15 @@ class TestAgentConfigCopiesSettings:
 
 class TestSetupRunsCommand:
     def test_indexed_mode_runs_setup_command(self, tmp_path: Path) -> None:
-        """Indexed mode runs setup command; verify side effect."""
+        """Indexed mode runs setup command; verify side effect.
+
+        setup commands are argv-form (no shell=True); shell features require
+        an explicit ["bash", "-c", "..."] string.
+        """
         marker = tmp_path / "marker.txt"
         mode = _mode(
             name="indexed",
-            setup=[f"echo done > {marker}"],
+            setup=[f"bash -c 'echo done > {marker}'"],
         )
         worktree = tmp_path / "repo"
         worktree.mkdir()
@@ -169,10 +173,13 @@ class TestSetupRunsCommand:
         assert isinstance(harness, ArmHarness)
 
     def test_setup_runs_in_worktree_directory(self, tmp_path: Path) -> None:
-        """Setup commands execute with cwd set to the worktree."""
+        """Setup commands execute with cwd set to the worktree.
+
+        Shell redirect requires bash -c wrapper (setup commands are argv-form).
+        """
         mode = _mode(
             name="indexed",
-            setup=["pwd > cwd_check.txt"],
+            setup=["bash -c 'pwd > cwd_check.txt'"],
         )
         worktree = tmp_path / "repo"
         worktree.mkdir()
@@ -187,10 +194,13 @@ class TestSetupRunsCommand:
 
 class TestSetupCommandFailureRaises:
     def test_failing_setup_command_raises_runtimeerror(self, tmp_path: Path) -> None:
-        """Setup command that exits non-zero raises RuntimeError."""
+        """Setup command that exits non-zero raises RuntimeError.
+
+        `false` is a portable POSIX utility that always exits 1.
+        """
         mode = _mode(
             name="bad-indexed",
-            setup=["exit 1"],
+            setup=["false"],
         )
         worktree = tmp_path / "repo"
         worktree.mkdir()
@@ -204,8 +214,8 @@ class TestSetupCommandFailureRaises:
         mode = _mode(
             name="bad-indexed",
             setup=[
-                "exit 1",
-                f"echo ran > {marker}",
+                "false",
+                f"bash -c 'echo ran > {marker}'",
             ],
         )
         worktree = tmp_path / "repo"
@@ -220,11 +230,11 @@ class TestSetupCommandFailureRaises:
 class TestArmConfigDirIsIsolatedPerArm:
     def test_two_arms_get_different_config_dirs(self, tmp_path: Path) -> None:
         """Two different arm names get different config directories."""
-        settings = {"hooks": {"PreToolUse": [{"command": "rtk compress"}]}}
+        settings = {"hooks": {"PreToolUse": [{"command": "my-hook compress"}]}}
         settings_file = tmp_path / "settings.json"
         settings_file.write_text(json.dumps(settings))
 
-        mode = _mode(name="rtk", agent_config=str(settings_file))
+        mode = _mode(name="hook", agent_config=str(settings_file))
         worktree = tmp_path / "repo"
         worktree.mkdir()
 
@@ -245,7 +255,7 @@ class TestArmConfigDirIsIsolatedPerArm:
         settings_file = tmp_path / "settings.json"
         settings_file.write_text(json.dumps(settings))
 
-        mode = _mode(name="rtk", agent_config=str(settings_file))
+        mode = _mode(name="hook", agent_config=str(settings_file))
         worktree = tmp_path / "repo"
         worktree.mkdir()
 
@@ -286,11 +296,11 @@ class TestWorktreeNotModifiedByConfigCopy:
             ["git", "commit", "-m", "initial"], cwd=worktree, check=True
         )
 
-        settings = {"hooks": {"PreToolUse": [{"command": "rtk compress"}]}}
-        settings_file = tmp_path / "rtk-settings.json"
+        settings = {"hooks": {"PreToolUse": [{"command": "my-hook compress"}]}}
+        settings_file = tmp_path / "hook-settings.json"
         settings_file.write_text(json.dumps(settings))
 
-        mode = _mode(name="rtk", agent_config=str(settings_file))
+        mode = _mode(name="hook", agent_config=str(settings_file))
 
         provision_arm(mode, worktree)
 

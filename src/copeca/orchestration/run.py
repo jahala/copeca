@@ -5,6 +5,7 @@ Depends on port interfaces (BaseRunner), never on concrete adapters.
 The orchestrator returns a record dict; the CLI caller persists it.
 """
 
+import importlib.metadata
 import logging
 import subprocess
 from datetime import UTC, datetime
@@ -205,7 +206,7 @@ def run_single(
             "adversarial_flags": flags,
             "test_command_output": test_command_record,
             "metadata": {
-                "copeca_version": "0.1.0",
+                "copeca_version": importlib.metadata.version("copeca"),
                 "task_version": task.version,
             },
         }

@@ -7,6 +7,7 @@ Never imports from orchestration/.
 from __future__ import annotations
 
 import hashlib
+import importlib.metadata
 import json
 import zipfile
 from datetime import UTC, datetime
@@ -82,7 +83,7 @@ def build_artifact(record: dict[str, Any], worktree: Path, output_dir: Path) -> 
     manifest: dict[str, Any] = {
         "content_hash": content_hash,
         "files": file_hashes,
-        "copeca_version": "0.1.0",
+        "copeca_version": importlib.metadata.version("copeca"),
         "repo_commit": repo_commit,
         "timestamp": datetime.now(UTC).isoformat(),
     }

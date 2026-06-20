@@ -124,7 +124,7 @@ survey (`README.md`):
 | MCP server | `mcp_config` | Write MCP config JSON to the per-arm dir; path passed via the runner's configured MCP arg |
 | API proxy | `env` | Set env vars for the subprocess |
 | Config-dir hook | `agent_config` | Overlay a `settings.json` into the arm's config dir |
-| Process wrapper | `wrapper` | Prefix the runner command (e.g. `headroom wrap claude`) |
+| Process wrapper | `wrapper` | Prefix the runner command (e.g. `["your-wrapper-tool", "wrap"]`) |
 | Pre-run index | `setup` | Run a per-worktree pre-step command |
 
 Each mode arm gets its own config directory and an allow-listed environment.

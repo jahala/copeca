@@ -120,10 +120,10 @@ class TestLoadModes:
     """load_modes returns a name -> Mode dict for a list of names."""
 
     def test_load_modes_returns_name_keyed_dict(self):
-        modes = load_modes(["baseline", "gateway"], modes_dirs=[DEFAULT_MODES_DIR])
-        assert set(modes) == {"baseline", "gateway"}
+        modes = load_modes(["baseline", "proxy"], modes_dirs=[DEFAULT_MODES_DIR])
+        assert set(modes) == {"baseline", "proxy"}
         assert modes["baseline"].name == "baseline"
-        assert modes["gateway"].name == "gateway"
+        assert modes["proxy"].name == "proxy"
 
     def test_load_modes_unknown_mode_raises(self):
         """A scenario referencing a mode with no YAML must fail loudly."""

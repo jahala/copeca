@@ -1,6 +1,7 @@
 """Test the .copeca zip artifact builder — hash-chained manifest integrity."""
 
 import hashlib
+import importlib.metadata
 import json
 import zipfile
 
@@ -147,7 +148,7 @@ class TestBuildArtifact:
         assert "copeca_version" in manifest
         assert "repo_commit" in manifest
         assert "timestamp" in manifest
-        assert manifest["copeca_version"] == "0.1.0"
+        assert manifest["copeca_version"] == importlib.metadata.version("copeca")
 
     def test_task_yaml_included_when_present(self, tmp_path):
         """If task.yaml exists in worktree, it must be included in the zip."""

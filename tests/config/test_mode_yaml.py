@@ -29,29 +29,29 @@ class TestBaselineYaml:
         assert mode.setup is None
 
 
-class TestRtkYaml:
-    def test_rtk_yaml_valid_mode(self) -> None:
-        mode = _load_mode("rtk")
-        assert mode.name == "rtk"
+class TestHookYaml:
+    def test_hook_yaml_valid_mode(self) -> None:
+        mode = _load_mode("hook")
+        assert mode.name == "hook"
         assert mode.agent_config is not None
-        assert mode.agent_config == "path/to/rtk-settings.json"
+        assert mode.agent_config == "path/to/your-hook-settings.json"
 
 
-class TestGatewayYaml:
-    def test_gateway_yaml_valid_mode(self) -> None:
-        mode = _load_mode("gateway")
-        assert mode.name == "gateway"
+class TestProxyYaml:
+    def test_proxy_yaml_valid_mode(self) -> None:
+        mode = _load_mode("proxy")
+        assert mode.name == "proxy"
         assert mode.env is not None
         assert mode.env["ANTHROPIC_BASE_URL"] == "http://localhost:8080/v1"
 
 
-class TestHeadroomYaml:
-    def test_headroom_yaml_valid_mode(self) -> None:
-        mode = _load_mode("headroom")
-        assert mode.name == "headroom"
+class TestWrapperYaml:
+    def test_wrapper_yaml_valid_mode(self) -> None:
+        mode = _load_mode("wrapper")
+        assert mode.name == "wrapper"
         assert mode.wrapper is not None
         assert len(mode.wrapper) > 0
-        assert "headroom" in mode.wrapper
+        assert "your-wrapper-tool" in mode.wrapper
 
 
 class TestIndexedYaml:
@@ -64,7 +64,7 @@ class TestIndexedYaml:
 
 class TestAllModesExist:
     def test_all_five_modes_exist(self) -> None:
-        expected = {"baseline", "rtk", "gateway", "headroom", "indexed"}
+        expected = {"baseline", "hook", "proxy", "wrapper", "indexed"}
         actual = {p.stem for p in MODES_DIR.glob("*.yaml")}
 
 
@@ -93,17 +93,17 @@ class TestModeContent:
         assert mode.wrapper is None
         assert mode.setup is None
 
-    def test_rtk_has_agent_config(self):
-        mode = load_yaml_mode("rtk.yaml")
+    def test_hook_has_agent_config(self):
+        mode = load_yaml_mode("hook.yaml")
         assert mode.agent_config is not None
 
-    def test_gateway_has_env_anthropic_base_url(self):
-        mode = load_yaml_mode("gateway.yaml")
+    def test_proxy_has_env_anthropic_base_url(self):
+        mode = load_yaml_mode("proxy.yaml")
         assert mode.env is not None
         assert "ANTHROPIC_BASE_URL" in mode.env
 
-    def test_headroom_has_wrapper(self):
-        mode = load_yaml_mode("headroom.yaml")
+    def test_wrapper_has_wrapper(self):
+        mode = load_yaml_mode("wrapper.yaml")
         assert mode.wrapper is not None
 
     def test_indexed_has_setup(self):

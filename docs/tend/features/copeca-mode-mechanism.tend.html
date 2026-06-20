@@ -2555,7 +2555,7 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
       "validates": "impact",
       "method": "synthetic-test",
       "validates_job": "tool-builder:1",
-      "verification_recipe": "Run baseline mode vs RTK-hook mode on the same task with 5 reps. Verify: (a) baseline arm's agent config dir contains NO RTK settings.json, (b) experimental arm's config dir DOES contain RTK settings.json, (c) both arms produce valid JSONL, (d) the cost-per-correct delta is computed correctly."
+      "verification_recipe": "Run baseline mode vs a config-dir hook mode on the same task with 5 reps. Verify: (a) baseline arm's agent config dir contains NO hook settings.json, (b) experimental arm's config dir DOES contain the hook settings.json, (c) both arms produce valid JSONL, (d) the cost-per-correct delta is computed correctly."
     },
     {
       "id": "c003",
@@ -2627,13 +2627,18 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
       "dependencies": [
         "i001"
       ],
-      "description": "Test: tests/config/test_mode_yaml.py\nAsserts: All 5 mode YAMLs pass copeca mode-validate; baseline.yaml has no integration paths (tools only); rtk.yaml has agent_config pointing to settings overlay; gateway.yaml has env with ANTHROPIC_BASE_URL; headroom.yaml has wrapper prefix; claude-context.yaml has setup command.\nBoundary: reads YAML from filesystem, validates via Pydantic.\nSetup: 5 mode YAML files in defaults/modes/.\nRun: pytest tests/config/test_mode_yaml.py -v\n\nImplement: defaults/modes/baseline.yaml (tools only), defaults/modes/rtk.yaml (agent_config), defaults/modes/gateway.yaml (env), defaults/modes/headroom.yaml (wrapper), defaults/modes/indexed.yaml (setup). Each with name, description, tools list, and one integration path.\nDo not modify the test file once written.",
+      "description": "Test: tests/config/test_mode_yaml.py\nAsserts: All 5 mode YAMLs pass copeca mode-validate; baseline.yaml has no integration paths (tools only); hook.yaml has agent_config pointing to settings overlay; proxy.yaml has env with ANTHROPIC_BASE_URL; wrapper.yaml has wrapper prefix; indexed.yaml has setup command.\nBoundary: reads YAML from filesystem, validates via Pydantic.\nSetup: 5 mode YAML files in defaults/modes/.\nRun: pytest tests/config/test_mode_yaml.py -v\n\nImplement: defaults/modes/baseline.yaml (tools only), defaults/modes/hook.yaml (agent_config), defaults/modes/proxy.yaml (env), defaults/modes/wrapper.yaml (wrapper), defaults/modes/indexed.yaml (setup). Each with name, description, tools list, and one integration path.\nDo not modify the test file once written.",
       "verification_profile": "standard",
       "log": [
         {
           "at": "2026-06-20T00:05:00Z",
           "type": "note",
           "text": "Created 5 mode YAML files in defaults/modes/: baseline (tools only), rtk (agent_config), gateway (env), headroom (wrapper), indexed (setup). All validate as Mode Pydantic models. 6 tests: one per mode + all-exist check."
+        },
+        {
+          "at": "2026-06-20T00:05:00Z",
+          "type": "note",
+          "text": "Created 5 mode YAML files in defaults/modes/: baseline (tools only), hook (agent_config), proxy (env), wrapper (process wrapper), indexed (setup). All validate as Mode Pydantic models. 6 tests: one per mode + all-exist check."
         }
       ]
     },
@@ -2649,7 +2654,7 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
       "dependencies": [
         "i001"
       ],
-      "description": "Test: tests/orchestration/test_mode_isolation.py\nAsserts: provision_arm(baseline_mode, worktree) returns env with no overrides and empty config dir; provision_arm(rtk_mode, worktree) copies agent_config overlay into arm config dir and sets env; provision_arm(gateway_mode, worktree) sets ANTHROPIC_BASE_URL env var; provision_arm(headroom_mode, worktree) returns wrapper prefix in command spec; provision_arm(indexed_mode, worktree) runs setup command in worktree; baseline arm has NO inherited hooks or env.\nBoundary: real filesystem for config dir copy; real env dict manipulation; real subprocess for setup commands.\nSetup: test worktree directory; sample settings.json for agent_config; sample setup script.\nRun: pytest tests/orchestration/test_mode_isolation.py -v\n\nImplement: src/copeca/orchestration/state.py — provision_arm(mode, worktree) → ArmHarness. Creates isolated config directory. Copies agent_config overlay if present. Sets env vars if present. Records wrapper prefix if present. Runs setup if present. Baseline arm: empty config dir, clean env, no wrapper, no setup.\nDo not modify the test file once written.",
+      "description": "Test: tests/orchestration/test_mode_isolation.py\nAsserts: provision_arm(baseline_mode, worktree) returns env with no overrides and empty config dir; provision_arm(hook_mode, worktree) copies agent_config overlay into arm config dir; provision_arm(proxy_mode, worktree) sets ANTHROPIC_BASE_URL env var; provision_arm(wrapper_mode, worktree) returns wrapper prefix in command spec; provision_arm(indexed_mode, worktree) runs setup command in worktree; baseline arm has NO inherited hooks or env.\nBoundary: real filesystem for config dir copy; real env dict manipulation; real subprocess for setup commands.\nSetup: test worktree directory; sample settings.json for agent_config; sample setup script.\nRun: pytest tests/orchestration/test_mode_isolation.py -v\n\nImplement: src/copeca/orchestration/state.py — provision_arm(mode, worktree) → ArmHarness. Creates isolated config directory. Copies agent_config overlay if present. Sets env vars if present. Records wrapper prefix if present. Runs setup if present. Baseline arm: empty config dir, clean env, no wrapper, no setup.\nDo not modify the test file once written.",
       "verification_profile": "standard",
       "log": [
         {
@@ -2694,7 +2699,7 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
         "i003",
         "i004"
       ],
-      "description": "Test: Run copeca validate --modes defaults/modes/. Then run integration smoke: baseline + RTK mode against same task, verify baseline arm has no RTK settings.\nAsserts: All 5 mode YAMLs pass validation. Baseline arm config dir does NOT contain settings.json from RTK mode.\nBoundary: real CLI invocation.\nSetup: pip install -e .; 5 mode YAMLs; test task.\nRun: copeca validate --modes defaults/modes/\n\nImplement: Smoke verification step. Confirms mode YAMLs validate and per-arm isolation is in effect.",
+      "description": "Test: Run copeca validate --modes defaults/modes/. Then run integration smoke: baseline + hook mode against same task, verify baseline arm has no hook settings.\nAsserts: All 5 mode YAMLs pass validation. Baseline arm config dir does NOT contain settings.json from hook mode.\nBoundary: real CLI invocation.\nSetup: pip install -e .; 5 mode YAMLs; test task.\nRun: copeca validate --modes defaults/modes/\n\nImplement: Smoke verification step. Confirms mode YAMLs validate and per-arm isolation is in effect.",
       "verification_profile": "standard",
       "log": [
         {

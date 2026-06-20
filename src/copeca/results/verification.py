@@ -20,6 +20,10 @@ _ARTIFACT_RE = re.compile(
     r"^(?P<task>.+)__(?P<mode>.+)__(?P<model>.+)__rep(?P<rep>\d+)\.copeca\.zip$"
 )
 
+# Zip-bomb guard: maximum allowed decompressed size per member (100 MiB).
+# Checked against ZipInfo.file_size before any bytes are read into memory.
+MAX_MEMBER_BYTES: int = 100 * 1024 * 1024  # 100 MiB
+
 
 def _parse_artifact_identity(filename: str) -> dict[str, Any] | None:
     """Parse a .copeca zip filename into its (task, mode, model, repetition) identity.
@@ -98,6 +102,26 @@ def verify_artifact(path: Path) -> tuple[bool, str]:
         expected_content_hash = manifest.get("content_hash")
         if not expected_content_hash:
             return False, "content_hash missing from manifest.json"
+
+        # Zip-bomb guard: check decompressed sizes from central-directory headers
+        # before reading any member bytes into memory.
+        cumulative_bytes = 0
+        for info in zf.infolist():
+            if info.filename == "manifest.json":
+                continue
+            if info.file_size > MAX_MEMBER_BYTES:
+                return (
+                    False,
+                    f"Artifact rejected: member '{info.filename}' decompressed size "
+                    f"({info.file_size} bytes) exceeds cap ({MAX_MEMBER_BYTES} bytes)",
+                )
+            cumulative_bytes += info.file_size
+            if cumulative_bytes > MAX_MEMBER_BYTES:
+                return (
+                    False,
+                    f"Artifact rejected: total decompressed size exceeds cap "
+                    f"({MAX_MEMBER_BYTES} bytes)",
+                )
 
         # Recompute hashes for all non-manifest files
         file_hashes: dict[str, str] = {}

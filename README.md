@@ -102,11 +102,11 @@ experimental. They cover all five integration types real tools use:
 
 | Integration | Mode field | Example |
 |---|---|---|
-| MCP server | `mcp_config` | tilth, sigmap |
-| API proxy | `env` | Context Gateway, Entroly |
-| Config-dir hook | `agent_config` | RTK |
-| Process wrapper | `wrapper` | `headroom wrap claude` |
-| Pre-run index | `setup` | claude-context, GrepAI |
+| MCP server | `mcp_config` | any MCP server |
+| API proxy (env) | `env` | `ANTHROPIC_BASE_URL` proxy |
+| Config-dir hook | `agent_config` | PreToolUse hook via settings overlay |
+| Process wrapper | `wrapper` | `["your-wrapper-tool", "wrap"]` |
+| Pre-run index | `setup` | per-worktree indexing command |
 
 Copeca provisions each arm with its own config directory and an allow-listed
 environment. The baseline arm receives only a minimal set of host vars (infra,

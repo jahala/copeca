@@ -8,6 +8,7 @@ is the single boundary function; the dataclass is pure state.
 from __future__ import annotations
 
 import json
+import shlex
 import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -111,14 +112,20 @@ def _copy_settings_file(src: Path, dest_dir: Path) -> None:
 
 
 def _run_setup_commands(commands: list[str], cwd: Path) -> None:
-    """Run each setup command in *cwd*. Raises RuntimeError on failure."""
+    """Run each setup command in *cwd*. Raises RuntimeError on failure.
+
+    Commands are split into argv form via ``shlex.split`` and executed with
+    ``shell=False`` — no shell features (globbing, pipes, ``&&``, ``;``) are
+    available.  If a shell is genuinely needed, pass an explicit argv such as
+    ``["bash", "-c", "cmd1 && cmd2"]``.
+    """
     for cmd in commands:
         result = subprocess.run(
-            cmd,
+            shlex.split(cmd),
             cwd=str(cwd),
             capture_output=True,
             text=True,
-            shell=True,
+            shell=False,
         )
         if result.returncode != 0:
             raise RuntimeError(
