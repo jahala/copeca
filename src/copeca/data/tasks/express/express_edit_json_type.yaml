@@ -1,0 +1,35 @@
+name: express_edit_json_type
+description: "Correct the MIME type string set by Express's res.json() from text/plain back to application/json; tests string-literal repair in a Content-Type assignment on the JSON response path."
+source: "tilth-benchmark (MIT)"
+repo: express
+commit: 1140301f6a0ed5a05bc1ef38d48294f75a49580c
+type: edit
+category: fix
+language: javascript
+difficulty: medium
+version: 1
+prompt: |
+  In Express's lib/response.js, the res.json() method is setting
+  the wrong Content-Type header. JSON responses are being sent with
+  an incorrect MIME type, causing clients that check Content-Type
+  to fail parsing the response body as JSON. Find where res.json()
+  sets the Content-Type and fix the MIME type.
+ground_truth:
+  required_strings: []
+  test_command:
+    - npx
+    - mocha
+    - --require
+    - test/support/env
+    - --reporter
+    - spec
+    - --check-leaks
+    - --grep
+    - should respond with json for null
+    - test/res.json.js
+mutations:
+  - file: lib/response.js
+    action: replace
+    find: "this.set('Content-Type', 'application/json');"
+    replace: "this.set('Content-Type', 'text/plain');"
+    occurrence: 1

@@ -1,0 +1,21 @@
+name: express_json_send
+description: "Trace how res.json() delegates to res.send() in Express, including content-type branching and application-settings consumption; tests following a response method through multiple layers."
+source: "tilth-benchmark (MIT)"
+repo: express
+commit: 1140301f6a0ed5a05bc1ef38d48294f75a49580c
+type: comprehension
+category: trace
+language: javascript
+difficulty: medium
+version: 1
+prompt: |
+  In Express, trace how res.json() works internally. Show the implementation
+  of both res.json and res.send. How does res.send handle different content types
+  (strings, buffers, objects)? What application settings does res.json read?
+ground_truth:
+  required_strings:
+    - res.json
+    - json replacer
+    - json spaces
+    - res.send
+    - Content-Type

@@ -1,0 +1,24 @@
+name: rg_trait_implementors
+description: "Map ripgrep's Matcher trait required methods to every implementing type across crates, with crate location for each; tests exhaustive implementor discovery across a multi-crate workspace."
+source: "SWE-QA (Apache-2.0)"
+repo: ripgrep
+type: comprehension
+category: trace
+language: rust
+difficulty: hard
+version: 1
+prompt: |
+  Find the `Matcher` trait definition in the matcher crate, and list
+  its required methods. Then find all types that implement this trait.
+  For each implementor, show where it is defined and what crate it lives in.
+ground_truth:
+  required_strings:
+    - Matcher
+    - find_at
+    - RegexMatcher
+  all_of:
+    - RegexMatcher
+    - GlobMatcher
+    - MultiMatcher
+  forbidden_strings:
+    - I cannot

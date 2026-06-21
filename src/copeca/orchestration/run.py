@@ -5,13 +5,16 @@ Depends on port interfaces (BaseRunner), never on concrete adapters.
 The orchestrator returns a record dict; the CLI caller persists it.
 """
 
+import importlib.metadata
 import logging
 import subprocess
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from copeca.config.models import EditGroundTruth, Scenario, Task
+from copeca.config.models import AdversarialThresholds, EditGroundTruth, Mode, Scenario, Task
+from copeca.orchestration.state import provision_arm
+from copeca.orchestration.validation import check_tool_availability
 from copeca.runners.base import BaseRunner
 from copeca.runners.cost import compute_cost
 from copeca.tasks.mutations import apply_mutations
@@ -31,6 +34,11 @@ def run_single(
     pricing: dict[str, float] | None = None,
     artifacts: bool = False,
     timeout_seconds: int = 300,
+    mode: Mode | None = None,
+    worktree_id: str | None = None,
+    budget_usd: float | None = None,
+    adversarial_thresholds: AdversarialThresholds | None = None,
+    keep_worktree: bool = False,
 ) -> dict[str, Any]:
     """Execute a single copeca run — the complete measurement pipeline.
 
@@ -48,6 +56,16 @@ def run_single(
                  When None, total_cost_usd falls back to the parser's cost.
         artifacts: Whether to produce a .copeca zip.
         timeout_seconds: Wall-clock timeout for this run's subprocess.
+        mode: The Mode model for this arm. When provided, provision_arm applies
+              env overrides and config-dir isolation. None = clean baseline.
+        worktree_id: Per-work-item discriminator forwarded to repo_mgr so
+              concurrent workers for the same repo get distinct worktree paths.
+              None lets repo_mgr generate a UUID (safe but non-deterministic).
+        budget_usd: Dollar cap for this run; sourced from scenario.budget_usd.
+              When provided, passed to build_command for runner enforcement and
+              used to compute budget_exhausted.  None = no cap.
+        adversarial_thresholds: Per-scenario flag thresholds. When None, the
+              AdversarialThresholds defaults apply.
 
     Returns:
         The JSONL record as a dict. The caller is responsible for persisting it.
@@ -55,22 +73,62 @@ def run_single(
     # 1. Verify toolchain
     repo_mgr.verify_toolchain(task.repo)
 
-    # 2. Create worktree at pinned commit
+    # 1.5. Tool-availability preflight — fail BEFORE spending if a declared tool
+    #      (MCP server command, wrapper, or the runner CLI) isn't installed.
+    #      Otherwise the agent runs tool-less and the A/B silently reports a
+    #      false null (shakedown SD-I).
+    _tool_errors = check_tool_availability(mode, runner_cli=getattr(runner, "cli", None))
+    if _tool_errors:
+        raise RuntimeError("tool availability preflight failed: " + "; ".join(_tool_errors))
+
+    # 2. Create worktree at the pinned commit. A task may pin its OWN commit
+    #    (task.commit), overriding the repos.yaml default — so one repo can serve
+    #    tasks authored against different code states (SD-O). Scoped to this work
+    #    item so concurrent workers for the same repo never share a path.
+    repo_commit = task.commit or repo_commit
     worktree = repo_mgr.create_worktree(
-        task.repo, commit=repo_commit, uri=repo_uri
+        task.repo, commit=repo_commit, uri=repo_uri, worktree_id=worktree_id
     )
 
     try:
         # 3. Run setup
         repo_mgr.setup(worktree)
 
-        # 4. Apply mutations (edit tasks only) — run inside worktree
+        # 3.5. Provision arm harness — applies mode.env, config_dir, wrapper.
+        # Baseline (mode=None) → harness.env is empty → child gets allowlist only.
+        # Experimental mode → harness.env carries mode.env merged on top.
+        if mode is not None:
+            harness = provision_arm(mode, worktree=Path(worktree), arm_name=mode_name)
+        else:
+            from copeca.orchestration.state import ArmHarness
+
+            harness = ArmHarness()
+
+        # 4. Build committed mutation history (debug tasks only) — must run
+        #    BEFORE working-tree mutations so the agent sees real git history.
+        if task.mutation_sequence:
+            repo_mgr.build_mutation_history(Path(worktree), task.mutation_sequence)
+
+        # 4.5. Apply working-tree mutations (edit tasks) — uncommitted, after history.
         if task.mutations:
             apply_mutations(task.mutations, base_path=Path(worktree))
 
-        # 5. Build command and run via subprocess
-        command = runner.build_command(model=model, prompt=task.prompt)
-        parsed = runner.run(command, cwd=str(worktree))
+        # 5. Build command (apply wrapper prefix if harness declares one) and run.
+        command = runner.build_command(
+            model=model,
+            prompt=task.prompt,
+            budget=budget_usd,
+            tools=mode.tools if mode is not None else None,
+            mcp_config=harness.mcp_config_path,
+        )
+        if harness.wrapper:
+            command = list(harness.wrapper) + command
+        # Build run env: start from mode.env overrides, then inject config dir if
+        # the runner declares a config_dir_env name (runner-config-driven, not hardcoded).
+        run_env = dict(harness.env or {})
+        if harness.config_dir and getattr(runner, "config_dir_env", None):
+            run_env[runner.config_dir_env] = str(harness.config_dir)
+        parsed = runner.run(command, cwd=str(worktree), env=run_env or None)
 
         # 5.5. Run test_command for edit tasks (P0 bug fix)
         test_command_passed: bool | None = None
@@ -84,7 +142,7 @@ def run_single(
                     text=True,
                     timeout=120,
                 )
-                test_command_passed = (tc_result.returncode == 0)
+                test_command_passed = tc_result.returncode == 0
                 test_command_record = {
                     "command": task.ground_truth.test_command,
                     "passed": test_command_passed,
@@ -126,32 +184,64 @@ def run_single(
                 },
                 pricing=pricing,
             )
-            total_cost_usd = computed_cost
             vendor_cost_usd = parsed.total_cost_usd
-            # Check for vendor cost divergence (>5% triggers warning)
+            # The provider's reported cost is the AUTHORITATIVE bill: it accounts
+            # for cache hits, cache TTL (1h vs 5m), service tier and discounts,
+            # none of which can be reconstructed from token counts. Use it as the
+            # headline cost when present; keep the modeled (token-derived) cost as
+            # a labeled cross-check / drift detector and as the fallback when a
+            # runner reports no cost of its own (shakedown SD-D).
             if vendor_cost_usd is not None and vendor_cost_usd > 0:
+                total_cost_usd = vendor_cost_usd
+                cost_source = "vendor"
                 divergence = abs(computed_cost - vendor_cost_usd) / vendor_cost_usd
                 if divergence > 0.05:
                     _divergence = divergence
                     _divergence_warning = (
-                        f"Computed cost ({computed_cost:.4f}) differs from "
-                        f"vendor cost ({vendor_cost_usd:.4f}) by {divergence*100:.1f}%"
+                        f"Modeled cost ({computed_cost:.4f}) is a token-derived "
+                        f"estimate; it differs from the billed vendor cost "
+                        f"({vendor_cost_usd:.4f}) by {divergence * 100:.1f}%. Token "
+                        f"counts cannot capture cache TTL / tier / discounts — the "
+                        f"billed cost is authoritative."
                     )
+            else:
+                total_cost_usd = computed_cost
+                cost_source = "modeled"
         else:
             total_cost_usd = parsed.total_cost_usd
             vendor_cost_usd = None
-        # 6.6 Compute adversarial flags from parsed data
+            computed_cost = None
+            cost_source = "vendor"
+        # 6.6 Compute adversarial flags — must run after grading so correct/
+        #     result_text are available.
+        _thresholds = adversarial_thresholds or AdversarialThresholds()
         flags = _compute_adversarial_flags(
             parsed=parsed,
             total_cost_usd=total_cost_usd,
-            budget_usd=None,  # budget from scenario, passed later
+            budget_usd=budget_usd,
             timeout_seconds=timeout_seconds,
+            correct=correct,
+            thresholds=_thresholds,
         )
+
+        # 6.7 Tool-adoption: did a mode that declares an MCP tool actually invoke
+        #     it? A declared-but-unused tool means the A/B may be a false null —
+        #     record the flag so it is never silently treated as a clean result
+        #     (shakedown SD-I). None for modes that declare no MCP tool.
+        tool_adopted: bool | None = None
+        _mcp = (mode.mcp_config or {}) if mode is not None else {}
+        _servers = _mcp.get("mcpServers", {}) if isinstance(_mcp, dict) else {}
+        if _servers:
+            _names = [tc.name for tc in parsed.tool_calls]
+            tool_adopted = any(n.startswith(f"mcp__{srv}__") for n in _names for srv in _servers)
 
         # 7. Build JSONL record
         record: dict[str, Any] = {
             "task": task.name,
             "repo": task.repo,
+            "category": task.category.value,
+            "language": task.language.value,
+            "difficulty": task.difficulty.value,
             "mode": mode_name,
             "model": model,
             "runner": runner.name,
@@ -166,11 +256,11 @@ def run_single(
             },
             "num_turns": parsed.num_turns,
             "num_tool_calls": parsed.num_tool_calls,
+            "tool_adopted": tool_adopted,
             "total_cost_usd": total_cost_usd,
+            "cost_source": cost_source,
             "duration_ms": parsed.duration_ms,
-            "context_tokens": (
-                parsed.total_input_tokens + parsed.total_cache_creation_tokens
-            ),
+            "context_tokens": (parsed.total_input_tokens + parsed.total_cache_creation_tokens),
             "output_tokens": parsed.total_output_tokens,
             "input_tokens": parsed.total_input_tokens,
             "cache_creation_tokens": parsed.total_cache_creation_tokens,
@@ -178,16 +268,19 @@ def run_single(
             "result_text": parsed.result_text[:5000] if parsed.result_text else "",
             "tool_sequence": [tc.name for tc in parsed.tool_calls],
             "error": parsed.error,
+            "exit_code": parsed.exit_code,
             "adversarial_flags": flags,
             "test_command_output": test_command_record,
             "metadata": {
-                "copeca_version": "0.1.0",
+                "copeca_version": importlib.metadata.version("copeca"),
                 "task_version": task.version,
             },
         }
 
         if vendor_cost_usd is not None:
             record["vendor_cost_usd"] = vendor_cost_usd
+        if computed_cost is not None:
+            record["computed_cost_usd"] = computed_cost
 
         if _divergence is not None:
             record["metadata"]["vendor_cost_divergence"] = _divergence
@@ -195,10 +288,14 @@ def run_single(
 
         return record
 
-
     finally:
-        # 9. Reset worktree
-        repo_mgr.reset(worktree)
+        # 9. Reset the worktree — unless the caller asked to keep it for
+        #    debugging, in which case the per-arm mcp.json / config dir / agent
+        #    edits survive for inspection (shakedown SD-C).
+        if keep_worktree:
+            logger.info("Keeping worktree for inspection: %s", worktree)
+        else:
+            repo_mgr.reset(worktree)
 
 
 def _compute_adversarial_flags(
@@ -206,42 +303,60 @@ def _compute_adversarial_flags(
     total_cost_usd: float,
     budget_usd: float | None,
     timeout_seconds: int,
+    correct: bool | None,
+    thresholds: AdversarialThresholds,
 ) -> dict[str, bool | None]:
-    """Compute adversarial flags from parsed run data.
+    """Compute adversarial flags from parsed run data (plan §5).
 
-    Architecture.md §4 defines these heuristics. Flags that cannot be
-    computed from available data are None (not False).
+    Flags that cannot be computed from available data are None (not False).
+    All thresholds come from the caller-supplied AdversarialThresholds.
     """
+    # talkative_failure: verbose output AND wrong answer.
+    # null when correctness is unknown (correct=None) — data genuinely missing.
+    if correct is None:
+        talkative_failure: bool | None = None
+    else:
+        output_tokens = parsed.total_output_tokens
+        talkative_failure = output_tokens > thresholds.talkative_tokens and not correct
+
+    # tool_storm: excessive tool calls.
+    # null only if num_tool_calls is unavailable; the RunResult always has it,
+    # so this will always be bool in practice.
+    num_calls = parsed.num_tool_calls
+    tool_storm: bool | None = num_calls > thresholds.tool_storm_calls
+
+    # budget_exhausted: cost >= cap AND no result produced.
+    if budget_usd is None:
+        budget_exhausted: bool | None = None
+    else:
+        result_empty = not parsed.result_text  # covers "" and None
+        budget_exhausted = total_cost_usd >= budget_usd and result_empty
+
     return {
-        "timeout": (
-            parsed.duration_ms >= timeout_seconds * 1000
-            if timeout_seconds > 0
-            else None
-        ),
-        "budget_exhausted": (
-            total_cost_usd >= budget_usd
-            if budget_usd is not None
-            else None
-        ),
+        "timeout": (parsed.duration_ms >= timeout_seconds * 1000 if timeout_seconds > 0 else None),
+        "budget_exhausted": budget_exhausted,
         "error": parsed.error is not None,
-        "token_snowball": _check_token_snowball(parsed),
-        "talkative_failure": None,  # requires correctness context across reps
-        "tool_storm": None,  # requires threshold config from scenario
+        "token_snowball": _check_token_snowball(parsed, thresholds.snowball_factor),
+        "talkative_failure": talkative_failure,
+        "tool_storm": tool_storm,
     }
 
 
-def _check_token_snowball(parsed: Any) -> bool | None:
-    """Check if later turns grow tokens suspiciously vs first turns."""
+def _check_token_snowball(parsed: Any, factor: float = 2.0) -> bool | None:
+    """Check if any turn's output grows past num_turns × avg(first_3) × factor.
+
+    Plan §5 formula: max(per_turn) > num_turns × avg(first_3_turns) × factor
+    Returns None when data is genuinely missing (< 3 turns or zero avg).
+    """
     if parsed.num_turns < 3 or not parsed.turns:
         return None
     first_three = parsed.turns[:3]
     avg_first = sum(t.output_tokens for t in first_three) / len(first_three)
     if avg_first == 0:
         return None
-    for turn in parsed.turns:
-        if turn.output_tokens > avg_first * 3:  # 3x growth is suspicious
-            return True
-    return False
+    threshold = parsed.num_turns * avg_first * factor
+    max_output = max(t.output_tokens for t in parsed.turns)
+    return max_output > threshold
 
 
 def run_matrix(
@@ -254,6 +369,8 @@ def run_matrix(
     results_path: Path | None = None,
     max_workers: int = 1,
     pricing: dict[str, dict[str, float]] | None = None,
+    mode_defs: dict[str, Mode] | None = None,
+    keep_worktrees: bool = False,
 ) -> list[dict[str, Any]]:
     """Run a scenario matrix: tasks x modes x reps x models concurrently.
 
@@ -270,6 +387,10 @@ def run_matrix(
         repos: Dict mapping repo keys to Repo models (for URIs and commits).
         results_path: Path to the JSONL output file.
         max_workers: Maximum concurrent workers (default 1 = sequential).
+        mode_defs: Dict mapping mode names to Mode models. Each work item's
+                   mode_obj is resolved from here so provision_arm applies the
+                   mode's env/wrapper/setup. When None (or a name is absent),
+                   that arm runs the clean baseline harness.
 
     Returns:
         List of JSONL record dicts, one per run.
@@ -284,9 +405,7 @@ def run_matrix(
     for task_name in scenario.tasks:
         task = task_lookup.get(task_name)
         if task is None:
-            logger.warning(
-                "Skipping task '%s' — not found in loaded tasks", task_name
-            )
+            logger.warning("Skipping task '%s' — not found in loaded tasks", task_name)
             continue
 
         repo_info = repos_dict.get(task.repo)
@@ -296,19 +415,23 @@ def run_matrix(
         for mode_name in modes:
             for rep in range(scenario.repetitions):
                 for model in scenario.models:
-                    work_items.append({
-                        "task": task,
-                        "task_name": task_name,
-                        "mode_name": mode_name,
-                        "model": model,
-                        "rep": rep,
-                        "repo_uri": repo_uri,
-                        "repo_commit": repo_commit,
-                    })
+                    work_items.append(
+                        {
+                            "task": task,
+                            "task_name": task_name,
+                            "mode_name": mode_name,
+                            "model": model,
+                            "rep": rep,
+                            "repo_uri": repo_uri,
+                            "repo_commit": repo_commit,
+                            "mode_obj": (mode_defs or {}).get(mode_name),
+                        }
+                    )
 
     logger.info(
         "Matrix: %d work items, max_workers=%d",
-        len(work_items), max_workers,
+        len(work_items),
+        max_workers,
     )
 
     records: list[dict[str, Any]] = []
@@ -318,8 +441,15 @@ def run_matrix(
 
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         future_to_item = {
-            executor.submit(_run_one_work_item, item, runner_factory, repo_mgr,
-                            scenario, pricing): item
+            executor.submit(
+                _run_one_work_item,
+                item,
+                runner_factory,
+                repo_mgr,
+                scenario,
+                pricing,
+                keep_worktrees,
+            ): item
             for item in work_items
         }
 
@@ -331,8 +461,11 @@ def run_matrix(
             except Exception as exc:
                 logger.error(
                     "Run failed: task=%s mode=%s model=%s rep=%d: %s",
-                    item["task_name"], item["mode_name"],
-                    item["model"], item["rep"], exc,
+                    item["task_name"],
+                    item["mode_name"],
+                    item["model"],
+                    item["rep"],
+                    exc,
                 )
                 error_record: dict[str, Any] = {
                     "task": item["task"].name,
@@ -356,6 +489,7 @@ def _run_one_work_item(
     repo_mgr: Any,
     scenario: Scenario,
     pricing: dict[str, dict[str, float]] | None,
+    keep_worktrees: bool = False,
 ) -> dict[str, Any]:
     """Execute a single work item in a thread worker.
 
@@ -369,9 +503,20 @@ def _run_one_work_item(
 
     logger.info(
         "Running: task=%s mode=%s model=%s rep=%d",
-        item["task_name"], item["mode_name"], item["model"], item["rep"],
+        item["task_name"],
+        item["mode_name"],
+        item["model"],
+        item["rep"],
     )
 
+    mode_obj: Mode | None = item.get("mode_obj")
+    # Derive a stable, human-readable discriminator from the work-item tuple.
+    # This is embedded in the worktree directory name so concurrent workers
+    # for the same repo always land on distinct filesystem paths.
+    task_key = item["task_name"].replace("/", "_")
+    mode_key = item["mode_name"].replace("/", "_")
+    model_key = item["model"].replace("/", "_")
+    worktree_id = f"{task_key}__{mode_key}__{model_key}__rep{item['rep']}"
     record = run_single(
         task=item["task"],
         mode_name=item["mode_name"],
@@ -382,6 +527,11 @@ def _run_one_work_item(
         repo_commit=item["repo_commit"],
         pricing=model_pricing,
         timeout_seconds=scenario.timeout_seconds,
+        mode=mode_obj,
+        worktree_id=worktree_id,
+        budget_usd=scenario.budget_usd,
+        adversarial_thresholds=scenario.adversarial_thresholds,
+        keep_worktree=keep_worktrees,
     )
     record["repetition"] = item["rep"]
     return record

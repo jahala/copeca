@@ -2704,42 +2704,33 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
     }
   ],
   "audit": {
-    "ran_at": "2026-06-20T17:00:00Z",
+    "ran_at": "2026-06-21T00:00:00Z",
     "result": "pass",
     "verdicts": [
       {
         "check_id": "c001",
         "verdict": "pass",
-        "evidence_path": "Src: run.py:248-351 (run_matrix — builds cartesian product work_items list, dispatches via ThreadPoolExecutor(max_workers=max_workers) with as_completed. Each worker calls _run_one_work_item → run_single. CONCURRENCY IS BUILT: ThreadPoolExecutor at line 320, as_completed at line 327. No more sequential-only docstring. max_workers passes through to executor.). Tests: tests/orchestration/test_worker_pool.py 6/6 pass (cardinality 2 tasks×1 mode×1rep=2, repetitions produce indices [0,1], multiple modes produce 2 records, concurrent execution with max_workers=2 produces 2 records, max_workers=1 sequential works, failure isolation). tests/orchestration/test_scenario_validation.py 5/5 pass. tests/config/test_scenario_loader.py 11/11 pass. NEGCTRL: ThreadPoolExecutor confirmed via AST analysis; concurrent execution confirmed via threading.Barrier test showing interleaved worker starts/ends. Run: 'pytest tests/orchestration/test_worker_pool.py tests/orchestration/test_scenario_validation.py tests/config/test_scenario_loader.py -v' → 22 passed.",
+        "evidence_path": "Src: run.py:313-422 (run_matrix — builds cartesian product work_items list tasks×modes×reps×models, dispatches via ThreadPoolExecutor(max_workers=max_workers) at line 391, as_completed at line 398; each future calls _run_one_work_item → run_single). Cardinality: 2tasks×1mode×1rep=2, repetitions indices [0,1], multiple modes produce 2 records, concurrent execution confirmed via TestConcurrentExecution. Scenario validation: tests/orchestration/test_scenario_validation.py 5/5 pass (valid scenario, missing task, missing mode, empty tasks, low-reps warning). Schema loader: tests/config/test_scenario_loader.py 11/11 pass. Matrix tests: tests/orchestration/test_worker_pool.py 9/9 pass. Total: 25/25 (27 with error-path tests). Run: .venv/bin/python -m pytest tests/orchestration/test_worker_pool.py tests/orchestration/test_scenario_validation.py tests/config/test_scenario_loader.py -v → 27 passed.",
         "validates_job_satisfied": false,
-        "evidence_sha": "ba2e69f346d2726e3f0c4b4e0ae6e28bc80d2543"
+        "evidence_sha": "28c86049b5997869e02fe750e6fabd3976671d16"
       },
       {
         "check_id": "c002",
         "verdict": "pass",
-        "evidence_path": "Src: run.py:58-60 (create_worktree per run via repo_mgr). Src: repos/manager.py (GitWorktreeManager — real git worktree creation/isolation). Src: run.py:200-202 (reset worktree in finally block). Tests: tests/orchestration/test_worker_pool.py::TestMatrixFailureIsolation — one run failure doesn't kill remaining (2 records produced, only good_task succeeds). tests/orchestration/test_mode_isolation.py::TestWorktreeNotModifiedByConfigCopy — config copy doesn't modify tracked files. tests/orchestration/test_artifacts_in_pipeline.py uses real GitWorktreeManager proving isolation. NEGCTRL: git worktree isolation is tested at integration level (test_artifacts_in_pipeline.py with real GitWorktreeManager); stub repo manager used in matrix tests provides mkdir isolation which is sufficient for the matrix level (cross-repo contamination in stubs is prevented by per-run directory creation). Run: 'pytest tests/orchestration/test_worker_pool.py::TestMatrixFailureIsolation tests/orchestration/test_mode_isolation.py::TestWorktreeNotModifiedByConfigCopy -v' → 2 passed.",
-        "validates_job_satisfied": false
+        "evidence_path": "Src: run.py:451-454 (worktree_id built as task__mode__model__repN — unique per work item, passed to create_worktree so concurrent workers for same repo land on distinct filesystem paths, added in F-M3 fix commit e748247). run.py:76-78 (create_worktree with worktree_id). run.py:241-243 (finally: repo_mgr.reset(worktree)). Tests: test_worker_pool.py::TestMatrixFailureIsolation (one run failure doesn't kill remaining — isolation at executor level). test_worker_pool.py::TestConcurrentExecution::test_concurrent_execution_with_max_workers (max_workers=2 produces correct records without cross-contamination). Run: .venv/bin/python -m pytest tests/orchestration/test_worker_pool.py -v → 9 passed.",
+        "validates_job_satisfied": false,
+        "evidence_sha": "28c86049b5997869e02fe750e6fabd3976671d16"
       },
       {
         "check_id": "c003",
         "verdict": "pass",
-        "evidence_path": "Src: run.py:328-349 (as_completed loop catches Exception per future, emits error_record with matrix shape preserved, continues to next future). Src: run.py:200-202 (finally: reset worktree after each run). Src: repos/manager.py (GitWorktreeManager handles force-remove on cleanup). Tests: tests/orchestration/test_worker_pool.py::TestMatrixFailureIsolation — bad task error doesn't kill remaining (good_task still produces record). C003 recipe's 95% CI claim is a copeca-analysis-reporting concern, not scenario-matrix. The scenario-matrix concern is timeout/worktree recovery, which is handled by: per-future exception catch + error_record with matrix shape + finally: reset. Run: 'pytest tests/orchestration/test_worker_pool.py::TestMatrixFailureIsolation -v' → 1 passed.",
-        "validates_job_satisfied": false
+        "evidence_path": "Src: run.py:398-420 (as_completed loop catches Exception per future, emits error_record with full matrix shape (task/mode/model/rep), continues to next future — worktree recovery handled by run_single's finally block at lines 241-243). Tests: test_worker_pool.py::TestMatrixFailureIsolation::test_matrix_run_failure_does_not_kill_remaining — bad_task raises, good_task still produces a record (2 total records returned, 1 error + 1 success). test_worker_pool.py::TestMatrixErrorPaths::test_matrix_skips_unknown_task. Run: .venv/bin/python -m pytest tests/orchestration/test_worker_pool.py::TestMatrixFailureIsolation -v → 1 passed.",
+        "validates_job_satisfied": false,
+        "evidence_sha": "28c86049b5997869e02fe750e6fabd3976671d16"
       }
     ],
-    "drift": [
-      {
-        "file": "docs/tend/features/copeca-scenario-matrix.tend.html",
-        "finding": "smoke.cmd is 'copeca run scenarios/tilth_vs_baseline.yaml --max-workers 2' but CLI run command has no --max-workers option. max_workers is read from scenario YAML field, not CLI flag. Smoke command stale.",
-        "action": "document"
-      },
-      {
-        "file": "tests/orchestration/test_worker_pool.py",
-        "finding": "File name 'test_worker_pool.py' was misleading when code was sequential. Now that run_matrix uses ThreadPoolExecutor, the file name is accurate: tests cover max_workers path (TestConcurrentExecution), cardinally (TestMatrixCardinality), and failure isolation (TestMatrixFailureIsolation). Name is now correct.",
-        "action": "document"
-      }
-    ],
-    "verified_at_commit": "078c18cdbedd51b8f656c43db77c408890288f71"
+    "drift": [],
+    "verified_at_commit": "28c86049b5997869e02fe750e6fabd3976671d16"
   },
   "judgments": [
     {

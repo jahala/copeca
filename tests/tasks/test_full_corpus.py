@@ -18,8 +18,10 @@ from pathlib import Path
 
 import yaml
 
+from copeca.config.resources import data_path
+
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-TASKS_DIR = PROJECT_ROOT / "tasks"
+TASKS_DIR = data_path("tasks")
 COPECA = PROJECT_ROOT / ".venv" / "bin" / "copeca"
 SCRIPTS_DIR = PROJECT_ROOT / "scripts"
 
@@ -100,14 +102,9 @@ class TestLanguages:
     """Tasks exist in all 4 required languages."""
 
     def test_corpus_has_four_languages(self):
-        seen = {
-            _load_task(p).get("language", "")
-            for p in _discover_task_files()
-        }
+        seen = {_load_task(p).get("language", "") for p in _discover_task_files()}
         missing = REQUIRED_LANGUAGES - seen
-        assert not missing, (
-            f"Missing languages: {missing}. Found: {seen}"
-        )
+        assert not missing, f"Missing languages: {missing}. Found: {seen}"
 
 
 class TestTaskTypes:
@@ -124,25 +121,22 @@ class TestTaskTypes:
             elif ttype == "edit":
                 edit_count += 1
 
-        assert comp_count >= 1, (
-            f"Expected at least 1 comprehension task, got {comp_count}"
-        )
-        assert edit_count >= 1, (
-            f"Expected at least 1 edit task, got {edit_count}"
-        )
+        assert comp_count >= 1, f"Expected at least 1 comprehension task, got {comp_count}"
+        assert edit_count >= 1, f"Expected at least 1 edit task, got {edit_count}"
 
 
 class TestContaminationCheck:
     """All comprehension tasks pass the contamination self-check."""
 
     def test_contamination_check_on_all_comprehension_tasks(self):
+        # Load blocklist from packaged data (moved from scripts/ to src/copeca/data/).
+        from copeca.config.resources import data_path as _data_path
         from scripts.contamination_check import (
             build_probe,
             check_contamination,
         )
 
-        # Load blocklist
-        blocklist_file = SCRIPTS_DIR / "contamination_blocklist.txt"
+        blocklist_file = _data_path("contamination_blocklist.txt")
         blocklist: set[str] = set()
         with open(blocklist_file) as f:
             for line in f:
@@ -185,9 +179,7 @@ class TestTaxonomyAudit:
 
     def test_taxonomy_audit_runs(self):
         audit_script = SCRIPTS_DIR / "taxonomy_audit.py"
-        assert audit_script.exists(), (
-            f"taxonomy_audit.py not found at {audit_script}"
-        )
+        assert audit_script.exists(), f"taxonomy_audit.py not found at {audit_script}"
 
         result = subprocess.run(
             [sys.executable, str(audit_script), str(TASKS_DIR)],
@@ -208,11 +200,13 @@ class TestTaxonomyAuditOutput:
         """Create controlled tasks, run audit, verify type and language counts."""
         td = tmp_path / "tasks"
         td.mkdir()
-        for i, (name, ttype, lang) in enumerate([
-            ("task_comp_a", "comprehension", "python"),
-            ("task_comp_b", "comprehension", "python"),
-            ("task_edit_a", "edit", "go"),
-        ]):
+        for i, (name, ttype, lang) in enumerate(
+            [
+                ("task_comp_a", "comprehension", "python"),
+                ("task_comp_b", "comprehension", "python"),
+                ("task_edit_a", "edit", "go"),
+            ]
+        ):
             (td / f"t{i:03d}.yaml").write_text(f"""
 name: {name}
 source: test
@@ -227,7 +221,9 @@ ground_truth:
 """)
         result = subprocess.run(
             [sys.executable, str(SCRIPTS_DIR / "taxonomy_audit.py"), str(td)],
-            capture_output=True, text=True, timeout=30,
+            capture_output=True,
+            text=True,
+            timeout=30,
         )
         assert result.returncode == 0, f"audit failed: {result.stderr}"
         # Verify counts in output
@@ -240,6 +236,8 @@ ground_truth:
         td.mkdir()
         result = subprocess.run(
             [sys.executable, str(SCRIPTS_DIR / "taxonomy_audit.py"), str(td)],
-            capture_output=True, text=True, timeout=30,
+            capture_output=True,
+            text=True,
+            timeout=30,
         )
         assert result.returncode == 0

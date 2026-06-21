@@ -1,0 +1,18 @@
+name: express_res_send
+description: "Locate the complete res.send function implementation in Express; tests direct navigation to a named response method in a middleware-layered codebase."
+source: "tilth-benchmark (MIT)"
+repo: express
+commit: 1140301f6a0ed5a05bc1ef38d48294f75a49580c
+type: comprehension
+category: locate
+language: javascript
+difficulty: medium
+version: 1
+prompt: |
+  Find the res.send function implementation in Express. Show its
+  complete code.
+ground_truth:
+  required_strings:
+    - res.send
+    - response
+    - Content-Length

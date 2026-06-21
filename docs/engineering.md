@@ -98,17 +98,28 @@ These are the invariants that make copeca numbers trustworthy:
   The test must pass on clean code and fail on mutated code. A task that passes
   on mutated code has a weak test and is excluded (SWE-bench's #1 failure mode,
   which copeca was designed to prevent).
-- **Contamination self-check before corpus publication.** Every comprehension task
-  is probed with task ID + first 10 words of the prompt. If the model reproduces
-  the gold solution, the task is flagged and excluded from scoring.
-- **Cost is computed, never trusted.** `total_cost_usd` in the JSONL record comes
-  from `Σ tokens × pricing`. Vendor-reported cost goes into `vendor_cost_usd` —
-  a cross-check field, never the primary number. Divergence > 5% triggers
-  a staleness warning.
+- **Contamination provenance check before corpus publication.** `copeca validate`
+  checks every task's `source:` field against a blocklist of known-contaminated
+  source benchmarks (SWE-bench Verified, RepoBench, ClassEval, DevEval, CoderEval).
+  A task from any blocked source is rejected. This is a static check — no model
+  calls, no network. A planned authoring-time option will additionally probe a live
+  model with the task ID and exclude if it reproduces the gold solution; that
+  feature requires an API key and is not yet shipped.
+- **Cost: the bill is the headline, the model is the yardstick.** `total_cost_usd`
+  is the vendor's billed cost when the runner reports it (`cost_source = "vendor"`) —
+  it captures cache TTL, tier, and discounts that token counts cannot. The computed
+  cost (`computed_cost_usd = Σ tokens × pricing`) is always recorded as the
+  reproducible, provider-neutral cross-check; a >5% divergence flags possible
+  misreporting. When no vendor cost is reported, computed is the fallback
+  (`cost_source = "modeled"`).
 - **Reproducibility over convenience.** Every run records the repo commit SHA,
   verified toolchain versions, runner config with pricing, and task definition.
-  A `.copeca` zip (opt-in via `--artifacts`) carries all of this with a SHA-256
-  hash chain.
+  A `.copeca` zip (opt-in via `--artifacts`) carries all of this with an
+  integrity manifest (a SHA-256 hash of every file). The manifest detects
+  accidental corruption but is not tamper-proof on its own; for real
+  tamper-evidence, `--sign-key` writes a detached Ed25519 signature over the
+  content hash that `verify --pubkey` checks (a tampered, manifest-recomputed
+  artifact fails). External transparency-log anchoring is planned.
 - **No network during measurement.** The agent may use the network (it's a real
   coding agent), but copeca itself does not. Repos are pre-cloned. Pricing tables
   are local YAML. Schemas are local JSON.
@@ -154,12 +165,12 @@ Reviewer checks (CI enforces where possible):
 2. **Boundaries respected.** I/O stays in `runners/`, `repos/`, `results/`. Config
    and analysis compute on data.
 3. **Correctness invariants hold.** Edit tasks pass `check-task`. Cost is computed,
-   not trusted. The hash chain covers every artifact file.
+   not trusted. The integrity manifest covers every artifact file.
 4. **No task corpus contamination.** New tasks carry a `source:` field with license
    and commit. Tasks from blocked sources (SWE-bench Verified, RepoBench, ClassEval,
    DevEval, CoderEval) are rejected before review.
 5. **Schema validation.** `copeca validate tasks/` passes. New fields are in
-   `schemas/task.schema.json` before they appear in any task YAML.
+   `src/copeca/data/schemas/task.schema.json` before they appear in any task YAML.
 6. **Documentation.** `--help` text is updated. The README's quick-start still works
    from a clean `copeca init`. Any new CLI flag appears in the docs.
 7. **tend updated.** If a feature's spec-of-truth changed (slots, checks, steps),
@@ -170,10 +181,17 @@ Reviewer checks (CI enforces where possible):
 - **Prefer the standard library.** A new dependency needs a one-paragraph
   justification: what it replaces, license, maintenance signal.
 - **Licenses:** MIT, Apache-2.0, BSD, ISC are fine. No copyleft (GPL/AGPL).
-- **Core dependencies** (typer, pyyaml, jsonschema, pydantic, ruff, mypy, pytest)
-  are pinned in `pyproject.toml`. Minor/patch updates via Dependabot.
+- **Core dependencies** (typer, pyyaml, jsonschema, pydantic, cryptography, ruff,
+  mypy, pytest) are pinned in `pyproject.toml`. Minor/patch updates via Dependabot.
+- **`cryptography`** provides the Ed25519 detached signatures behind artifact
+  tamper-evidence (`results/signing.py`). It replaces hand-rolling asymmetric
+  crypto — which we will not do. Apache-2.0 / BSD dual-licensed, the de facto
+  standard Python crypto library (PyCA), actively maintained. It ships a small
+  compiled component (via `cffi`); this is the one non-`git` binary dependency
+  and is justified because correct signing must not be home-grown.
 - **No heavy ML dependencies.** Copeca is a CLI benchmark, not an inference
-  engine. The only binary dependency is `git` (system-installed).
+  engine. The system binary dependency is `git`; `cryptography` is the only
+  compiled Python dependency.
 - **SBOM** generation via `pip-audit` + `cyclonedx-bom` in CI — deferred until
   there's a release artifact to scan against.
 
@@ -188,8 +206,7 @@ Reviewer checks (CI enforces where possible):
 
 ## 11. tend feedback loop
 
-Copeca's own features are tracked in tend (see `docs/tend-feedback.md` for field
-notes). The workflow:
+Copeca's own features are tracked in tend. The workflow:
 
 1. Features are brainstormed as tend polyglots with slots + checks anchored to
    persona jobs.
@@ -205,17 +222,15 @@ been verified. A PR that implements a step should update the step's status.
 
 | Agreement | Lives in | Enforced by |
 |---|---|---|
-| What we're building + why | `docs/ideas/agent-bench-plan.md` | Review checklist item 2 |
+| What we're building + why | `README.md` + `docs/methodology.md` | Review |
 | How we build (this handbook) | `docs/engineering.md` | Review |
-| Task schema | `schemas/task.schema.json` | `copeca validate` |
-| Runner schema | `schemas/runner.schema.json` | `copeca validate --runners` |
+| Task schema | `src/copeca/data/schemas/task.schema.json` | `copeca validate` |
+| Runner config | `src/copeca/data/defaults/runners/*.yaml` | validated by `RunnerConfig` (Pydantic) at load via `load_runner` |
 | Repo registry | `repos.yaml` | `copeca validate` (cross-document) |
-| Cost model | `defaults/runners/*.yaml` | Staleness warnings |
+| Cost model | `src/copeca/data/defaults/runners/*.yaml` | Staleness warnings |
 | Lint/format/types | `pyproject.toml` (ruff, mypy) | CI |
 | Test policy | §6 here | CI + review |
-| Decisions + rationale | `docs/ideas/agent-bench-plan.md` §10, §13 | Review checklist item 2 |
+| Decisions + rationale | `docs/methodology.md`, `docs/known-limitations.md` | Review |
 | Agent briefing | `.claude/CLAUDE.md` | Read at session start |
 | Tend feature map | `docs/tend/` | `tend validate` |
-| Tend field notes | `docs/tend-feedback.md` | Updated as we build |
-| Phases | `docs/ideas/copeca-execution-plan.md` | Phase acceptance criteria |
 | License | `LICENSE` (MIT) | CI (license-check) |

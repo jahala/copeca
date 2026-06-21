@@ -1,0 +1,14 @@
+name: proxy
+description: >
+  API-proxy integration: routes agent API calls through a local or remote
+  proxy by overriding ANTHROPIC_BASE_URL. Set the env value to your proxy's
+  base URL.
+tools:
+  - Bash
+  - Read
+  - Write
+  - Edit
+  - Glob
+  - Grep
+env:
+  ANTHROPIC_BASE_URL: "http://localhost:8080/v1"

@@ -1,0 +1,34 @@
+name: swebenchlive_fix_middleware
+description: "Restore correct error-handler dispatch in Express so next(err) reaches 4-arity middleware; tests error-routing repair under middleware chain traversal."
+source: "SWE-bench-Live (MIT)"
+repo: express
+type: edit
+category: fix
+language: javascript
+difficulty: medium
+version: 1
+prompt: |
+  In the Express framework, when a middleware calls next(err) with an Error
+  object, the error-handling middleware should be invoked. Locate the code
+  that dispatches middleware and fix it so that error-handling middleware
+  (functions with 4 parameters) is properly called when next() receives an
+  Error object. Make sure the error is passed as the first argument.
+ground_truth:
+  required_strings:
+    - err
+    - handle_error
+    - error
+    - next
+  test_command:
+    - node
+    - -e
+    - "const express = require('./'); const app = express(); let errorCaught = false; app.use((req, res, next) => { const e = new Error('test error'); next(e); }); app.use((err, req, res, next) => { errorCaught = true; res.status(500).json({error: err.message}); }); const server = app.listen(0, () => { const port = server.address().port; const http = require('http'); http.get(`http://localhost:${port}/`, (res) => { let data = ''; res.on('data', c => data += c); res.on('end', () => { server.close(); if (errorCaught && res.statusCode === 500) { process.exit(0); } else { console.error('errorCaught:', errorCaught, 'status:', res.statusCode); process.exit(1); } }); }); });"
+  forbidden_strings:
+    - "I cannot"
+    - "unable to"
+mutations:
+  - file: lib/router/index.js
+    action: replace
+    find: "var idx = 0"
+    replace: "var idx = 1"
+    occurrence: 1

@@ -5,6 +5,7 @@ repos/, results/, or orchestration/. It is mechanically enforceable in CI.
 """
 
 from enum import Enum
+from typing import Any
 
 from pydantic import BaseModel, Field, ValidationInfo, field_validator, model_validator
 
@@ -29,13 +30,26 @@ class Difficulty(str, Enum):
     hard = "hard"
 
 
+class Category(str, Enum):
+    """Capability axis — orthogonal to TaskType's grading axis.
+
+    locate — report one self-contained, named thing.
+    trace  — map a relationship spanning files (callers, implementors, control-flow).
+    fix    — change code until a stated test passes.
+    debug  — diagnose a defect via git history, then resolve or explain it.
+    """
+
+    locate = "locate"
+    trace = "trace"
+    fix = "fix"
+    debug = "debug"
+
+
 class MutationAction(Enum):
     replace = "replace"
     delete = "delete"
     insert_after = "insert_after"
     create = "create"
-
-
 
 
 # ── Ground truth (discriminated: comprehension vs edit) ───────────────────────
@@ -78,7 +92,7 @@ class Mutation(BaseModel):
 
     @field_validator("find")
     @classmethod
-    def find_required_for_search_actions(cls, v: str, info: 'ValidationInfo') -> str:
+    def find_required_for_search_actions(cls, v: str, info: "ValidationInfo") -> str:
         action = info.data.get("action", MutationAction.replace)
         if action in (MutationAction.replace, MutationAction.delete, MutationAction.insert_after):
             if not v:
@@ -87,12 +101,23 @@ class Mutation(BaseModel):
 
     @field_validator("content")
     @classmethod
-    def content_required_for_create_and_insert(cls, v: str, info: 'ValidationInfo') -> str:
+    def content_required_for_create_and_insert(cls, v: str, info: "ValidationInfo") -> str:
         action = info.data.get("action", MutationAction.replace)
         if action in (MutationAction.create, MutationAction.insert_after):
             if not v:
                 raise ValueError(f"content is required for action '{action.value}'")
         return v
+
+
+class MutationStep(BaseModel):
+    """One commit step in a mutation_sequence — mutations applied then committed.
+
+    Used for debug tasks: each step builds real git history so the agent can
+    use git log / git diff to discover and diagnose the regression.
+    """
+
+    message: str = Field(..., min_length=1)
+    mutations: list[Mutation] = Field(..., min_length=1)
 
 
 # ── Task ──────────────────────────────────────────────────────────────────────
@@ -105,13 +130,43 @@ class Task(BaseModel):
     description: str = ""
     source: str = Field(..., min_length=1)
     repo: str = Field(..., min_length=1)
+    # Optional per-task commit override: pins this task's worktree at a specific
+    # code state, overriding the repos.yaml default so one repo can serve tasks
+    # authored against different commits (SD-O). None = use the repos.yaml pin.
+    commit: str | None = None
     type: TaskType
+    category: Category
     language: Language
     difficulty: Difficulty
     version: int = Field(default=1, ge=1)
     prompt: str = Field(..., min_length=1)
     ground_truth: GroundTruth
     mutations: list[Mutation] = Field(default_factory=list)
+    # Sequence of committed mutations for debug tasks. Each step applies its
+    # mutations to the worktree then `git commit`s them, building real history
+    # for the agent to navigate. Applied BEFORE working-tree `mutations`.
+    mutation_sequence: list[MutationStep] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _category_consistent_with_type(self) -> "Task":
+        """`type` fixes grading; `category` is the capability lens — they must agree.
+
+        comprehension ⟹ locate/trace/debug; edit ⟹ fix/debug. `debug` spans both:
+        explain-a-diff is comprehension+debug, find+fix-a-regression is edit+debug.
+        """
+        comprehension_ok = {Category.locate, Category.trace, Category.debug}
+        edit_ok = {Category.fix, Category.debug}
+        if self.type == TaskType.comprehension and self.category not in comprehension_ok:
+            raise ValueError(
+                f"comprehension task '{self.name}': category '{self.category.value}' "
+                "invalid (allowed: locate, trace, debug)"
+            )
+        if self.type == TaskType.edit and self.category not in edit_ok:
+            raise ValueError(
+                f"edit task '{self.name}': category '{self.category.value}' "
+                "invalid (allowed: fix, debug)"
+            )
+        return self
 
 
 # ── Repo ──────────────────────────────────────────────────────────────────────
@@ -159,10 +214,63 @@ class Mode(BaseModel):
                 self.tools,
             ]
         ):
-            raise ValueError(
-                "at least one integration path or tools list is required"
-            )
+            raise ValueError("at least one integration path or tools list is required")
         return self
+
+
+# ── Runner ────────────────────────────────────────────────────────────────────
+
+
+class RunnerConfig(BaseModel):
+    """A loaded runner config — the CLI interface plus pricing.
+
+    Data, not code: the interface fields (``cli``, ``default_args``, ``arg_map``,
+    ``invoke_template``, ``config_dir_env``, ``parser``) come from the runner
+    YAML's ``runner:`` block; ``pricing`` comes from its top-level ``pricing``
+    key. copeca's build_runner reads this and constructs a SubprocessRunner — no
+    agent's flags are hardcoded. ``parser`` is a NAME resolved via the parser
+    registry. ``cli`` defaults to the runner file's stem (filled by the loader).
+    """
+
+    cli: str = ""  # binary name; loader fills the file stem when left empty
+    default_args: list[str] = Field(default_factory=list)
+    arg_map: dict[str, str] = Field(default_factory=dict)
+    invoke_template: str = ""
+    # Fold the system prompt into the positional prompt for CLIs with no
+    # system-prompt flag (e.g. codex exec). Default off — claude uses --system-prompt.
+    prepend_system_prompt: bool = False
+    # When True, MCP is delivered as repeated -c mcp_servers.<name>.command/args
+    # overrides instead of a --mcp-config flag. codex has no --mcp-config; it
+    # reads MCP config through its -c config-override mechanism.
+    mcp_via_config_overrides: bool = False
+    config_dir_env: str | None = None
+    parser: str = ""
+    # Raw pricing as authored: each model -> {input, output, cache_*: float,
+    # updated: str}. Kept as-is so the cost model and staleness check (which read
+    # it by key name) consume the same shape they always have.
+    pricing: dict[str, dict[str, Any]] | None = None
+
+    @model_validator(mode="after")
+    def arg_map_or_invoke_template(self) -> "RunnerConfig":
+        """A runner must declare how to build its command (arg_map or template)."""
+        if not self.arg_map and not self.invoke_template:
+            raise ValueError("runner interface needs either 'arg_map' or 'invoke_template'")
+        return self
+
+
+# ── AdversarialThresholds ──────────────────────────────────────────────────────
+
+
+class AdversarialThresholds(BaseModel):
+    """Configurable thresholds for adversarial flag computation (§5).
+
+    All fields have defaults matching the plan's documented values.
+    Set per-scenario in the YAML to tune detection sensitivity.
+    """
+
+    snowball_factor: float = Field(default=2.0, gt=0)
+    talkative_tokens: int = Field(default=1000, ge=1)
+    tool_storm_calls: int = Field(default=50, ge=1)
 
 
 # ── Scenario ──────────────────────────────────────────────────────────────────
@@ -185,3 +293,4 @@ class Scenario(BaseModel):
     timeout_seconds: int = Field(default=300, ge=1)
     max_workers: int = Field(default=1, ge=1)
     output_dir: str = "results"
+    adversarial_thresholds: AdversarialThresholds = Field(default_factory=AdversarialThresholds)

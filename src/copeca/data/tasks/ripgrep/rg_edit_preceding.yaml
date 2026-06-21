@@ -1,0 +1,33 @@
+name: rg_edit_preceding
+description: "Fix the boundary guard in ripgrep's before-context walker so a count of zero returns the current line position rather than scanning back one; tests boundary-value repair in a reverse line-scan loop."
+source: "tilth-benchmark (MIT)"
+repo: ripgrep
+commit: 0a88cccd5188074de96f54a4b6b44a63971ac157
+type: edit
+category: fix
+language: rust
+difficulty: medium
+version: 1
+prompt: |
+  There is a bug in ripgrep's before-context logic in
+  crates/searcher/src/lines.rs. The preceding_by_pos function, which
+  finds the start of the Nth line before a given byte position, has
+  a boundary error. When asked for 0 lines of context (i.e. the
+  current line), it returns the wrong position — it's acting as if
+  count=0 means 'go back one line' instead of 'stay on current line'.
+  This breaks the -B 0 case and shifts all before-context by one line.
+  Find the boundary check error in preceding_by_pos and fix it.
+ground_truth:
+  required_strings: []
+  test_command:
+    - cargo
+    - test
+    - -p
+    - grep-searcher
+    - preceding_lines_doc
+mutations:
+  - file: crates/searcher/src/lines.rs
+    action: replace
+    find: "if count == 0 {"
+    replace: "if count == 1 {"
+    occurrence: 1

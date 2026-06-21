@@ -1,0 +1,59 @@
+# OpenSSF Scorecard — runs on push to master and weekly.
+# Publishes results to scorecard.dev (badge data) and uploads SARIF
+# to the repo's Code scanning view.
+# See: https://github.com/ossf/scorecard-action
+name: scorecard
+
+on:
+  branch_protection_rule:
+  schedule:
+    - cron: "26 4 * * 1"
+  push:
+    branches: [master]
+
+permissions: read-all
+
+jobs:
+  analysis:
+    name: scorecard analysis
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      id-token: write
+      contents: read
+      actions: read
+      # Scorecard's ListCommits GraphQL query + branch-protection check need
+      # these — without them: "Resource not accessible by integration".
+      # See ossf/scorecard-action issue #856 + #1248.
+      issues: read
+      pull-requests: read
+      checks: read
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # ratchet:actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - uses: ossf/scorecard-action@4eaacf0543bb3f2c246792bd56e8cdeffafb205a # ratchet:ossf/scorecard-action@v2.4.3
+        with:
+          results_file: results.sarif
+          results_format: sarif
+          publish_results: true
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # ratchet:actions/upload-artifact@v7
+        with:
+          name: SARIF file
+          path: results.sarif
+          retention-days: 5
+
+      # Non-blocking: uploading SARIF to the Code Scanning view requires Code
+      # Scanning to be enabled at the repo level (Settings → Code security →
+      # Code scanning). It's off by default on new public repos and there's no
+      # API to flip it on, so until someone enables it this step would fail the
+      # whole workflow. continue-on-error keeps scorecard green; the analysis
+      # still runs + publishes to scorecard.dev, and the SARIF stays available
+      # as a workflow artifact. Once Code Scanning is enabled this silently
+      # starts populating the Security tab — no further workflow change needed.
+      - uses: github/codeql-action/upload-sarif@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # ratchet:github/codeql-action/upload-sarif@v4
+        continue-on-error: true
+        with:
+          sarif_file: results.sarif

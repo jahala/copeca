@@ -3,6 +3,7 @@ description: "Task referencing a repo that does not exist in repos.yaml"
 source: "test fixture (MIT)"
 repo: nonexistent-repo-abc123
 type: comprehension
+category: locate
 language: python
 difficulty: easy
 version: 1

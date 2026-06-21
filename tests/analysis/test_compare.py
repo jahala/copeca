@@ -1,7 +1,5 @@
 """Test compare_runs — pairwise comparison of JSONL result sets."""
 
-import pytest
-
 from copeca.analysis.compare import compare_runs
 
 
@@ -54,7 +52,15 @@ class TestCompareRuns:
         assert "## " in result
 
     def test_compare_flags_large_changes(self):
-        """Tasks where cost-per-correct changed by >10% should be flagged."""
+        """Only tasks whose cost-per-correct moved >10% are flagged — and
+        sub-threshold tasks are NOT.
+
+        This discriminates the threshold in both directions. The previous
+        version asserted only that ``\"**\" in result`` (or ``\">\"``), which is
+        trivially true in any markdown table and would still pass if the code
+        flagged every task or no task. Here task_a moves 50% (must flag) and
+        task_b moves 5% (must not), so a broken threshold fails an assertion.
+        """
         before = [
             # task_a: cost 0.10, 1 correct → CPC = 0.10
             _make_record(task="task_a", total_cost_usd=0.10, correct=True),
@@ -64,21 +70,29 @@ class TestCompareRuns:
             _make_record(task="task_b", total_cost_usd=0.20, correct=False),
         ]
         after = [
-            # task_a: cost 0.05, 1 correct → CPC = 0.05 (50% decrease)
+            # task_a: cost 0.05, 1 correct → CPC = 0.05 (50% decrease → flagged)
             _make_record(task="task_a", total_cost_usd=0.05, correct=True),
             _make_record(task="task_a", total_cost_usd=0.05, correct=False),
-            # task_b: cost 0.19, 1 correct → CPC = 0.19 (5% decrease)
+            # task_b: cost 0.19, 1 correct → CPC = 0.19 (5% decrease → NOT flagged)
             _make_record(task="task_b", total_cost_usd=0.19, correct=True),
             _make_record(task="task_b", total_cost_usd=0.19, correct=False),
         ]
         result = compare_runs(before, after)
 
-        # task_a has >10% change, should be flagged
-        # The flag should mention the task name and the magnitude
-        assert "task_a" in result
-        # Look for common flag indicators
-        has_flag = ">" in result or "flag" in result.lower() or "!" in result or "**" in result
-        assert has_flag, "Large changes should be visually flagged"
+        # A dedicated "Flagged Tasks" section must exist and name task_a only.
+        assert "## Flagged Tasks (>10% Change)" in result
+        flagged_section = result.split("## Flagged Tasks (>10% Change)", 1)[1]
+        # Trim at the next H2 so we inspect only the flagged list.
+        flagged_section = flagged_section.split("\n## ", 1)[0]
+        assert "task_a" in flagged_section, "task_a (50% change) must be flagged"
+        assert "task_b" not in flagged_section, "task_b (5% change) must NOT be flagged"
+
+        # The per-task table marks the over-threshold row — and only that row.
+        rows = result.splitlines()
+        task_a_row = next(ln for ln in rows if ln.startswith("| task_a "))
+        task_b_row = next(ln for ln in rows if ln.startswith("| task_b "))
+        assert "**>10%**" in task_a_row, "task_a row must carry the >10% marker"
+        assert "**>10%**" not in task_b_row, "task_b row must not carry the marker"
 
     def test_compare_handles_missing_tasks(self):
         """Tasks present in one set but not the other should be noted."""

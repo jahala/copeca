@@ -1,16 +1,19 @@
 """Test `copeca validate` CLI command end-to-end."""
 
 import subprocess
+import tempfile
 from pathlib import Path
 
 import yaml
+
+from copeca.config.resources import data_path
 
 FIXTURES = Path(__file__).resolve().parent.parent / "fixtures"
 VALID_DIR = FIXTURES / "valid_tasks"
 INVALID_DIR = FIXTURES / "invalid"
 FIXTURE_REPOS = FIXTURES / "repos.yaml"
 INVALID_REPO_DIR = FIXTURES / "invalid_repo_only"
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+BLOCKED_SOURCE_DIR = FIXTURES / "blocked_source"
 
 
 def copeca(*args):
@@ -25,7 +28,7 @@ def copeca(*args):
 
 def test_default_pricing_yaml_parseable():
     """Bug 2: verify that defaults/runners/claude.yaml loads and has pricing models."""
-    pricing_path = PROJECT_ROOT / "defaults" / "runners" / "claude.yaml"
+    pricing_path = data_path("defaults", "runners", "claude.yaml")
     assert pricing_path.exists(), f"Missing pricing file: {pricing_path}"
 
     with open(pricing_path) as f:
@@ -78,3 +81,91 @@ class TestValidateCommand:
         assert "nonexistent-repo-abc123" in combined, (
             f"Expected unknown repo error, got: {combined}"
         )
+
+    def test_validate_flags_blocked_source_benchmark(self):
+        """validate warns (or fails) when a task's source is a blocked benchmark."""
+        result = copeca("validate", str(BLOCKED_SOURCE_DIR))
+        combined = result.stdout + result.stderr
+        # Must surface the contamination finding — either via a warning or non-zero exit
+        assert (
+            result.returncode != 0
+            or "contamination" in combined.lower()
+            or "blocked" in combined.lower()
+        ), (
+            f"Expected contamination warning or non-zero exit for blocked source task, "
+            f"got returncode={result.returncode}, output={combined!r}"
+        )
+
+    def test_validate_clean_dir_passes_provenance_check(self):
+        """validate on a clean dir (no blocked sources) passes provenance check."""
+        result = copeca("validate", str(VALID_DIR))
+        assert result.returncode == 0, (
+            f"Clean dir should pass provenance check: stdout={result.stdout} stderr={result.stderr}"
+        )
+
+    def test_validate_flags_tool_coupled_task(self, tmp_path):
+        """validate fails a task whose prompt prescribes a tool/method (not agnostic)."""
+        task = {
+            "name": "coupled_task",
+            "description": "Find the Matcher trait; tests trait location.",
+            "source": "test",
+            "repo": "ripgrep",
+            "type": "comprehension",
+            "category": "trace",
+            "language": "rust",
+            "difficulty": "easy",
+            "version": 1,
+            # the exact grok-style coupling: primes a single-shot aggregator
+            "prompt": "Find the Matcher trait. One structured answer beats several searches.",
+            "ground_truth": {"required_strings": ["Matcher"]},
+        }
+        d = tmp_path / "coupled"
+        d.mkdir()
+        (d / "coupled_task.yaml").write_text(yaml.dump(task))
+        result = copeca("validate", str(d))
+        combined = (result.stdout + result.stderr).lower()
+        assert result.returncode != 0, (
+            f"expected non-zero exit, got {result.returncode}: {combined}"
+        )
+        assert "tool-coupling" in combined or "agnostic" in combined, combined
+
+    def test_validate_flags_blocked_source_from_arbitrary_cwd(self):
+        """validate flags a blocked source task even when run from a tmp cwd with no
+        local blocklist.
+
+        This is the regression test for the silent no-op: the packaged blocklist
+        (src/copeca/data/contamination_blocklist.txt) must be used when no local
+        scripts/contamination_blocklist.txt is present.
+        """
+        with tempfile.TemporaryDirectory() as tmp_cwd:
+            # Confirm there is no local blocklist in this tmp dir
+            assert not (Path(tmp_cwd) / "scripts" / "contamination_blocklist.txt").exists()
+            result = subprocess.run(
+                ["copeca", "validate", str(BLOCKED_SOURCE_DIR)],
+                capture_output=True,
+                text=True,
+                timeout=10,
+                cwd=tmp_cwd,
+            )
+        combined = result.stdout + result.stderr
+        assert (
+            result.returncode != 0
+            or "contamination" in combined.lower()
+            or "blocked" in combined.lower()
+        ), (
+            f"Expected contamination rejection from packaged blocklist when run from tmp cwd "
+            f"(no local blocklist), got returncode={result.returncode}, output={combined!r}"
+        )
+
+
+def test_packaged_blocklist_exists():
+    """The contamination blocklist is bundled inside the package (ships in the wheel).
+
+    This pins the fix: data_path('contamination_blocklist.txt') must resolve to a
+    real file so validate always runs the provenance check regardless of cwd.
+    """
+    blocklist = data_path("contamination_blocklist.txt")
+    assert blocklist.exists(), (
+        f"Packaged contamination_blocklist.txt not found at {blocklist}. "
+        "The file must be at src/copeca/data/contamination_blocklist.txt so it ships in the wheel."
+    )

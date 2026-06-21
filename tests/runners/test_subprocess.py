@@ -8,6 +8,7 @@ from copeca.runners.subprocess import SubprocessRunner
 
 class EchoParser:
     """Parser that returns a RunResult with the raw stdout as result_text."""
+
     def parse(self, stdout, supported_events=None):
         return RunResult(result_text=stdout, duration_ms=100)
 
@@ -50,7 +51,7 @@ class TestSubprocessRunner:
         )
         try:
             runner.run(["sleep", "10"])
-            assert False, "should have timed out"
+            raise AssertionError("should have timed out")
         except Exception:
             pass  # Expected — timeout or killed
 
@@ -106,3 +107,68 @@ class TestSubprocessRunner:
         assert "stdout_line" in result.result_text
         assert "stderr_line" not in result.result_text
         assert result.duration_ms > 0
+
+
+class TestRunnerFailureSurfacing:
+    """A crashed subprocess must surface exit_code + error — never look like a
+    legit empty answer. Shakedown SD-B: the tilth arm exited 1 with empty stdout
+    and was recorded as error=null / exit_code=null, indistinguishable from the
+    agent legitimately saying nothing.
+    """
+
+    def test_nonzero_exit_sets_error_and_exit_code(self):
+        runner = SubprocessRunner(
+            name="fail-test",
+            cli="sh",
+            default_args=[],
+            arg_map={"prompt_separator": ""},
+            parser=None,
+        )
+        result = runner.run(["sh", "-c", "echo boom 1>&2; exit 3"])
+        assert result.exit_code == 3
+        assert result.error is not None
+        assert "boom" in result.error
+
+    def test_clean_exit_leaves_error_none(self):
+        runner = SubprocessRunner(
+            name="ok-test",
+            cli="echo",
+            default_args=[],
+            arg_map={"prompt_separator": ""},
+            parser=None,
+        )
+        result = runner.run(["echo", "hi"])
+        assert result.exit_code == 0
+        assert result.error is None
+
+
+class TestChildStdinClosed:
+    """codex `exec` reads its prompt from stdin whenever stdin is a pipe; a child
+    that inherited the orchestrator's stdin could block forever waiting on EOF.
+    The runner must hand every child an empty stdin (DEVNULL) so a stdin-reading
+    agent gets immediate EOF and never hangs. (claude -p never read stdin, so this
+    surfaced only when wiring the codex runner — SD-L.)
+    """
+
+    def test_child_stdin_is_devnull(self, monkeypatch):
+        import subprocess as sp
+
+        captured: dict = {}
+        real_popen = sp.Popen
+
+        def spy_popen(*args, **kwargs):
+            captured["stdin"] = kwargs.get("stdin", "ABSENT")
+            return real_popen(*args, **kwargs)  # call through — real subprocess runs
+
+        monkeypatch.setattr(sp, "Popen", spy_popen)
+
+        runner = SubprocessRunner(
+            name="stdin-test",
+            cli="echo",
+            default_args=[],
+            arg_map={"prompt_separator": ""},
+            parser=None,
+        )
+        runner.run(["echo", "hi"])
+
+        assert captured["stdin"] is sp.DEVNULL

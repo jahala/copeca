@@ -83,6 +83,6 @@ class TestInitChain:
         copeca("init", str(target))
         v = copeca("validate", str(target / "tasks"))
         assert v.returncode == 0, f"validate stderr={v.stderr}"
-        l = copeca("list", str(target / "tasks"))
-        assert l.returncode == 0, f"list stderr={l.stderr}"
-        assert "comprehension" in l.stdout or "edit" in l.stdout
+        lst = copeca("list", str(target / "tasks"))
+        assert lst.returncode == 0, f"list stderr={lst.stderr}"
+        assert "comprehension" in lst.stdout or "edit" in lst.stdout

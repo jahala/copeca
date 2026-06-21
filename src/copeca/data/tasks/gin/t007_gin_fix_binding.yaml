@@ -1,0 +1,33 @@
+name: t007_gin_fix_binding
+description: "Restore the required binding tag on a Gin struct's email field so ShouldBindJSON rejects missing values; tests tag-level repair in a JSON validation struct."
+source: "SWE-QA (Apache-2.0)"
+repo: gin
+type: edit
+category: fix
+language: go
+difficulty: medium
+version: 1
+prompt: |
+  A Gin handler binds JSON request bodies to a struct but one required field
+  is not validated because the binding tag is incorrect. Find the struct
+  definition with the `ShouldBindJSON` call and fix the binding tag so that
+  the `email` field is properly marked as `required`.
+ground_truth:
+  required_strings:
+    - binding
+    - required
+    - ShouldBindJSON
+  test_command:
+    - go
+    - test
+    - -run
+    - TestBindingRequired
+    - ./...
+  forbidden_strings:
+    - "I cannot"
+mutations:
+  - file: handler.go
+    action: replace
+    find: 'binding:"required"'
+    replace: 'binding:""'
+    occurrence: 1

@@ -50,17 +50,16 @@ def check_correctness(
 
     # required_strings (applies to both task types)
     if ground_truth.required_strings:
-        detail.required_strings_passed = _check_strings(
-            result_text, ground_truth.required_strings
-        )
+        detail.required_strings_passed = _check_strings(result_text, ground_truth.required_strings)
     else:
         # No required strings → trivially pass
         detail.required_strings_passed = True
 
     # forbidden_strings (applies to both)
     if ground_truth.forbidden_strings:
-        detail.forbidden_strings_passed = not _check_strings(
-            result_text, ground_truth.forbidden_strings
+        lowered = result_text.lower()
+        detail.forbidden_strings_passed = not any(
+            s.lower() in lowered for s in ground_truth.forbidden_strings
         )
 
     if isinstance(ground_truth, ComprehensionGroundTruth):

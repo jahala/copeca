@@ -1,0 +1,155 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://copeca.dev/schemas/task.schema.json",
+  "title": "Copeca Task",
+  "description": "A benchmark task — YAML data, never embedded code.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "name",
+    "source",
+    "repo",
+    "type",
+    "category",
+    "language",
+    "difficulty",
+    "version",
+    "prompt",
+    "ground_truth"
+  ],
+  "properties": {
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[a-z][a-z0-9_]*$",
+      "description": "Unique task identifier, lowercase snake_case."
+    },
+    "description": {
+      "type": "string",
+      "description": "Human-readable description of what this task measures."
+    },
+    "source": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Provenance reference — which source benchmark this task derives from, with license."
+    },
+    "repo": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Repository key — must match an entry in repos.yaml."
+    },
+    "commit": {
+      "type": "string",
+      "pattern": "^[0-9a-fA-F]{7,40}$",
+      "description": "Optional git commit SHA to pin this task's worktree at, overriding repos.yaml — lets one repo serve tasks authored against different code states."
+    },
+    "type": {
+      "type": "string",
+      "enum": ["comprehension", "edit"],
+      "description": "Task type: comprehension (string-checked) or edit (test-command-validated)."
+    },
+    "category": {
+      "type": "string",
+      "enum": ["locate", "trace", "fix", "debug"],
+      "description": "Capability axis (orthogonal to type): locate (report one named thing), trace (map a cross-file relationship), fix (change code until a test passes), debug (diagnose via git history then resolve/explain)."
+    },
+    "language": {
+      "type": "string",
+      "enum": ["python", "rust", "go", "javascript"],
+      "description": "Primary programming language of the target repository."
+    },
+    "difficulty": {
+      "type": "string",
+      "enum": ["easy", "medium", "hard"],
+      "description": "Author-declared difficulty, used for reporting aggregation."
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Incremented when ground truth changes."
+    },
+    "prompt": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The prompt sent to the CLI coding agent."
+    },
+    "ground_truth": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["required_strings"],
+      "properties": {
+        "required_strings": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Strings that must ALL appear (case-insensitive substring) in the agent's response."
+        },
+        "all_of": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Completeness: EVERY entry in this list must appear in the response."
+        },
+        "forbidden_strings": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Strings that must NONE appear in the response."
+        },
+        "test_command": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Shell command; exit 0 means the fix is correct. Required for edit tasks."
+        }
+      }
+    },
+    "mutations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["file"],
+        "properties": {
+          "file": { "type": "string", "minLength": 1 },
+          "action": { "type": "string", "enum": ["replace", "delete", "insert_after", "create"], "default": "replace" },
+          "find": { "type": "string" },
+          "replace": { "type": "string" },
+          "content": { "type": "string" },
+          "occurrence": { "type": "integer", "minimum": 1 }
+        }
+      },
+      "description": "Code mutations to apply before the agent runs (edit tasks)."
+    },
+    "test_command": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Deprecated — use ground_truth.test_command instead."
+    },
+    "mutation_sequence": {
+      "type": "array",
+      "description": "Ordered commit steps for debug tasks — each step applies mutations then commits them, building real git history for the agent to navigate.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["message", "mutations"],
+        "properties": {
+          "message": { "type": "string", "minLength": 1, "description": "Git commit message for this step." },
+          "mutations": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["file"],
+              "properties": {
+                "file": { "type": "string", "minLength": 1 },
+                "action": { "type": "string", "enum": ["replace", "delete", "insert_after", "create"], "default": "replace" },
+                "find": { "type": "string" },
+                "replace": { "type": "string" },
+                "content": { "type": "string" },
+                "occurrence": { "type": "integer", "minimum": 1 }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,28 @@
+name: t002_fastapi_routing
+description: "Map how FastAPI's APIRouter registers route handlers via add_api_route and the HTTP-method decorators it exposes; tests class-level relationship tracing across Route and APIRouter."
+source: "SWE-QA (Apache-2.0)"
+repo: fastapi
+type: comprehension
+category: trace
+language: python
+difficulty: medium
+version: 1
+prompt: |
+  Find the `APIRouter` class in the FastAPI codebase and describe how route
+  handlers are registered. Explain the relationship between `APIRouter`,
+  `Route`, and the `add_api_route` method. What decorators does APIRouter
+  provide for HTTP methods?
+ground_truth:
+  required_strings:
+    - APIRouter
+    - add_api_route
+    - Route
+    - get
+    - post
+  all_of:
+    - APIRouter
+    - add_api_route
+    - Route
+  forbidden_strings:
+    - "I cannot"
+    - "unable to"

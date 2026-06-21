@@ -1,6 +1,0 @@
-# Known-contaminated task ID patterns (from SWE-bench Verified deprecation)
-swe-bench-verified
-humaneval_
-mbpp_
-# Known-leaked output substrings (patterns that appear in leaked training data)
-# Empty — add patterns as they are discovered

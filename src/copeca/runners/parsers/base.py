@@ -8,11 +8,13 @@ excluded), repos/, results/, or orchestration/.
 """
 
 from dataclasses import dataclass, field
-from typing import Any, Protocol
+from typing import Any, Protocol, runtime_checkable
 
 
+@runtime_checkable
 class Parser(Protocol):
     """Parser protocol — parse(stdout) -> RunResult."""
+
     def parse(self, stdout: str, supported_events: list[str] | None = None) -> "RunResult": ...
 
 
@@ -50,6 +52,7 @@ class RunResult:
     duration_ms: int = 0
     tool_calls: list[ToolCall] = field(default_factory=list)
     error: str | None = None
+    exit_code: int | None = None
 
     @property
     def num_turns(self) -> int:

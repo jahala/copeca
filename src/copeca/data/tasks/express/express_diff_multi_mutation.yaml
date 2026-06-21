@@ -1,0 +1,47 @@
+name: express_diff_multi_mutation
+description: "One commit to lib/response.js contains two behavior bugs and one harmless rename; the agent must isolate and fix only the bugs without reverting the intentional refactoring."
+source: "tilth-benchmark (MIT)"
+repo: express
+commit: 1140301f6a0ed5a05bc1ef38d48294f75a49580c
+type: edit
+category: debug
+language: javascript
+difficulty: hard
+version: 1
+prompt: |
+  The last commit made several changes to lib/response.js — some
+  refactoring and some behavior changes. Now tests are failing.
+  Check what changed in the last commit, identify which changes are
+  bugs vs intentional refactoring, and fix only the bugs. Do not
+  revert the harmless refactoring changes.
+ground_truth:
+  required_strings: []
+  test_command:
+    - npx
+    - mocha
+    - --require
+    - test/support/env
+    - --reporter
+    - spec
+    - --check-leaks
+    - --grep
+    - "should respond with json for null|should generate a JSON cookie"
+    - test/
+mutation_sequence:
+  - message: "refactor: response.js cleanup and content-type fix"
+    mutations:
+      - file: lib/response.js
+        action: replace
+        find: "this.set('Content-Type', 'application/json');"
+        replace: "this.set('Content-Type', 'text/plain');"
+        occurrence: 1
+      - file: lib/response.js
+        action: replace
+        find: "? 'j:' + JSON.stringify(value)"
+        replace: "? 'x:' + JSON.stringify(value)"
+        occurrence: 1
+      - file: lib/response.js
+        action: replace
+        find: "var app = this.app;"
+        replace: "var expressApp = this.app;"
+        occurrence: 1

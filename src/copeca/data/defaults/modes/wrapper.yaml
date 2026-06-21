@@ -1,0 +1,16 @@
+name: wrapper
+description: >
+  Process-wrapper integration: prefixes the agent command with your tool's
+  wrapper command so every agent invocation is intercepted at the process
+  level. Replace the wrapper list below with your own tool's command.
+tools:
+  - Bash
+  - Read
+  - Write
+  - Edit
+  - Glob
+  - Grep
+# Replace with your wrapper tool's command, e.g. ["your-wrapper-tool", "wrap"]
+wrapper:
+  - your-wrapper-tool
+  - wrap

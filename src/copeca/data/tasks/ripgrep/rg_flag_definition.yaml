@@ -1,0 +1,19 @@
+name: rg_flag_definition
+description: "Locate the complete Flag trait implementation for the --type-list flag in ripgrep's flag definitions file; tests precise flag-struct location within a large flags module."
+source: "tilth-benchmark (MIT)"
+repo: ripgrep
+commit: 0a88cccd5188074de96f54a4b6b44a63971ac157
+type: comprehension
+category: locate
+language: rust
+difficulty: medium
+version: 1
+prompt: |
+  In crates/core/flags/defs.rs, find the implementation of the --type-list flag.
+  Show the complete Flag trait implementation for this flag, including all methods.
+ground_truth:
+  required_strings:
+    - TypeList
+    - "impl Flag for"
+    - name_long
+    - type-list

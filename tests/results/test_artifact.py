@@ -1,6 +1,7 @@
 """Test the .copeca zip artifact builder — hash-chained manifest integrity."""
 
 import hashlib
+import importlib.metadata
 import json
 import zipfile
 
@@ -87,9 +88,7 @@ class TestBuildArtifact:
             "stdout.txt": hash_stdout,
         }
         sorted_hashes = [file_hashes_dict[k] for k in sorted(file_hashes_dict)]
-        expected_content_hash = hashlib.sha256(
-            "".join(sorted_hashes).encode("utf-8")
-        ).hexdigest()
+        expected_content_hash = hashlib.sha256("".join(sorted_hashes).encode("utf-8")).hexdigest()
 
         assert manifest["content_hash"] == expected_content_hash
 
@@ -147,7 +146,7 @@ class TestBuildArtifact:
         assert "copeca_version" in manifest
         assert "repo_commit" in manifest
         assert "timestamp" in manifest
-        assert manifest["copeca_version"] == "0.1.0"
+        assert manifest["copeca_version"] == importlib.metadata.version("copeca")
 
     def test_task_yaml_included_when_present(self, tmp_path):
         """If task.yaml exists in worktree, it must be included in the zip."""
@@ -162,3 +161,49 @@ class TestBuildArtifact:
 
         with zipfile.ZipFile(zip_path, "r") as zf:
             assert "task.yaml" in zf.namelist()
+
+    def test_different_repetitions_produce_distinct_filenames(self, tmp_path):
+        """Two records identical except repetition must NOT overwrite each other."""
+        base = {"task": "overlap_task", "mode": "baseline", "model": "test-model"}
+        record_rep0 = {**base, "repetition": 0}
+        record_rep1 = {**base, "repetition": 1}
+
+        worktree = tmp_path / "worktree"
+        worktree.mkdir()
+        output_dir = tmp_path / "output"
+        output_dir.mkdir()
+
+        zip_rep0 = build_artifact(record_rep0, worktree, output_dir)
+        zip_rep1 = build_artifact(record_rep1, worktree, output_dir)
+
+        assert zip_rep0.name != zip_rep1.name
+        assert zip_rep0.exists()
+        assert zip_rep1.exists()
+
+    def test_rep_suffix_zero_padded_two_digits(self, tmp_path):
+        """Rep suffix must be zero-padded to two digits: rep00, rep01, …, rep09."""
+        worktree = tmp_path / "worktree"
+        worktree.mkdir()
+        output_dir = tmp_path / "output"
+        output_dir.mkdir()
+
+        record0 = {"task": "pad_test", "mode": "baseline", "model": "m", "repetition": 0}
+        record9 = {"task": "pad_test", "mode": "baseline", "model": "m", "repetition": 9}
+
+        zip0 = build_artifact(record0, worktree, output_dir)
+        zip9 = build_artifact(record9, worktree, output_dir)
+
+        assert "rep00" in zip0.name
+        assert "rep09" in zip9.name
+
+    def test_missing_repetition_field_treated_as_rep00(self, tmp_path):
+        """A record without 'repetition' key defaults to rep00 (single-task path)."""
+        record = {"task": "no_rep_task", "mode": "baseline", "model": "test"}
+        worktree = tmp_path / "worktree"
+        worktree.mkdir()
+        output_dir = tmp_path / "output"
+        output_dir.mkdir()
+
+        zip_path = build_artifact(record, worktree, output_dir)
+
+        assert "rep00" in zip_path.name

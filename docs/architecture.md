@@ -17,8 +17,8 @@ them, it's architecturally wrong regardless of implementation quality.
 | Property | What it means | What enforces it |
 |---|---|---|
 | **Reproducible** | Same inputs → same outputs within stochastic bounds | Pinned commits, declared toolchains, per-arm isolation, `check-task` mutation validity |
-| **Verifiable** | Outputs carry their own proof of authenticity | `.copeca` zips with SHA-256 hash chains, batch completeness verification |
-| **Isolated** | The instrument doesn't contaminate the measurement | Git worktrees, per-arm config dirs, baseline arm is provably clean |
+| **Verifiable** | Outputs carry their own proof of integrity | `.copeca` zips carry a SHA-256 integrity manifest; `copeca verify` checks single-artifact integrity and `copeca verify --batch --scenario` checks completeness (all expected runs present); cryptographic signing and external anchoring are planned |
+| **Isolated** | The instrument doesn't contaminate the measurement | Git worktrees, per-arm config dirs, allow-listed child environment (baseline inherits no ambient hooks) |
 | **Comparable** | Numbers from different runs use the same methodology | Cost computed from tokens × one pricing source, same tasks/baseline/metric |
 | **Extensible** | New runners, parsers, modes, tasks without changing the core | YAML-driven config, ABC-based port/adapter boundaries, invoke_template escape hatch |
 
@@ -43,7 +43,7 @@ startup.
 ┌──────────────────────▼───────────────────────────────────────────┐
 │ ORCHESTRATION (coordinates; holds no I/O of its own)             │
 │   orchestration/run.py     — matrix loop + worker pool           │
-│   orchestration/state.py   — worktree lifecycle                 │
+│   orchestration/state.py   — per-arm harness provisioning (ArmHarness, provision_arm) │
 │   orchestration/validation.py — compat warnings                 │
 └──────┬──────────────────────────────────┬───────────────────────┘
        │ depends on domain + port interfaces
@@ -92,10 +92,11 @@ via architecture tests (import-linter or a simple grep in CI).
 
 **Adapters (concrete implementations):**
 - `runners/subprocess.py:SubprocessRunner` — spawns CLI agent as subprocess
-- `runners/parsers/stream_json.py` — Claude Code output parser
-- `runners/parsers/codex_json.py` — Codex output parser
-- `runners/parsers/generic.py` — JSONPath-configurable parser
+- `runners/parsers/stream_json.py` — built-in parser (Claude Code stream-json output)
 - `repos/manager.py:GitWorktreeManager` — git bare clone + worktree operations
+
+Additional parsers (for other CLI agents) are planned; the extension point is
+`runners/parsers/base.py:BaseParser`.
 
 The orchestration layer imports ports (ABCs), never adapters directly. The CLI
 instantiates adapters based on runner config and injects them.
@@ -153,7 +154,7 @@ Repo manager: create worktree at pinned commit, run setup_command
   │
   ▼
 Mode: provision arm harness
-  │  ├── mcp_config    → write MCP config into worktree
+  │  ├── mcp_config    → write MCP config JSON to <worktree>/.copeca-arms/<arm>/mcp.json; path passed to the runner as its configured MCP arg
   │  ├── env           → set env vars for subprocess
   │  ├── agent_config   → overlay settings.json into arm's config dir
   │  ├── wrapper       → prefix runner command
@@ -178,18 +179,20 @@ Validator: check correctness
   │  └── test_command     → exit 0? (edit tasks only)
   │
   ▼
-Cost model: total_cost_usd = Σ(tokens × pricing[model])
-    vendor_cost_usd = parsed (cross-check only, >5% → warning)
+Cost model: vendor_cost_usd = parsed billed cost (authoritative when reported)
+    computed_cost_usd = Σ(tokens × pricing[model])   (reproducible cross-check)
+    total_cost_usd = vendor when reported, else computed   (cost_source records which)
   │
   ▼
 Writer: append JSONL record
   │
   ▼
 Artifact builder (--artifacts flag): create .copeca zip
-  │  ├── result.json, stdout.txt, stderr.txt, session.json
-  │  ├── post_mutation.diff (edit tasks only)
-  │  ├── manifest.json (SHA-256 hashes + content_hash + repo commit)
-  │  ├── task.yaml, runner.yaml, repos.yaml
+  │  ├── result.json (always)
+  │  ├── manifest.json (SHA-256 hashes + content_hash + repo commit) (always)
+  │  ├── task.yaml (if present in worktree)
+  │  ├── stdout.txt / stderr.txt (if present in worktree)
+  │  ├── session.json, post_mutation.diff, runner.yaml, repos.yaml — planned, not yet collected
   │  └── compute content_hash, record in manifest
   │
   ▼
@@ -254,8 +257,8 @@ touching the core.
 
 ### New runner CLI
 
-Add a YAML file to `defaults/runners/`. If the output format matches an existing
-parser (`stream_json`, `codex_json`), no code change is needed. If custom:
+Add a YAML file to `defaults/runners/`. If the output format matches the built-in
+parser (`stream_json`), no code change is needed. If custom:
 
 1. Implement `BaseParser.parse(stdout: str, supported_events: list[str]) -> RunResult`
    in `runners/parsers/`
@@ -289,7 +292,7 @@ formats: HTML, PDF, CI annotations (GitHub Actions summary).
 
 Add a computation function in `orchestration/` that takes a `RunResult` and
 returns `bool | null`. Register it in the flag registry. Thresholds are
-configurable in the scenario YAML.
+currently hardcoded; making them per-scenario configurable is planned.
 
 ---
 
@@ -303,13 +306,22 @@ or "guidelines" — they are the definition of what copeca IS.
    task set must be safe to load) and objectivity (if you need code to grade it,
    it probably isn't objective).
 
-2. **Cost is computed, never trusted.** The JSONL `total_cost_usd` field comes
-   from `Σ tokens × pricing`. Vendor cost is `vendor_cost_usd` — a cross-check
-   only. This is the only basis for cross-provider comparison.
+2. **Cost: the bill is the headline, the model is the yardstick.** `total_cost_usd`
+   is the vendor's billed cost when the runner reports it (`cost_source = "vendor"`) —
+   it captures cache TTL, tier, and discounts that token counts cannot, and it is
+   frozen into the `.copeca` artifact at run time. `computed_cost_usd = Σ tokens ×
+   pricing` is always recorded as the reproducible, provider-neutral number — the
+   basis for cross-provider and cross-time comparison — and as a cross-check on the
+   vendor's self-report (a large divergence flags possible misreporting). When no
+   vendor cost is reported, computed is the fallback (`cost_source = "modeled"`).
 
-3. **The baseline is provably clean.** Every A/B comparison runs baseline with
-   its own config dir, its own env, and zero inherited hooks. If the baseline
-   inherits the host's ambient tooling, the measurement is contaminated.
+3. **The baseline must be clean.** Every A/B comparison must run baseline with
+   its own config dir, its own env, and zero inherited hooks. The subprocess
+   runner builds the child environment from an explicit allowlist (infra vars,
+   locale, and provider credentials only); everything else — `CLAUDECODE`,
+   `CLAUDE_*`, `MCP_*`, and arbitrary ambient hooks — is excluded. Experimental
+   mode env is merged on top via `provision_arm`, so only declared vars reach
+   the experimental child.
 
 4. **One execution path.** There is no `if docker:` branch. If Docker execution
    is added later, it replaces the subprocess execution path — it doesn't sit
@@ -433,6 +445,6 @@ of their personal copeca settings.
 | **jsonschema** | Standard, language-agnostic validation for user-facing YAML. |
 | **PyYAML** | Stable, universal YAML parser. |
 | **Git (system)** | The only binary dependency. Worktrees provide isolation without Docker. |
-| **No async** | Copeca is I/O-bound on subprocesses, not on concurrent connections. Worker pool uses `concurrent.futures.ProcessPoolExecutor` or `subprocess` directly — async adds complexity without benefit. |
+| **No async** | Copeca is I/O-bound on subprocesses, not on concurrent connections. The worker pool uses `concurrent.futures.ThreadPoolExecutor`; each thread spawns its own subprocess, so process-level isolation comes from the subprocesses, not the threading model. Async adds complexity without benefit. |
 | **No database** | JSONL is the canonical data store. It's append-only, human-readable, `jq`-queryable, and trivially version-controlled. A database would add a schema migration problem for a write-once-read-many workload. |
 | **No web framework** | Copeca's API is its CLI. A web layer (leaderboard, dashboard) consumes JSONL + .copeca zips; it doesn't need to be in the same process or even the same repository. |

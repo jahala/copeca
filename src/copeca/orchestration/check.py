@@ -65,9 +65,7 @@ def verify_mutation_validity(
     repo_mgr.verify_toolchain(task.repo)
 
     # 2. Create worktree at pinned commit
-    worktree = repo_mgr.create_worktree(
-        task.repo, commit=repo_commit, uri=repo_uri
-    )
+    worktree = repo_mgr.create_worktree(task.repo, commit=repo_commit, uri=repo_uri)
 
     try:
         # 3. Run setup

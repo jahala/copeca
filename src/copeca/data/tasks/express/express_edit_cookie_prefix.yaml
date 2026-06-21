@@ -1,0 +1,36 @@
+name: express_edit_cookie_prefix
+description: "Restore the correct 'j:' prefix in Express's JSON cookie serialization so the cookie parser can identify object values on the return trip; tests string-literal repair in a cookie encoding branch."
+source: "tilth-benchmark (MIT)"
+repo: express
+commit: 1140301f6a0ed5a05bc1ef38d48294f75a49580c
+type: edit
+category: fix
+language: javascript
+difficulty: medium
+version: 1
+prompt: |
+  In Express's lib/response.js, JSON cookie serialization is broken.
+  When res.cookie() is called with an object value, it should prefix
+  the serialized JSON with a standard marker so the cookie parser can
+  identify it as JSON on the way back. The prefix is wrong, causing
+  the cookie parser to treat JSON cookies as plain strings. Find the
+  incorrect prefix in res.cookie() and fix it.
+ground_truth:
+  required_strings: []
+  test_command:
+    - npx
+    - mocha
+    - --require
+    - test/support/env
+    - --reporter
+    - spec
+    - --check-leaks
+    - --grep
+    - should generate a JSON cookie
+    - test/res.cookie.js
+mutations:
+  - file: lib/response.js
+    action: replace
+    find: "? 'j:' + JSON.stringify(value)"
+    replace: "? 'x:' + JSON.stringify(value)"
+    occurrence: 1

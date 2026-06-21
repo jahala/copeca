@@ -1,7 +1,5 @@
 """Test bootstrap confidence interval — pure computation, no external deps."""
 
-import math
-
 import pytest
 
 from copeca.analysis.stats import bootstrap_ci

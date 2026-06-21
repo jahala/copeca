@@ -1,17 +1,18 @@
 """Test JSON Schema validation for copeca task YAML files.
 
-Validates that schemas/task.schema.json correctly enforces all
+Validates that the bundled task.schema.json correctly enforces all
 constraints from the copeca domain model.
 """
 
 import json
-from pathlib import Path
 
 import pytest
 import yaml
 from jsonschema import Draft202012Validator, ValidationError, validate
 
-SCHEMA_PATH = Path(__file__).resolve().parent.parent.parent / "schemas" / "task.schema.json"
+from copeca.config.resources import data_path
+
+SCHEMA_PATH = data_path("schemas", "task.schema.json")
 
 
 @pytest.fixture
@@ -32,6 +33,7 @@ description: Find all implementors of the Matcher trait
 source: SWE-QA (Apache-2.0)
 repo: ripgrep
 type: comprehension
+category: locate
 language: rust
 difficulty: hard
 version: 1
@@ -54,6 +56,7 @@ ground_truth:
 source: SWE-QA (Apache-2.0)
 repo: ripgrep
 type: comprehension
+category: locate
 language: rust
 difficulty: hard
 version: 1
@@ -72,6 +75,7 @@ name: rg_test
 source: ""
 repo: ripgrep
 type: comprehension
+category: locate
 language: rust
 difficulty: hard
 version: 1
@@ -95,6 +99,7 @@ description: Fix off-by-one in line counting
 source: tilth-benchmark (MIT)
 repo: ripgrep
 type: edit
+category: fix
 language: rust
 difficulty: medium
 version: 1
@@ -128,6 +133,7 @@ name: rg_edit_test
 source: SWE-QA (Apache-2.0)
 repo: ripgrep
 type: edit
+category: fix
 language: rust
 difficulty: medium
 version: 1
@@ -152,6 +158,7 @@ name: rg_test
 source: SWE-QA (Apache-2.0)
 repo: ripgrep
 type: comprehension
+category: locate
 language: rust
 difficulty: hard
 version: 1

@@ -22,9 +22,7 @@ _ADVERSARIAL_FLAG_NAMES = [
 ]
 
 
-def _compute_per_task_deltas(
-    records: list[dict[str, Any]], modes: list[str]
-) -> list[float]:
+def _compute_per_task_deltas(records: list[dict[str, Any]], modes: list[str]) -> list[float]:
     """Compute per-task cost-per-correct deltas between two modes.
 
     For each task, compute cost_per_correct for mode[0] and mode[1],
@@ -48,6 +46,9 @@ def _compute_per_task_deltas(
             continue
         cpc0 = cost_per_correct(mode0_recs)
         cpc1 = cost_per_correct(mode1_recs)
+        # Exclude tasks where either mode has no correct answers (undefined CPC)
+        if cpc0 is None or cpc1 is None:
+            continue
         if cpc0 > 0:
             deltas.append(((cpc1 - cpc0) / cpc0) * 100)
 
@@ -56,26 +57,17 @@ def _compute_per_task_deltas(
 
 def _has_flags(records: list[dict[str, Any]]) -> bool:
     """Check if any record carries adversarial_flags."""
-    for r in records:
-        if "adversarial_flags" in r and r["adversarial_flags"] is not None:
-            return True
-    return False
+    return any("adversarial_flags" in r and r["adversarial_flags"] is not None for r in records)
 
 
 def _has_turn_data(records: list[dict[str, Any]]) -> bool:
     """Check if any record carries per-turn token data."""
-    for r in records:
-        if r.get("per_turn_output_tokens") or r.get("per_turn_context_tokens"):
-            return True
-    return False
+    return any(r.get("per_turn_output_tokens") or r.get("per_turn_context_tokens") for r in records)
 
 
 def _has_tools(records: list[dict[str, Any]]) -> bool:
     """Check if any record carries a non-empty tool_sequence."""
-    return any(
-        r.get("tool_sequence") and len(r["tool_sequence"]) > 0
-        for r in records
-    )
+    return any(r.get("tool_sequence") and len(r["tool_sequence"]) > 0 for r in records)
 
 
 def _has_language(records: list[dict[str, Any]]) -> bool:
@@ -86,6 +78,11 @@ def _has_language(records: list[dict[str, Any]]) -> bool:
 def _has_difficulty(records: list[dict[str, Any]]) -> bool:
     """Check if any record carries a difficulty field."""
     return any(r.get("difficulty") is not None for r in records)
+
+
+def _has_category(records: list[dict[str, Any]]) -> bool:
+    """Check if any record carries a category (capability) field."""
+    return any(r.get("category") is not None for r in records)
 
 
 def _tool_adoption_section(
@@ -111,8 +108,7 @@ def _tool_adoption_section(
         mode_records = by_mode[mode]
         total = len(mode_records)
         with_tools = sum(
-            1 for r in mode_records
-            if r.get("tool_sequence") and len(r["tool_sequence"]) > 0
+            1 for r in mode_records if r.get("tool_sequence") and len(r["tool_sequence"]) > 0
         )
         pct = (with_tools / total * 100) if total > 0 else 0.0
         lines.append(f"| {mode} | {with_tools} | {total} | {pct:.1f}% |")
@@ -144,6 +140,7 @@ def _per_category_section(
     has_category = {
         "language": _has_language,
         "difficulty": _has_difficulty,
+        "category": _has_category,
     }.get(category)
     if has_category is None or not has_category(records):
         return []
@@ -157,6 +154,9 @@ def _per_category_section(
     for mode in modes:
         header += f" {mode} CPC |"
         sep += "------:|"
+    if len(modes) == 2:
+        header += " Delta% |"
+        sep += "-------:|"
     lines.append(header)
     lines.append(sep)
 
@@ -169,9 +169,19 @@ def _per_category_section(
         cat_records = [r for r in records if r.get(category) == cat_val]
         by_mode_cat = group_by(cat_records, key="mode")
         row = f"| {cat_val} |"
+        cpcs: list[float | None] = []
         for mode in modes:
             cpc = cost_per_correct(by_mode_cat.get(mode, []))
-            row += f" ${cpc:.4f} |"
+            cpcs.append(cpc)
+            cpc_cell = f"${cpc:.4f}" if cpc is not None else "n/a (0 correct)"
+            row += f" {cpc_cell} |"
+        # Delta% (2 modes): the per-capability payoff — where the tool helps.
+        if len(modes) == 2:
+            c0, c1 = cpcs
+            if c0 is not None and c1 is not None and c0 > 0:
+                row += f" {((c1 - c0) / c0) * 100:+.1f}% |"
+            else:
+                row += " N/A |"
         lines.append(row)
 
     lines.append("")
@@ -205,9 +215,28 @@ def generate_report(records: list[dict[str, Any]]) -> str:
     if not records:
         return "## Copeca Report\n\n*No results.*\n"
 
+    # Separate crashed/failed runs (error set) from valid measurements: they are
+    # surfaced in a Failed Runs section below but excluded from every metric so a
+    # crash can't deflate accuracy or skew cost (shakedown SD-B).
+    failed_records = [r for r in records if r.get("error")]
+    records = [r for r in records if not r.get("error")]
+    if not records:
+        return "## Copeca Report\n\n*No valid results — all runs failed.*\n"
+
     lines: list[str] = []
     lines.append("## Copeca Report")
     lines.append("")
+    if failed_records:
+        lines.append("### Failed Runs")
+        lines.append("")
+        lines.append(
+            f"{len(failed_records)} run(s) failed and are excluded from the metrics below."
+        )
+        for r in failed_records:
+            raw = r.get("error") or "unknown error"
+            err = str(raw).splitlines()[0][:120]
+            lines.append(f"- **{r.get('mode', '?')}** / {r.get('task', '?')}: {err}")
+        lines.append("")
 
     # Discover modes
     by_mode = group_by(records, key="mode")
@@ -216,15 +245,21 @@ def generate_report(records: list[dict[str, Any]]) -> str:
     # ── 1. Delta-headline: cost-per-correct for each mode + delta + CI ─────
     lines.append("### Cost Per Correct Answer")
     lines.append("")
-    lines.append("| Mode | Cost per Correct |")
-    lines.append("|------|----------------:|")
+    lines.append("| Mode | Cost per Correct | Accuracy |")
+    lines.append("|------|----------------:|---------:|")
 
-    cpc_by_mode: dict[str, float] = {}
+    cpc_by_mode: dict[str, float | None] = {}
+    correct_by_mode: dict[str, tuple[int, int]] = {}
     for mode in modes:
         mode_records = by_mode[mode]
         cpc = cost_per_correct(mode_records)
+        correct_count = sum(1 for r in mode_records if r.get("correct"))
+        total_count = len(mode_records)
         cpc_by_mode[mode] = cpc
-        lines.append(f"| {mode} | ${cpc:.4f} |")
+        correct_by_mode[mode] = (correct_count, total_count)
+        accuracy = f"{correct_count}/{total_count}"
+        cpc_cell = f"${cpc:.4f}" if cpc is not None else "n/a (0 correct)"
+        lines.append(f"| {mode} | {cpc_cell} | {accuracy} |")
 
     lines.append("")
 
@@ -234,28 +269,39 @@ def generate_report(records: list[dict[str, Any]]) -> str:
         m0, m1 = modes[0], modes[1]
         cpc0 = cpc_by_mode[m0]
         cpc1 = cpc_by_mode[m1]
-        if cpc0 > 0:
-            delta_pct = ((cpc1 - cpc0) / cpc0) * 100
-        elif cpc1 > 0:
-            delta_pct = float("inf")
-        else:
-            delta_pct = 0.0
-        direction = "lower" if delta_pct < 0 else "higher"
 
-        # Compute bootstrap CI on per-task deltas
+        # Compute bootstrap CI on per-task deltas (excludes tasks where either CPC is None)
         per_task_deltas = _compute_per_task_deltas(records, modes)
-        if per_task_deltas:
-            ci_lo, ci_hi, _, _ = bootstrap_ci(per_task_deltas)
-            lines.append(
-                f"**Delta:** {m1} is {delta_pct:+.1f}% {direction} than {m0} "
-                f"(${cpc1:.4f} vs ${cpc0:.4f}) "
-                f"[95% CI: {ci_lo:+.1f}%, {ci_hi:+.1f}%]"
-            )
+
+        if cpc1 is None:
+            # Experimental got 0 correct — delta is undefined, not a bargain
+            n_correct, n_total = correct_by_mode[m1]
+            lines.append(f"**Delta:** n/a — {m1} got {n_correct}/{n_total} correct")
+        elif cpc0 is None:
+            # Baseline got 0 correct — experimental is strictly better, but no ratio
+            n_correct, n_total = correct_by_mode[m0]
+            lines.append(f"**Delta:** n/a — {m0} (baseline) got {n_correct}/{n_total} correct")
         else:
-            lines.append(
-                f"**Delta:** {m1} is {delta_pct:+.1f}% {direction} than {m0} "
-                f"(${cpc1:.4f} vs ${cpc0:.4f})"
-            )
+            if cpc0 > 0:
+                delta_pct = ((cpc1 - cpc0) / cpc0) * 100
+            elif cpc1 > 0:
+                delta_pct = float("inf")
+            else:
+                delta_pct = 0.0
+            direction = "lower" if delta_pct < 0 else "higher"
+
+            if per_task_deltas:
+                ci_lo, ci_hi, _, _ = bootstrap_ci(per_task_deltas)
+                lines.append(
+                    f"**Delta:** {m1} is {delta_pct:+.1f}% {direction} than {m0} "
+                    f"(${cpc1:.4f} vs ${cpc0:.4f}) "
+                    f"[95% CI: {ci_lo:+.1f}%, {ci_hi:+.1f}%]"
+                )
+            else:
+                lines.append(
+                    f"**Delta:** {m1} is {delta_pct:+.1f}% {direction} than {m0} "
+                    f"(${cpc1:.4f} vs ${cpc0:.4f})"
+                )
         lines.append("")
 
     # ── 2. Per-task table ──────────────────────────────────────────────────
@@ -285,26 +331,23 @@ def generate_report(records: list[dict[str, Any]]) -> str:
         by_mode_in_task = group_by(task_records, key="mode")
 
         row = f"| {task} |"
-        costs: list[float] = []
+        costs: list[float | None] = []
         for mode in modes:
             mode_recs = by_mode_in_task.get(mode, [])
             cpc = cost_per_correct(mode_recs)
             costs.append(cpc)
-            row += f" ${cpc:.4f} |"
+            cpc_cell = f"${cpc:.4f}" if cpc is not None else "n/a (0 correct)"
+            row += f" {cpc_cell} |"
 
         if len(modes) == 2:
             c0, c1 = costs
-            if c0 > 0:
+            if c0 is None or c1 is None:
+                row += " N/A |"
+            elif c0 > 0:
                 delta = ((c1 - c0) / c0) * 100
-                if per_task_deltas:
-                    row += f" {delta:+.1f}% |"
-                else:
-                    row += f" {delta:+.1f}% |"
+                row += f" {delta:+.1f}% |"
             else:
-                if per_task_deltas:
-                    row += " N/A |"
-                else:
-                    row += " N/A |"
+                row += " N/A |"
 
         lines.append(row)
 
@@ -360,10 +403,7 @@ def generate_report(records: list[dict[str, Any]]) -> str:
 
         total_with_flags = len(all_flags)
         for flag_name in _ADVERSARIAL_FLAG_NAMES:
-            true_count = sum(
-                1 for f in all_flags
-                if f.get(flag_name) is True
-            )
+            true_count = sum(1 for f in all_flags if f.get(flag_name) is True)
             rate_pct = (true_count / total_with_flags * 100) if total_with_flags > 0 else 0.0
             lines.append(f"| {flag_name} | {rate_pct:.1f}% |")
 
@@ -399,16 +439,19 @@ def generate_report(records: list[dict[str, Any]]) -> str:
 
     # ── 8. Per-Language Breakdown (if records carry language) ───────────────
     lines.extend(
-        _per_category_section(
-            records, by_mode, modes, "language", "Per-Language Breakdown"
-        )
+        _per_category_section(records, by_mode, modes, "language", "Per-Language Breakdown")
     )
 
     # ── 9. Per-Difficulty Breakdown (if records carry difficulty) ───────────
     lines.extend(
-        _per_category_section(
-            records, by_mode, modes, "difficulty", "Per-Difficulty Breakdown"
-        )
+        _per_category_section(records, by_mode, modes, "difficulty", "Per-Difficulty Breakdown")
+    )
+
+    # ── 10. Per-Capability Breakdown (if records carry category) ────────────
+    # The payoff: cost-per-correct sliced by what the task demands (locate/trace/
+    # fix/debug), so the delta reveals WHERE a tool helps, not just how much overall.
+    lines.extend(
+        _per_category_section(records, by_mode, modes, "category", "Per-Capability Breakdown")
     )
 
     return "\n".join(lines)

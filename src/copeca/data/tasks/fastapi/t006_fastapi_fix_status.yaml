@@ -1,0 +1,29 @@
+name: t006_fastapi_fix_status
+description: "Correct a FastAPI endpoint that returns 201 instead of 200 on successful creation; tests single-value repair in a status code declaration."
+source: "SWE-QA (Apache-2.0)"
+repo: fastapi
+type: edit
+category: fix
+language: python
+difficulty: medium
+version: 1
+prompt: |
+  The endpoint `/items/` in the FastAPI test application returns HTTP 201
+  instead of the correct HTTP 200 status code. Find the endpoint handler
+  and fix the status code to return 200 on successful creation.
+ground_truth:
+  required_strings:
+    - status_code
+    - "200"
+  test_command:
+    - python
+    - -c
+    - "from fastapi.testclient import TestClient; from main import app; client = TestClient(app); r = client.post('/items/', json={'name': 'test'}); assert r.status_code == 200, f'Expected 200, got {r.status_code}'"
+  forbidden_strings:
+    - "I cannot"
+mutations:
+  - file: main.py
+    action: replace
+    find: "status_code=200"
+    replace: "status_code=201"
+    occurrence: 1

@@ -2,15 +2,18 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import yaml
 
-from scripts.contamination_check import build_probe, check_contamination
+from copeca.config.resources import data_path
+from scripts.contamination_check import (
+    build_probe,
+    check_contamination,
+    check_source_provenance,
+    load_blocked_sources,
+)
 
-TASKS_DIR = Path(__file__).resolve().parent.parent.parent / "tasks"
-SCRIPTS_DIR = Path(__file__).resolve().parent.parent.parent / "scripts"
-BLOCKLIST_FILE = SCRIPTS_DIR / "contamination_blocklist.txt"
+TASKS_DIR = data_path("tasks")
+BLOCKLIST_FILE = data_path("contamination_blocklist.txt")
 
 
 def _load_blocklist() -> set[str]:
@@ -42,7 +45,11 @@ def _discover_comprehension_tasks() -> list[dict]:
 class TestBuildProbe:
     def test_build_probe_returns_task_name_and_first_10_words(self):
         task_name = "t001_find_matcher_trait"
-        prompt = "Find the Matcher trait definition in the ripgrep codebase and list all structs that implement it. For each implementor, note which crate it lives in and what methods it provides."
+        prompt = (
+            "Find the Matcher trait definition in the ripgrep codebase and list all structs"
+            " that implement it. For each implementor, note which crate it lives in and what"
+            " methods it provides."
+        )
         probe = build_probe(task_name, prompt)
         assert task_name in probe
         # First 10 words of the prompt
@@ -138,9 +145,7 @@ class TestExistingComprehensionTasks:
         assert len(blocklist) > 0, "Blocklist must be non-empty"
 
         tasks = _discover_comprehension_tasks()
-        assert len(tasks) >= 5, (
-            f"Expected at least 5 comprehension tasks, found {len(tasks)}"
-        )
+        assert len(tasks) >= 5, f"Expected at least 5 comprehension tasks, found {len(tasks)}"
 
         for task in tasks:
             name = task.get("name", "")
@@ -166,20 +171,93 @@ class TestExistingComprehensionTasks:
 class TestBlocklistFile:
     def test_blocklist_file_exists_and_has_entries(self):
         """Blocklist file exists and contains known patterns."""
-        assert BLOCKLIST_FILE.exists(), (
-            f"Blocklist file not found at {BLOCKLIST_FILE}"
-        )
+        assert BLOCKLIST_FILE.exists(), f"Blocklist file not found at {BLOCKLIST_FILE}"
 
         patterns = _load_blocklist()
         assert len(patterns) > 0, "Blocklist must have at least one entry"
 
         # Verify the key known patterns are present
-        assert "swe-bench-verified" in patterns, (
-            "swe-bench-verified must be in blocklist"
-        )
-        assert "humaneval_" in patterns, (
-            "humaneval_ must be in blocklist"
-        )
-        assert "mbpp_" in patterns, (
-            "mbpp_ must be in blocklist"
-        )
+        assert "swe-bench-verified" in patterns, "swe-bench-verified must be in blocklist"
+        assert "humaneval_" in patterns, "humaneval_ must be in blocklist"
+        assert "mbpp_" in patterns, "mbpp_ must be in blocklist"
+
+
+# ── provenance / source-benchmark check tests ─────────────────────────────────
+
+
+class TestCheckSourceProvenance:
+    """Tests for check_source_provenance — pure function, no I/O."""
+
+    def test_blocked_source_benchmark_is_flagged(self):
+        """A task whose source field names a blocked benchmark is flagged."""
+        blocked = {"SWE-bench Verified", "RepoBench", "ClassEval", "DevEval", "CoderEval"}
+        # Exact match (as it appears in the task YAML)
+        flagged, reason = check_source_provenance("SWE-bench Verified (MIT)", blocked)
+        assert flagged is True
+        assert "SWE-bench Verified" in reason
+
+    def test_clean_source_passes(self):
+        """A task from a non-blocked source passes the provenance check."""
+        blocked = {"SWE-bench Verified", "RepoBench", "ClassEval", "DevEval", "CoderEval"}
+        flagged, reason = check_source_provenance("SWE-QA (Apache-2.0)", blocked)
+        assert flagged is False
+        assert reason == ""
+
+    def test_all_blocked_benchmarks_are_flagged(self):
+        """Each entry in the block-list is individually detected."""
+        blocked = {"SWE-bench Verified", "RepoBench", "ClassEval", "DevEval", "CoderEval"}
+        samples = [
+            "SWE-bench Verified (MIT)",
+            "RepoBench",
+            "ClassEval (CC BY-SA 4.0)",
+            "DevEval (Apache-2.0)",
+            "CoderEval (Apache-2.0)",
+        ]
+        for source in samples:
+            flagged, _ = check_source_provenance(source, blocked)
+            assert flagged is True, f"Expected {source!r} to be flagged"
+
+    def test_empty_blocked_set_never_flags(self):
+        """Empty blocked set — every source passes."""
+        flagged, _ = check_source_provenance("SWE-bench Verified (MIT)", set())
+        assert flagged is False
+
+    def test_matching_is_case_insensitive(self):
+        """Source matching is case-insensitive."""
+        blocked = {"SWE-bench Verified"}
+        flagged, _ = check_source_provenance("swe-bench verified (MIT)", blocked)
+        assert flagged is True
+
+    def test_partial_match_within_source_string(self):
+        """Blocked benchmark name appearing anywhere in source field is flagged."""
+        blocked = {"ClassEval"}
+        # Source field has the benchmark name plus a licence suffix
+        flagged, _ = check_source_provenance("ClassEval (CC BY-SA 4.0)", blocked)
+        assert flagged is True
+
+
+class TestLoadBlockedSources:
+    """Tests for load_blocked_sources — reads contamination_blocklist.txt."""
+
+    def test_returns_expected_blocked_benchmarks(self):
+        """load_blocked_sources reads the blocklist file and returns the five benchmarks."""
+        sources = load_blocked_sources(BLOCKLIST_FILE)
+        expected = {"SWE-bench Verified", "RepoBench", "ClassEval", "DevEval", "CoderEval"}
+        assert expected.issubset(sources), f"Missing blocked sources: {expected - sources}"
+
+    def test_real_corpus_tasks_all_pass_provenance_check(self):
+        """All 16 real tasks have non-blocked sources and pass provenance check."""
+        blocked = load_blocked_sources(BLOCKLIST_FILE)
+        all_tasks: list[dict] = []
+        for path in sorted(TASKS_DIR.rglob("*.yaml")):
+            with open(path) as f:
+                all_tasks.append(yaml.safe_load(f))
+
+        assert len(all_tasks) >= 16, f"Expected at least 16 tasks, found {len(all_tasks)}"
+
+        for task in all_tasks:
+            source = task.get("source", "")
+            flagged, reason = check_source_provenance(source, blocked)
+            assert flagged is False, (
+                f"Task '{task.get('name')}' source {source!r} was incorrectly blocked: {reason}"
+            )

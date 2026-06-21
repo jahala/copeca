@@ -94,7 +94,6 @@ def edit_repo(tmp_path: Path) -> tuple[Path, Path]:
     )
 
     # Copy fixture YAMLs into task_dir with repo-relative paths via repos.yaml backref
-    import shutil
 
     repos_dir = tmp_path / "repos"
     repos_dir.mkdir(parents=True, exist_ok=True)
@@ -134,12 +133,14 @@ class TestCheckTaskOrchestration:
         repos_dir, task_dir = edit_repo
 
         from copeca.config.models import (
+            Category,
             ComprehensionGroundTruth,
             Difficulty,
             Language,
             Task,
             TaskType,
         )
+
         # Build a comprehension task dynamically
         task = Task(
             name="comprehension_test",
@@ -147,6 +148,7 @@ class TestCheckTaskOrchestration:
             source="copeca-test (MIT)",
             repo="edit-test-repo",
             type=TaskType.comprehension,
+            category=Category.locate,
             language=Language.python,
             difficulty=Difficulty.easy,
             version=1,
@@ -164,13 +166,12 @@ class TestCheckTaskOrchestration:
         assert not valid
         assert "not an edit task" in message.lower()
 
-    def test_task_with_no_mutations_rejected(
-        self, edit_repo: tuple[Path, Path]
-    ) -> None:
+    def test_task_with_no_mutations_rejected(self, edit_repo: tuple[Path, Path]) -> None:
         """Edit task with mutations=[] -> verify_mutation_validity returns False."""
         repos_dir, task_dir = edit_repo
 
         from copeca.config.models import (
+            Category,
             Difficulty,
             EditGroundTruth,
             Language,
@@ -184,6 +185,7 @@ class TestCheckTaskOrchestration:
             source="copeca-test (MIT)",
             repo="edit-test-repo",
             type=TaskType.edit,
+            category=Category.fix,
             language=Language.python,
             difficulty=Difficulty.easy,
             version=1,
@@ -201,13 +203,12 @@ class TestCheckTaskOrchestration:
         assert not valid
         assert "no mutations" in message.lower()
 
-    def test_task_with_no_test_command_rejected(
-        self, edit_repo: tuple[Path, Path]
-    ) -> None:
+    def test_task_with_no_test_command_rejected(self, edit_repo: tuple[Path, Path]) -> None:
         """Edit task with test_command=[] -> verify_mutation_validity returns False."""
         repos_dir, task_dir = edit_repo
 
         from copeca.config.models import (
+            Category,
             Difficulty,
             EditGroundTruth,
             Language,
@@ -222,6 +223,7 @@ class TestCheckTaskOrchestration:
             source="copeca-test (MIT)",
             repo="edit-test-repo",
             type=TaskType.edit,
+            category=Category.fix,
             language=Language.python,
             difficulty=Difficulty.easy,
             version=1,
@@ -247,13 +249,12 @@ class TestCheckTaskOrchestration:
         assert not valid
         assert "no test_command" in message.lower()
 
-    def test_task_referencing_unknown_repo_rejected(
-        self, edit_repo: tuple[Path, Path]
-    ) -> None:
+    def test_task_referencing_unknown_repo_rejected(self, edit_repo: tuple[Path, Path]) -> None:
         """Task.repo references unknown repo -> verify_mutation_validity returns False."""
         repos_dir, task_dir = edit_repo
 
         from copeca.config.models import (
+            Category,
             Difficulty,
             EditGroundTruth,
             Language,
@@ -268,6 +269,7 @@ class TestCheckTaskOrchestration:
             source="copeca-test (MIT)",
             repo="nonexistent-repo",
             type=TaskType.edit,
+            category=Category.fix,
             language=Language.python,
             difficulty=Difficulty.easy,
             version=1,
@@ -322,9 +324,7 @@ class TestCheckTaskCLI:
         )
         assert "Valid edit task" in result.stdout
 
-    def test_check_task_cli_exit_one(
-        self, edit_repo: tuple[Path, Path]
-    ) -> None:
+    def test_check_task_cli_exit_one(self, edit_repo: tuple[Path, Path]) -> None:
         """Subprocess call to copeca check-task with weak task -> exit 1."""
         repos_dir, task_dir = edit_repo
 

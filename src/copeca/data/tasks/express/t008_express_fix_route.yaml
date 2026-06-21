@@ -1,0 +1,31 @@
+name: t008_express_fix_route
+description: "Correct the METHOD constant in an Express route file so the handler is registered under the right HTTP verb; tests single-constant repair with a mismatched method declaration."
+source: "SWE-QA (Apache-2.0)"
+repo: express
+type: edit
+category: fix
+language: javascript
+difficulty: medium
+version: 1
+prompt: |
+  An Express route handler is defined with `router.post()` but the exported
+  METHOD constant is set to `'get'` instead of `'post'`. This causes the
+  route to be registered under the wrong HTTP method. Find the route file
+  and fix the METHOD constant to match the router method.
+ground_truth:
+  required_strings:
+    - METHOD
+    - post
+    - router
+  test_command:
+    - node
+    - -e
+    - "const rt = require('./route'); console.assert(rt.METHOD === 'post', 'METHOD should be post');"
+  forbidden_strings:
+    - "I cannot"
+mutations:
+  - file: route.js
+    action: replace
+    find: "METHOD = 'post'"
+    replace: "METHOD = 'get'"
+    occurrence: 1

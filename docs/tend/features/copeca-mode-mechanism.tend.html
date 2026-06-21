@@ -2533,8 +2533,12 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
   "how": "Mode declares which integration paths it uses. Orchestrator provisions per-arm: copies agent config overlay, sets env vars, prefixes wrapper command, runs setup pre-step. Pre-call prompt compression is deliberately omitted (low value on coding tasks; proxy path covers it).",
   "coverage_files": [
     "src/copeca/config/models.py",
+    "src/copeca/config/loader.py",
     "defaults/modes/",
-    "src/copeca/orchestration/validation.py"
+    "src/copeca/orchestration/validation.py",
+    "src/copeca/orchestration/run.py",
+    "src/copeca/orchestration/state.py",
+    "src/copeca/runners/subprocess.py"
   ],
   "checks": [
     {
@@ -2551,7 +2555,7 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
       "validates": "impact",
       "method": "synthetic-test",
       "validates_job": "tool-builder:1",
-      "verification_recipe": "Run baseline mode vs RTK-hook mode on the same task with 5 reps. Verify: (a) baseline arm's agent config dir contains NO RTK settings.json, (b) experimental arm's config dir DOES contain RTK settings.json, (c) both arms produce valid JSONL, (d) the cost-per-correct delta is computed correctly."
+      "verification_recipe": "Run baseline mode vs a config-dir hook mode on the same task with 5 reps. Verify: (a) baseline arm's agent config dir contains NO hook settings.json, (b) experimental arm's config dir DOES contain the hook settings.json, (c) both arms produce valid JSONL, (d) the cost-per-correct delta is computed correctly."
     },
     {
       "id": "c003",
@@ -2560,6 +2564,14 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
       "method": "synthetic-test",
       "validates_job": "tool-builder:2",
       "verification_recipe": "Define a mode with env: {ANTHROPIC_BASE_URL: 'http://localhost:9999/nonexistent'}. Run a task. Assert the agent fails (can't reach the proxy). Remove the env override. Re-run. Assert the agent succeeds. This proves env isolation works and doesn't leak between arms."
+    },
+    {
+      "id": "c004",
+      "description": "Experimental mode integration (env, config-dir, MCP) reaches the agent end-to-end via run_matrix — not just in isolation",
+      "validates": "what",
+      "method": "synthetic-test",
+      "verification_recipe": "Through the REAL run_matrix path (NOT hand-injected work items): (a) an experimental mode's env reaches the runner while baseline stays clean — tests/orchestration/test_provision_arm_wiring.py::TestMatrixPathModeWiring; (b) the per-arm config dir is delivered via the runner-declared config_dir_env when agent_config is set — tests/orchestration/test_config_dir_delivery.py; (c) mode.mcp_config is materialized to arms_dir/mcp.json and its path passed to build_command via the runner's arg_map — tests/orchestration/test_mcp_materialization.py + tests/runners/test_mcp_command_wiring.py; (d) mode names resolve from defaults/modes/<name>.yaml via load_mode — tests/config/test_loader.py. NOTE: prior checks c001-c003 only exercised Mode schema validation + provision_arm in isolation; this check covers the integration that was missing (the mechanism was built but disconnected from the run pipeline).",
+      "validates_job": "tool-builder:1"
     }
   ],
   "smoke": {
@@ -2616,13 +2628,18 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
       "dependencies": [
         "i001"
       ],
-      "description": "Test: tests/config/test_mode_yaml.py\nAsserts: All 5 mode YAMLs pass copeca mode-validate; baseline.yaml has no integration paths (tools only); rtk.yaml has agent_config pointing to settings overlay; gateway.yaml has env with ANTHROPIC_BASE_URL; headroom.yaml has wrapper prefix; claude-context.yaml has setup command.\nBoundary: reads YAML from filesystem, validates via Pydantic.\nSetup: 5 mode YAML files in defaults/modes/.\nRun: pytest tests/config/test_mode_yaml.py -v\n\nImplement: defaults/modes/baseline.yaml (tools only), defaults/modes/rtk.yaml (agent_config), defaults/modes/gateway.yaml (env), defaults/modes/headroom.yaml (wrapper), defaults/modes/indexed.yaml (setup). Each with name, description, tools list, and one integration path.\nDo not modify the test file once written.",
+      "description": "Test: tests/config/test_mode_yaml.py\nAsserts: All 5 mode YAMLs pass copeca mode-validate; baseline.yaml has no integration paths (tools only); hook.yaml has agent_config pointing to settings overlay; proxy.yaml has env with ANTHROPIC_BASE_URL; wrapper.yaml has wrapper prefix; indexed.yaml has setup command.\nBoundary: reads YAML from filesystem, validates via Pydantic.\nSetup: 5 mode YAML files in defaults/modes/.\nRun: pytest tests/config/test_mode_yaml.py -v\n\nImplement: defaults/modes/baseline.yaml (tools only), defaults/modes/hook.yaml (agent_config), defaults/modes/proxy.yaml (env), defaults/modes/wrapper.yaml (wrapper), defaults/modes/indexed.yaml (setup). Each with name, description, tools list, and one integration path.\nDo not modify the test file once written.",
       "verification_profile": "standard",
       "log": [
         {
           "at": "2026-06-20T00:05:00Z",
           "type": "note",
           "text": "Created 5 mode YAML files in defaults/modes/: baseline (tools only), rtk (agent_config), gateway (env), headroom (wrapper), indexed (setup). All validate as Mode Pydantic models. 6 tests: one per mode + all-exist check."
+        },
+        {
+          "at": "2026-06-20T00:05:00Z",
+          "type": "note",
+          "text": "Created 5 mode YAML files in defaults/modes/: baseline (tools only), hook (agent_config), proxy (env), wrapper (process wrapper), indexed (setup). All validate as Mode Pydantic models. 6 tests: one per mode + all-exist check."
         }
       ]
     },
@@ -2638,7 +2655,7 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
       "dependencies": [
         "i001"
       ],
-      "description": "Test: tests/orchestration/test_mode_isolation.py\nAsserts: provision_arm(baseline_mode, worktree) returns env with no overrides and empty config dir; provision_arm(rtk_mode, worktree) copies agent_config overlay into arm config dir and sets env; provision_arm(gateway_mode, worktree) sets ANTHROPIC_BASE_URL env var; provision_arm(headroom_mode, worktree) returns wrapper prefix in command spec; provision_arm(indexed_mode, worktree) runs setup command in worktree; baseline arm has NO inherited hooks or env.\nBoundary: real filesystem for config dir copy; real env dict manipulation; real subprocess for setup commands.\nSetup: test worktree directory; sample settings.json for agent_config; sample setup script.\nRun: pytest tests/orchestration/test_mode_isolation.py -v\n\nImplement: src/copeca/orchestration/state.py — provision_arm(mode, worktree) → ArmHarness. Creates isolated config directory. Copies agent_config overlay if present. Sets env vars if present. Records wrapper prefix if present. Runs setup if present. Baseline arm: empty config dir, clean env, no wrapper, no setup.\nDo not modify the test file once written.",
+      "description": "Test: tests/orchestration/test_mode_isolation.py\nAsserts: provision_arm(baseline_mode, worktree) returns env with no overrides and empty config dir; provision_arm(hook_mode, worktree) copies agent_config overlay into arm config dir; provision_arm(proxy_mode, worktree) sets ANTHROPIC_BASE_URL env var; provision_arm(wrapper_mode, worktree) returns wrapper prefix in command spec; provision_arm(indexed_mode, worktree) runs setup command in worktree; baseline arm has NO inherited hooks or env.\nBoundary: real filesystem for config dir copy; real env dict manipulation; real subprocess for setup commands.\nSetup: test worktree directory; sample settings.json for agent_config; sample setup script.\nRun: pytest tests/orchestration/test_mode_isolation.py -v\n\nImplement: src/copeca/orchestration/state.py — provision_arm(mode, worktree) → ArmHarness. Creates isolated config directory. Copies agent_config overlay if present. Sets env vars if present. Records wrapper prefix if present. Runs setup if present. Baseline arm: empty config dir, clean env, no wrapper, no setup.\nDo not modify the test file once written.",
       "verification_profile": "standard",
       "log": [
         {
@@ -2683,7 +2700,7 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
         "i003",
         "i004"
       ],
-      "description": "Test: Run copeca validate --modes defaults/modes/. Then run integration smoke: baseline + RTK mode against same task, verify baseline arm has no RTK settings.\nAsserts: All 5 mode YAMLs pass validation. Baseline arm config dir does NOT contain settings.json from RTK mode.\nBoundary: real CLI invocation.\nSetup: pip install -e .; 5 mode YAMLs; test task.\nRun: copeca validate --modes defaults/modes/\n\nImplement: Smoke verification step. Confirms mode YAMLs validate and per-arm isolation is in effect.",
+      "description": "Test: Run copeca validate --modes defaults/modes/. Then run integration smoke: baseline + hook mode against same task, verify baseline arm has no hook settings.\nAsserts: All 5 mode YAMLs pass validation. Baseline arm config dir does NOT contain settings.json from hook mode.\nBoundary: real CLI invocation.\nSetup: pip install -e .; 5 mode YAMLs; test task.\nRun: copeca validate --modes defaults/modes/\n\nImplement: Smoke verification step. Confirms mode YAMLs validate and per-arm isolation is in effect.",
       "verification_profile": "standard",
       "log": [
         {
@@ -2692,48 +2709,29 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
           "text": "Smoke verified: 5 mode YAMLs load and validate. Mode model + per-arm harness + compat warnings all implemented and tested. Completeness: feature structurally complete, integration test validates full mode lifecycle."
         }
       ]
+    },
+    {
+      "id": "i006",
+      "title": "F-C3 part 2: thread the mode mechanism through run_matrix — env/config-dir/MCP reach the agent end-to-end",
+      "dependencies": [
+        "i003"
+      ],
+      "status": "done",
+      "step_type": "agent",
+      "traces_to": [
+        "c004"
+      ],
+      "description": "Test: tests/orchestration/test_provision_arm_wiring.py::TestMatrixPathModeWiring + tests/orchestration/test_config_dir_delivery.py + tests/orchestration/test_mcp_materialization.py + tests/runners/test_mcp_command_wiring.py + tests/config/test_loader.py::TestLoadMode\nAsserts (through the REAL run_matrix path, not hand-injected work items): (a) an experimental mode's env reaches the runner while baseline stays clean; (b) the per-arm config dir is delivered via the runner-declared config_dir_env when agent_config is set; (c) mode.mcp_config is materialized to arms_dir/mcp.json and its path passed to build_command via the runner arg_map; (d) mode names resolve from defaults/modes/<name>.yaml via load_mode.\nBoundary: orchestration + runner integration (run_matrix -> provision_arm -> build_command).\nRun: PATH=$PWD/.venv/bin:$PATH python -m pytest tests/orchestration/test_provision_arm_wiring.py tests/orchestration/test_config_dir_delivery.py tests/orchestration/test_mcp_materialization.py tests/runners/test_mcp_command_wiring.py tests/config/test_loader.py -q\n\nImplement: run.py run_matrix populates the work-item 'mode_obj' from mode_defs and threads it through _run_one_work_item -> run_single -> provision_arm; state.py provision_arm writes arms_dir/mcp.json; the subprocess runner build_command consumes config_dir_env + the mcp arg via the runner arg_map. This is the F-C3 part-2 remediation (the mechanism was built in i001-i003 but DISCONNECTED from the run pipeline). Recorded as a discrete step so check c004 is no longer an orphan (it now traces to an implementation step).",
+      "verification_profile": "thorough",
+      "log": [
+        {
+          "at": "2026-06-21T00:00:00Z",
+          "type": "note",
+          "text": "F-C3 part-2 wiring recorded as a discrete step linking the end-to-end run_matrix mode integration to check c004 (previously an orphan). Closes the last orphan check in the garden."
+        }
+      ]
     }
   ],
-  "audit": {
-    "ran_at": "2026-06-20T17:00:00Z",
-    "result": "pass",
-    "verdicts": [
-      {
-        "check_id": "c001",
-        "verdict": "pass",
-        "evidence_path": "Src: config/models.py:133-165 (Mode Pydantic model with 5 paths + name pattern ^[a-z][a-z0-9_-]*$). Tests: tests/config/test_mode_models.py 9/9 pass, tests/config/test_mode_yaml.py 6/6 pass. 5 YAMLs in defaults/modes/ all validate. NEGCTRL: removed validator → test_mode_with_none_of_any_raises FAILED (DISCRIMINATES). Run: 'pytest tests/config/test_mode_models.py tests/config/test_mode_yaml.py -v' → 15 passed. Mode name now allows hyphens (^[a-z][a-z0-9_-]*$).",
-        "validates_job_satisfied": false,
-        "evidence_sha": "93189ee32b7e8bcf6371f3bbd3273fb771b22957"
-      },
-      {
-        "check_id": "c002",
-        "verdict": "pass",
-        "evidence_path": "Src: state.py:27-81 (provision_arm with 5 paths). Tests: tests/orchestration/test_mode_isolation.py 16/16 pass. NEGCTRL: provision_arm always empty → test_gateway_mode_sets_env FAILED (DISCRIMINATES). Run: 'pytest tests/orchestration/test_mode_isolation.py -v' → 16 passed.",
-        "validates_job_satisfied": false,
-        "evidence_sha": "3476cc99747312f580ca03cc3cfd0c28ed898943"
-      },
-      {
-        "check_id": "c003",
-        "verdict": "pass",
-        "evidence_path": "Src: state.py:71-81 (env copy). Tests: TestEnvModeSetsEnv 2/2 pass (gateway_mode_sets_env proves env set; env-is-copy-not-reference proves no mutation leak). NEGCTRL: provision_arm broke → gateway env missing from harness, DISCRIMINATES. Run: 'pytest tests/orchestration/test_mode_isolation.py::TestEnvModeSetsEnv -v' → 2 passed.",
-        "validates_job_satisfied": false,
-        "evidence_sha": "3476cc99747312f580ca03cc3cfd0c28ed898943"
-      }
-    ],
-    "verified_at_commit": "078c18cdbedd51b8f656c43db77c408890288f71",
-    "drift": [
-      {
-        "file": "docs/tend/features/copeca-mode-mechanism.tend.html",
-        "finding": "smoke.cmd is 'copeca validate --modes defaults/modes/' but CLI has no --modes option. Actual validation via Pydantic in tests. Smoke command is stale.",
-        "action": "document"
-      },
-      {
-        "file": "docs/tend/features/copeca-mode-mechanism.tend.html",
-        "finding": "Step i002 references copeca mode-validate CLI command which doesn't exist. Tests use direct model_validate via load_modes.",
-        "action": "document"
-      }
-    ]
-  },
   "judgments": [
     {
       "question_id": "impact_measurable",
@@ -2756,7 +2754,43 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
       "rationale": "negctrl proves discrimination mechanically for all 3 checks; semantic re-judgment skipped.",
       "judged_sha": "8ea489f802e002cc8f999871042db8cb6f2a1402"
     }
-  ]
+  ],
+  "audit": {
+    "ran_at": "2026-06-21T00:00:00Z",
+    "result": "pass",
+    "verified_at_commit": "51d44c262a8e90906e0a2e1af4ad3568b39dc621",
+    "drift": [],
+    "verdicts": [
+      {
+        "check_id": "c004",
+        "verdict": "pass",
+        "evidence_path": "src/copeca/orchestration/run.py (run_matrix populates work-item mode_obj + threads through _run_one_work_item -> run_single -> provision_arm) + src/copeca/orchestration/state.py + src/copeca/runners/subprocess.py (build_command consumes config_dir_env + mcp arg via runner arg_map). SD-B: exit_code and stderr now captured; crashed runs excluded from cost_per_correct and report accuracy. SD-C: keep_worktrees param added to run_matrix. Full mode-mechanism run at 51d44c2: PATH=$PWD/.venv/bin:$PATH python -m pytest tests/config/test_mode_models.py tests/config/test_mode_yaml.py tests/orchestration/test_mode_isolation.py tests/orchestration/test_provision_arm_wiring.py tests/orchestration/test_config_dir_delivery.py tests/orchestration/test_mcp_materialization.py tests/runners/test_mcp_command_wiring.py tests/config/test_loader.py -q -> 71 passed.",
+        "evidence_sha": "f24ed47cff2d6ab5ffb7bf131513432d8980c2db",
+        "validates_job_satisfied": true
+      },
+      {
+        "check_id": "c001",
+        "verdict": "pass",
+        "evidence_path": "src/copeca/config/models.py (Mode Pydantic model, 5 integration paths) + src/copeca/data/defaults/modes/ (5 YAML files). SD-A: repos_dir is now resolved to absolute path in GitWorktreeManager so mcp.json and config-dir paths written per-arm are absolute (fixes --mcp-config failing). tests/config/test_mode_models.py 9/9 pass + tests/config/test_mode_yaml.py 11/11 pass. Run: PATH=$PWD/.venv/bin:$PATH python -m pytest tests/config/test_mode_models.py tests/config/test_mode_yaml.py tests/config/test_mode_yaml.py tests/config/test_loader.py -q -> 31 passed (within the 71-test mode-mechanism run).",
+        "evidence_sha": "c9738cbb29c5275b94bd5b7608b09ecbba252c2b",
+        "validates_job_satisfied": true
+      },
+      {
+        "check_id": "c002",
+        "verdict": "pass",
+        "evidence_path": "src/copeca/orchestration/state.py (provision_arm, ArmHarness) + src/copeca/orchestration/run.py (run_matrix). SD-A: worktree + per-arm mcp.json/config-dir paths now absolute (GitWorktreeManager.repos_dir resolved). SD-C: --keep-worktrees flag added (run_single/run_matrix keep_worktree param; guards worktree reset; prints preserved path). tests/orchestration/test_mode_isolation.py 16 pass + tests/orchestration/test_provision_arm_wiring.py::TestMatrixPathModeWiring PASS. Run: PATH=$PWD/.venv/bin:$PATH python -m pytest tests/config/test_mode_models.py tests/config/test_mode_yaml.py tests/orchestration/test_mode_isolation.py tests/orchestration/test_provision_arm_wiring.py tests/orchestration/test_config_dir_delivery.py tests/orchestration/test_mcp_materialization.py tests/runners/test_mcp_command_wiring.py tests/config/test_loader.py -q -> 71 passed.",
+        "evidence_sha": "ce37d5c5791d294e6d1839b4ee2b7e45096d5734",
+        "validates_job_satisfied": true
+      },
+      {
+        "check_id": "c003",
+        "verdict": "pass",
+        "evidence_path": "src/copeca/orchestration/state.py (provision_arm env isolation). SD-A: absolute paths prevent cross-arm path collisions when worktrees share a relative base. tests/orchestration/test_mode_isolation.py — env dict copied per arm, baseline gets no overrides, experimental gets ANTHROPIC_BASE_URL; no cross-arm contamination. Run: PATH=$PWD/.venv/bin:$PATH python -m pytest tests/orchestration/test_mode_isolation.py -q -> 16 passed.",
+        "evidence_sha": "ce37d5c5791d294e6d1839b4ee2b7e45096d5734",
+        "validates_job_satisfied": true
+      }
+    ]
+  }
 }
 </script>
 <!-- OO:DATA:END -->

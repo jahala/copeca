@@ -1,0 +1,45 @@
+name: fastapi_diff_which_commit
+description: "Three consecutive commits touched fastapi/dependencies/utils.py; exactly one introduced a cache-logic regression and the agent must identify and revert only that commit's change."
+source: "tilth-benchmark (MIT)"
+repo: fastapi
+commit: 6fa573ce0bc16fe445f93db413d20146dd9ff35d
+type: edit
+category: debug
+language: python
+difficulty: hard
+version: 1
+prompt: |
+  Tests started failing sometime in the last 3 commits to
+  fastapi/dependencies/utils.py. Check the recent commit history
+  to find which commit introduced the regression, then fix it.
+ground_truth:
+  required_strings: []
+  test_command:
+    - /usr/local/bin/python3.10
+    - -m
+    - pytest
+    - tests/test_dependency_cache.py::test_sub_counter
+    - -x
+    - -q
+mutation_sequence:
+  - message: "docs: add module docstring to utils"
+    mutations:
+      - file: fastapi/dependencies/utils.py
+        action: replace
+        find: "from fastapi"
+        replace: "\"\"\"Dependency resolution utilities.\"\"\"\nfrom fastapi"
+        occurrence: 1
+  - message: "refactor: simplify dependency cache check"
+    mutations:
+      - file: fastapi/dependencies/utils.py
+        action: replace
+        find: "if sub_dependant.use_cache and sub_dependant.cache_key in dependency_cache:"
+        replace: "if sub_dependant.use_cache or sub_dependant.cache_key in dependency_cache:"
+        occurrence: 1
+  - message: "refactor: shorten variable name"
+    mutations:
+      - file: fastapi/dependencies/utils.py
+        action: replace
+        find: "import dataclasses"
+        replace: "# Dependency resolution utilities\nimport dataclasses"
+        occurrence: 1

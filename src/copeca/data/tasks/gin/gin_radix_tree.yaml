@@ -1,0 +1,20 @@
+name: gin_radix_tree
+description: "Locate gin's radix-tree routing implementation — the node struct, nodeType constants, and the route-lookup method — and explain wildcard parameter handling; tests deep-dive into a self-contained routing data structure."
+source: "tilth-benchmark (MIT)"
+repo: gin
+commit: d7776de7d444935ea4385999711bd6331a98fecb
+type: comprehension
+category: locate
+language: go
+difficulty: medium
+version: 1
+prompt: |
+  Find the radix tree implementation that gin uses for routing. Show the node
+  struct definition, the nodeType constants, and explain how wildcard parameters
+  (like :id and *filepath) are handled in the tree. What method looks up a route?
+ground_truth:
+  required_strings:
+    - "type node struct"
+    - catchAll
+    - getValue
+    - wildChild

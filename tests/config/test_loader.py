@@ -7,10 +7,19 @@ from pathlib import Path
 
 import pytest
 
-from copeca.config.loader import LoadError, SchemaValidationError, load_task, load_tasks_from_dir
-from copeca.config.models import ComprehensionGroundTruth, Task, TaskType
+from copeca.config.loader import (
+    LoadError,
+    SchemaValidationError,
+    load_mode,
+    load_modes,
+    load_task,
+    load_tasks_from_dir,
+)
+from copeca.config.models import ComprehensionGroundTruth, Mode, Task, TaskType
+from copeca.config.resources import data_path
 
 FIXTURES = Path(__file__).resolve().parent.parent / "fixtures" / "tasks"
+DEFAULT_MODES_DIR = data_path("defaults", "modes")
 
 
 class TestLoadTask:
@@ -71,3 +80,50 @@ class TestLoadTasksFromDir:
         (d / "README.md").write_text("docs")
         tasks = load_tasks_from_dir(d)
         assert len(tasks) == 1
+
+
+class TestLoadMode:
+    """load_mode reads <dir>/<name>.yaml and constructs a Mode."""
+
+    def test_load_mode_baseline_returns_mode(self):
+        mode = load_mode("baseline", modes_dirs=[DEFAULT_MODES_DIR])
+        assert isinstance(mode, Mode)
+        assert mode.name == "baseline"
+
+    def test_load_mode_default_dir_resolves_regardless_of_cwd(self, monkeypatch, tmp_path):
+        """With no modes_dirs, load_mode resolves the packaged defaults/modes.
+
+        The default anchors on the installed package (data_path), so it works
+        from any working directory — not just a source checkout's repo root.
+        """
+        monkeypatch.chdir(tmp_path)
+        mode = load_mode("baseline")
+        assert mode.name == "baseline"
+
+    def test_load_mode_missing_raises_file_not_found(self):
+        with pytest.raises(FileNotFoundError):
+            load_mode("does-not-exist-xyz", modes_dirs=[DEFAULT_MODES_DIR])
+
+    def test_load_mode_first_existing_dir_wins(self, tmp_path):
+        """When multiple dirs are given, the first containing <name>.yaml wins."""
+        first = tmp_path / "first"
+        first.mkdir()
+        (first / "custom.yaml").write_text("name: custom\ndescription: from first\ntools: [Bash]\n")
+        mode = load_mode("custom", modes_dirs=[first, DEFAULT_MODES_DIR])
+        assert mode.name == "custom"
+        assert mode.description == "from first"
+
+
+class TestLoadModes:
+    """load_modes returns a name -> Mode dict for a list of names."""
+
+    def test_load_modes_returns_name_keyed_dict(self):
+        modes = load_modes(["baseline", "proxy"], modes_dirs=[DEFAULT_MODES_DIR])
+        assert set(modes) == {"baseline", "proxy"}
+        assert modes["baseline"].name == "baseline"
+        assert modes["proxy"].name == "proxy"
+
+    def test_load_modes_unknown_mode_raises(self):
+        """A scenario referencing a mode with no YAML must fail loudly."""
+        with pytest.raises(FileNotFoundError):
+            load_modes(["baseline", "no-such-mode-xyz"], modes_dirs=[DEFAULT_MODES_DIR])

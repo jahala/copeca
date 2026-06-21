@@ -1,0 +1,32 @@
+name: rg_edit_line_locate
+description: "Restore the +1 offset in ripgrep's line-start finder so it returns the first byte of the line rather than the preceding newline; tests off-by-one repair in byte-range boundary arithmetic."
+source: "tilth-benchmark (MIT)"
+repo: ripgrep
+commit: 0a88cccd5188074de96f54a4b6b44a63971ac157
+type: edit
+category: fix
+language: rust
+difficulty: medium
+version: 1
+prompt: |
+  There is a bug in ripgrep's line location logic in
+  crates/searcher/src/lines.rs. The locate() function, which finds
+  the byte range of the line containing a given position, is returning
+  a start offset that points to the newline terminator of the previous
+  line instead of the first byte of the target line. This causes match
+  highlighting to include the wrong leading character. Find the
+  off-by-one error in the line start calculation and fix it.
+ground_truth:
+  required_strings: []
+  test_command:
+    - cargo
+    - test
+    - -p
+    - grep-searcher
+    - line_locate_weird
+mutations:
+  - file: crates/searcher/src/lines.rs
+    action: replace
+    find: "bytes[..range.start()].rfind_byte(line_term).map_or(0, |i| i + 1);"
+    replace: "bytes[..range.start()].rfind_byte(line_term).map_or(0, |i| i);"
+    occurrence: 1

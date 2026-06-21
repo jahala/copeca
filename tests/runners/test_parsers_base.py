@@ -31,8 +31,18 @@ class TestRunResult:
     def test_properties_from_turns(self):
         """Aggregate properties sum correctly across turns."""
         turns = [
-            Turn(input_tokens=5000, output_tokens=200, cache_creation_tokens=100, cache_read_tokens=3000),
-            Turn(input_tokens=8000, output_tokens=150, cache_creation_tokens=200, cache_read_tokens=5000),
+            Turn(
+                input_tokens=5000,
+                output_tokens=200,
+                cache_creation_tokens=100,
+                cache_read_tokens=3000,
+            ),
+            Turn(
+                input_tokens=8000,
+                output_tokens=150,
+                cache_creation_tokens=200,
+                cache_read_tokens=5000,
+            ),
         ]
         result = RunResult(
             turns=turns,

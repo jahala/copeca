@@ -88,16 +88,10 @@ REPOS = {
 
 def _migrate_script() -> Path:
     """Return the path to the migration script."""
-    return (
-        Path(__file__).resolve().parent.parent.parent
-        / "scripts"
-        / "migrate_from_tilth.py"
-    )
+    return Path(__file__).resolve().parent.parent.parent / "scripts" / "migrate_from_tilth.py"
 
 
-def _run_migrate(
-    tilth_path: Path, output_dir: Path
-) -> subprocess.CompletedProcess[str]:
+def _run_migrate(tilth_path: Path, output_dir: Path) -> subprocess.CompletedProcess[str]:
     """Run the migration script as a subprocess and return the result."""
     return subprocess.run(
         [
@@ -139,18 +133,14 @@ class TestMigrationProducesYamlFiles:
         assert result.returncode == 0, f"Migration failed: {result.stderr}"
 
         yaml_files = list(output_dir.rglob("*.yaml"))
-        assert len(yaml_files) == 2, (
-            f"Expected 2 YAML files, got {len(yaml_files)}"
-        )
+        assert len(yaml_files) == 2, f"Expected 2 YAML files, got {len(yaml_files)}"
         assert "Done. Total: 2, migrated: 2, skipped: 0" in result.stdout
 
 
 class TestComprehensionTaskYamlValid:
     """Comprehension task output has required_strings and correct type."""
 
-    def test_comprehension_task_structure(
-        self, tilth_fixture: tuple[Path, Path]
-    ):
+    def test_comprehension_task_structure(self, tilth_fixture: tuple[Path, Path]):
         tilth_dir, _ = tilth_fixture
         output_dir = tilth_dir / "output"
 
@@ -158,13 +148,12 @@ class TestComprehensionTaskYamlValid:
 
         # Find the comprehension task
         tasks = _read_yaml_files(output_dir)
-        comp_task = next(
-            (t for t in tasks if t["type"] == "comprehension"), None
-        )
+        comp_task = next((t for t in tasks if t["type"] == "comprehension"), None)
         assert comp_task is not None, "No comprehension task found"
 
         assert comp_task["name"] == "rg_trait_implementors"
         assert comp_task["type"] == "comprehension"
+        assert comp_task["category"] == "trace"  # find-trait-and-implementors = relational
         assert comp_task["language"] == "rust"
         assert comp_task["difficulty"] == "hard"
         assert comp_task["version"] == 1
@@ -193,6 +182,7 @@ class TestEditTaskYamlValid:
 
         assert edit_task["name"] == "rg_edit_line_count"
         assert edit_task["type"] == "edit"
+        assert edit_task["category"] == "fix"
         assert edit_task["language"] == "rust"
         assert edit_task["difficulty"] == "medium"
         assert edit_task["version"] == 1
@@ -212,9 +202,7 @@ class TestEditTaskYamlValid:
 class TestOutputFilesPassCopecaValidate:
     """Each output file passes copeca validate."""
 
-    def test_validate_passes_on_output(
-        self, tilth_fixture: tuple[Path, Path]
-    ):
+    def test_validate_passes_on_output(self, tilth_fixture: tuple[Path, Path]):
         tilth_dir, _ = tilth_fixture
         output_dir = tilth_dir / "output"
 
@@ -246,8 +234,5 @@ class TestSourceFieldIsSet:
 
         for t in tasks:
             expected = "tilth-benchmark (MIT)"
-            msg = (
-                f"Task {t.get('name')}: expected source={expected!r},"
-                f" got {t.get('source')!r}"
-            )
+            msg = f"Task {t.get('name')}: expected source={expected!r}, got {t.get('source')!r}"
             assert t["source"] == expected, msg

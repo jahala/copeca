@@ -1,0 +1,20 @@
+name: fastapi_request_validation
+description: "Locate get_request_handler in FastAPI's routing and identify the exception raised on validation failure; tests precise location of error-handling behavior within a complex async handler factory."
+source: "tilth-benchmark (MIT)"
+repo: fastapi
+commit: 6fa573ce0bc16fe445f93db413d20146dd9ff35d
+type: comprehension
+category: trace
+language: python
+difficulty: medium
+version: 1
+prompt: |
+  In FastAPI's routing.py, find the get_request_handler function. Show how it
+  creates the actual request handler that processes incoming requests. Specifically,
+  what happens when request validation fails? What exception is raised and where?
+ground_truth:
+  required_strings:
+    - get_request_handler
+    - solve_dependencies
+    - RequestValidationError
+    - "async def app"

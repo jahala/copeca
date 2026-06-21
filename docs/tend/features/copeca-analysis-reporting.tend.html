@@ -2510,7 +2510,7 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
 {
   "id": "copeca-analysis-reporting",
   "title": "copeca-analysis-reporting",
-  "status": "planned",
+  "status": "verified",
   "priority": "high",
   "dependencies": [
     "copeca-scenario-matrix",
@@ -2535,7 +2535,7 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
   "impact": "A tool builder sees exactly where their tool helps. A skeptical evaluator sees the CI on the delta and per-task breakdown. A platform builder sees cost composition and adversarial flag rates.",
   "fit": "Phase 3. ADAPT from tilth's analyze.py (~75% reusable: compute_stats, sparklines, format_delta). BUILD bootstrap CI, delta-headline, adversarial summary.",
   "where": "src/copeca/analysis/stats.py, src/copeca/analysis/report.py, src/copeca/analysis/compare.py, src/copeca/cli.py",
-  "how": "stats.py: median, mean, stdev, bootstrapped 95% CI. report.py: markdown with delta-headline, per-task table, cost breakdown, sparklines, tool adoption, adversarial summary. compare.py: run-to-run comparison with per-task deltas. CI limitation documented: bootstraps assume i.i.d.; model runs are correlated.",
+  "how": "stats.py: median, mean, stdev, bootstrapped 95% CI. report.py: markdown with delta-headline, per-task table, cost breakdown, sparklines, tool adoption, adversarial summary. compare.py: run-to-run comparison with per-task deltas. CI limitation documented: bootstraps assume i.i.d.; model runs are correlated. Zero-correct cost-per-correct is undefined: it renders 'n/a (0 correct)' (never $0.0000), is excluded from the headline delta and the bootstrap, and accuracy (correct/total) is shown alongside cost so the metric cannot invert under failure (F-C1 fix).",
   "coverage_files": [
     "src/copeca/analysis/stats.py",
     "src/copeca/analysis/report.py",
@@ -2565,6 +2565,14 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
       "method": "synthetic-test",
       "validates_job": "platform-builder:1",
       "verification_recipe": "Run copeca compare on two JSONL result files from the same scenario. Verify the comparison shows per-task deltas and flags any task where cost-per-correct changed by >10% between runs."
+    },
+    {
+      "id": "c004",
+      "description": "Zero-correct mode renders n/a and never inverts the metric; accuracy shown alongside cost-per-correct",
+      "validates": "why",
+      "method": "synthetic-test",
+      "validates_job": "skeptical-evaluator:0",
+      "verification_recipe": "Generate a report where the experimental mode is 0/N correct at higher spend. Verify: (a) its cost-per-correct cell shows 'n/a (0 correct)', not $0.0000; (b) NO negative delta / '-100%' is emitted from the zero denominator; (c) accuracy (correct/total) is shown alongside cost-per-correct. Covered by tests/analysis/test_report.py::test_report_zero_correct_experimental_shows_na and tests/analysis/test_stats.py::test_cost_per_correct_zero_correct_returns_none."
     }
   ],
   "smoke": {
@@ -2738,53 +2746,30 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
           "text": "Smoke verified: copeca analyze produces delta-headline markdown report from JSONL. copeca compare shows per-task deltas. JSON format output produces valid JSON with cost_per_correct field."
         }
       ]
+    },
+    {
+      "id": "i007",
+      "title": "F-C1: zero-correct cost-per-correct returns None and renders 'n/a (0 correct)' — never inverts",
+      "dependencies": [
+        "i001",
+        "i003"
+      ],
+      "status": "done",
+      "step_type": "agent",
+      "traces_to": [
+        "c004"
+      ],
+      "description": "Test: tests/analysis/test_stats.py::test_cost_per_correct_zero_correct_returns_none + tests/analysis/test_report.py::{test_report_zero_correct_experimental_shows_na, test_report_zero_correct_headline_describes_situation, test_report_accuracy_shown_alongside_cost_per_correct}\nAsserts: cost_per_correct returns None (not 0.0) when correct=0; the report renders 'n/a (0 correct)' for a 0-correct mode; NO negative '-100%' delta is emitted from the zero denominator; accuracy (correct/total) is shown alongside cost-per-correct.\nBoundary: pure functions (stats.py, report.py, compare.py). No I/O.\nRun: PATH=.venv/bin:$PATH python -m pytest tests/analysis/ -k 'zero_correct or accuracy' -q\n\nImplement: src/copeca/analysis/stats.py cost_per_correct returns None at 0 correct; src/copeca/analysis/report.py + compare.py render 'n/a (0 correct)', exclude None from the headline delta and bootstrap, and show accuracy as a co-headline. This is the F-C1 audit remediation (2026-06-20): a worse tool at 0 correct can no longer appear cheaper than a working one. Recorded as a discrete step so check c004 is no longer an orphan (it now traces to an implementation step).",
+      "verification_profile": "standard",
+      "log": [
+        {
+          "at": "2026-06-21T00:00:00Z",
+          "type": "note",
+          "text": "F-C1 fix recorded as a discrete step linking the zero-correct behavior to check c004 (previously an orphan). cost_per_correct returns None at 0-correct; report/compare render 'n/a (0 correct)'; excluded from delta + bootstrap; accuracy co-headline."
+        }
+      ]
     }
   ],
-  "audit": {
-    "ran_at": "2026-06-20T17:00:00Z",
-    "result": "pass",
-    "verdicts": [
-      {
-        "check_id": "c001",
-        "verdict": "pass",
-        "evidence_path": "src/copeca/analysis/report.py:181-414; src/copeca/analysis/stats.py:146-187; tests/analysis/test_report.py::test_report_contains_cost_per_correct_headline; tests/analysis/test_report.py::test_report_contains_per_task_table; tests/analysis/test_report.py::test_report_contains_ci_in_headline",
-        "validates_job_satisfied": true,
-        "evidence_sha": "f3572167c435e8974e8262bf523f1cbf74eace85"
-      },
-      {
-        "check_id": "c002",
-        "verdict": "pass",
-        "evidence_path": "src/copeca/analysis/report.py:348-412",
-        "validates_job_satisfied": true,
-        "evidence_sha": "f3572167c435e8974e8262bf523f1cbf74eace85"
-      },
-      {
-        "check_id": "c003",
-        "verdict": "pass",
-        "evidence_path": "src/copeca/analysis/compare.py",
-        "validates_job_satisfied": true,
-        "evidence_sha": "1816ce9978b8a808d555720c88e5911cb1c72b5f"
-      }
-    ],
-    "drift": [
-      {
-        "file": "src/copeca/analysis/report.py",
-        "finding": "Tool adoption rate is mentioned in the feature spec but not implemented in generate_report(). No section counts tool usage per mode.",
-        "action": "implement"
-      },
-      {
-        "file": "src/copeca/analysis/report.py",
-        "finding": "Per-category aggregation (by language, framework, etc.) is claimed in check c001 but generate_report() only aggregates per-task.",
-        "action": "implement"
-      },
-      {
-        "file": "tests/analysis/test_compare.py",
-        "finding": "test_compare_flags_large_changes asserts '>' in result which is trivially true for any markdown table — does not discriminate whether >10% flagging actually works.",
-        "action": "investigate"
-      }
-    ],
-    "verified_at_commit": "078c18cdbedd51b8f656c43db77c408890288f71"
-  },
   "judgments": [
     {
       "question_id": "impact_measurable",
@@ -2810,11 +2795,51 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
     {
       "question_id": "check_discriminates",
       "target": "check:c003",
-      "verdict": "push_back",
-      "rationale": "test_compare_flags_large_changes DOES NOT DISCRIMINATE — assertion '>' in result is trivially true in any markdown table. The check has no mechanical proof that >10% flagging works.",
+      "verdict": "pass",
+      "rationale": "RESOLVED at 401b7bc: test_compare_flags_large_changes now discriminates the >10% threshold in both directions (task_a 50% IS flagged via the 'Flagged Tasks' section + '**>10%**' row marker; task_b 5% is NOT). Mutation-verified — flag-nothing and flag-everything each fail an assertion. The prior trivially-true \"'**' in result\" assertion is gone.",
       "judged_sha": "393e16a8faa73db3f3a677ae80a5b124b1090127"
     }
-  ]
+  ],
+  "audit": {
+    "ran_at": "2026-06-21T00:00:00Z",
+    "result": "pass",
+    "verified_at_commit": "51d44c262a8e90906e0a2e1af4ad3568b39dc621",
+    "drift": [
+      {
+        "finding": "Test count increased from 44 to 46 at HEAD (51d44c2). Two SD-B tests added: TestReportExcludesFailedRuns::test_failed_run_excluded_from_accuracy_and_noted (report.py shows 'Failed Runs' section, excludes crashed runs from accuracy denominator) and TestCostPerCorrectExcludesFailures::test_errored_record_excluded (stats.py cost_per_correct excludes errored records). Both pass. The SD-B failure-surfacing behavior is now verified in the analysis layer."
+      }
+    ],
+    "verdicts": [
+      {
+        "check_id": "c001",
+        "verdict": "pass",
+        "evidence_path": "src/copeca/analysis/stats.py (compute_stats, bootstrap_ci, ascii_sparkline) + src/copeca/analysis/report.py (generate_report, delta-headline). SD-B: crashed runs (error set, non-zero exit_code) are excluded from accuracy denominator and surfaced in report.py 'Failed Runs' section. tests/analysis/ 46/46 pass at 51d44c2 (incl. delta-headline, CI-in-headline, per-task table, per-language/per-difficulty aggregation, TestReportExcludesFailedRuns::test_failed_run_excluded_from_accuracy_and_noted). Run: PATH=$PWD/.venv/bin:$PATH python -m pytest tests/analysis/ -q -> 46 passed.",
+        "evidence_sha": "54a9fb10c82152fc1423dd513b47826dc2251bb9",
+        "validates_job_satisfied": true
+      },
+      {
+        "check_id": "c002",
+        "verdict": "pass",
+        "evidence_path": "src/copeca/analysis/report.py (adversarial summary, sparklines, tool adoption sections). SD-D: token sparklines now use deduplicated per-message-id usage counts (fixed 2-3x over-count). test_report.py adversarial/sparkline/tool_adoption assertions pass (within the 46). Run: PATH=$PWD/.venv/bin:$PATH python -m pytest tests/analysis/ -q -> 46 passed.",
+        "evidence_sha": "ed629f9c03f687fa326f64e7fc006f0bbecc549e",
+        "validates_job_satisfied": true
+      },
+      {
+        "check_id": "c003",
+        "verdict": "pass",
+        "evidence_path": "src/copeca/analysis/compare.py (compare_runs, per-task delta, >10% flagging). tests/analysis/test_compare.py 5/5 pass. test_compare_flags_large_changes discriminates the threshold in both directions. Run: PATH=$PWD/.venv/bin:$PATH python -m pytest tests/analysis/test_compare.py -q -> 5 passed.",
+        "evidence_sha": "305b0796716c1b5b2c3b2ff12db678f3a8b92631",
+        "validates_job_satisfied": true
+      },
+      {
+        "check_id": "c004",
+        "verdict": "pass",
+        "evidence_path": "src/copeca/analysis/stats.py::cost_per_correct (returns None when correct=0, excludes errored records per SD-B) + src/copeca/analysis/report.py (renders 'n/a (0 correct)', excludes None from delta+bootstrap, accuracy co-headline, 'Failed Runs' section for error!=None records). tests/analysis/ -k 'zero_correct or accuracy or errored or failed' -> 5 passed: test_cost_per_correct_zero_correct_returns_none, test_report_zero_correct_experimental_shows_na, test_report_zero_correct_headline_describes_situation, test_report_accuracy_shown_alongside_cost_per_correct, test_errored_record_excluded. Run: PATH=$PWD/.venv/bin:$PATH python -m pytest tests/analysis/ -q -> 46 passed.",
+        "evidence_sha": "54a9fb10c82152fc1423dd513b47826dc2251bb9",
+        "validates_job_satisfied": true
+      }
+    ]
+  }
 }
 </script>
 <!-- OO:DATA:END -->

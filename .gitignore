@@ -7,11 +7,22 @@ __pycache__/
 .mypy_cache/
 .ruff_cache/
 *.egg-info/
+build/
+dist/
 .coverage
 coverage.json
 /results/
 repos/_bare/
 repos/_worktrees/
 .claude/settings.local.json
-playwright-mcp/
+.playwright-mcp/
 .petalsrc
+
+# ── Internal — not published to the public repo ───────────────────────────
+# Brand system (shared across the plotplot garden)
+.brand/
+# Working/research docs — product docs (docs/*.md) and the tend map (docs/tend/) stay tracked
+docs/ideas/
+docs/research/
+docs/copeca-build-workflow.md
+docs/tend-feedback.md

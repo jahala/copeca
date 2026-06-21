@@ -34,6 +34,7 @@ def parse_stream_json(raw: str) -> RunResult:
         return RunResult()
 
     turns: list[Turn] = []
+    seen_message_ids: set[str] = set()
     tool_calls: list[ToolCall] = []
     result_text = ""
     vendor_cost = 0.0
@@ -56,12 +57,23 @@ def parse_stream_json(raw: str) -> RunResult:
 
         # Extract turn data from assistant messages with usage
         if usage:
-            turns.append(Turn(
-                input_tokens=usage.get("input_tokens", 0),
-                output_tokens=usage.get("output_tokens", 0),
-                cache_creation_tokens=usage.get("cache_creation_input_tokens", 0),
-                cache_read_tokens=usage.get("cache_read_input_tokens", 0),
-            ))
+            # Claude streams one assistant message as several events (one per
+            # content block: thinking / text / tool_use), each repeating the
+            # message's full usage. Count usage ONCE per message id, else tokens
+            # and computed cost inflate ~2-3x (shakedown SD-D). Tool calls and
+            # text are still collected from every event below.
+            msg_id = msg.get("id")
+            if msg_id is None or msg_id not in seen_message_ids:
+                if msg_id is not None:
+                    seen_message_ids.add(msg_id)
+                turns.append(
+                    Turn(
+                        input_tokens=usage.get("input_tokens", 0),
+                        output_tokens=usage.get("output_tokens", 0),
+                        cache_creation_tokens=usage.get("cache_creation_input_tokens", 0),
+                        cache_read_tokens=usage.get("cache_read_input_tokens", 0),
+                    )
+                )
 
         # Extract tool calls from user messages
         content = msg.get("content", [])

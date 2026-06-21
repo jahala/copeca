@@ -9,20 +9,22 @@ from pathlib import Path
 
 import yaml
 
-TASKS_DIR = Path(__file__).resolve().parent.parent.parent / "tasks"
-PROJECT_ROOT = TASKS_DIR.parent
+from copeca.config.resources import data_path
+
+TASKS_DIR = data_path("tasks")
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 COPECA = PROJECT_ROOT / ".venv" / "bin" / "copeca"
 
 # Approved source families — sources that tasks may draw from.
 # Each entry is a prefix that task.source must start with.
 APPROVED_SOURCE_PREFIXES = (
-    "SWE-QA",            # Apache-2.0 — QA tasks
-    "SCBench",           # MIT — function retrieval
-    "Long Code Arena",   # Apache-2.0 — bug localization
-    "CrossCodeEval",     # Apache-2.0 — repository discovery
-    "SWE-bench-Live",    # MIT — time-gated edits
-    "Terminal-Bench 2.0", # Apache-2.0 — CLI tasks
-    "tilth-benchmark",   # MIT — migrated tasks
+    "SWE-QA",  # Apache-2.0 — QA tasks
+    "SCBench",  # MIT — function retrieval
+    "Long Code Arena",  # Apache-2.0 — bug localization
+    "CrossCodeEval",  # Apache-2.0 — repository discovery
+    "SWE-bench-Live",  # MIT — time-gated edits
+    "Terminal-Bench 2.0",  # Apache-2.0 — CLI tasks
+    "tilth-benchmark",  # MIT — migrated tasks
 )
 # Sources that are explicitly disallowed (NWC/NC/ND, contaminated, deprecated).
 BLOCKED_SOURCE_PREFIXES = (
@@ -92,9 +94,7 @@ class TestSourceFields:
         approved = set(APPROVED_SOURCE_PREFIXES)
         blocked = set(BLOCKED_SOURCE_PREFIXES)
         overlap = approved & blocked
-        assert not overlap, (
-            f"Overlap between APPROVED and BLOCKED source prefixes: {overlap}"
-        )
+        assert not overlap, f"Overlap between APPROVED and BLOCKED source prefixes: {overlap}"
 
 
 class TestComprehensionTasks:
@@ -108,9 +108,7 @@ class TestComprehensionTasks:
             comprehension_count += 1
             gt = task.get("ground_truth", {})
             required = gt.get("required_strings", [])
-            assert isinstance(required, list), (
-                f"{path.name}: required_strings must be a list"
-            )
+            assert isinstance(required, list), f"{path.name}: required_strings must be a list"
             assert len(required) > 0, (
                 f"{path.name}: comprehension task must have at least one required_string"
             )
@@ -122,7 +120,11 @@ class TestComprehensionTasks:
 
 class TestEditTasks:
     def test_edit_tasks_have_mutations_and_test_command(self):
-        """All edit tasks have a non-empty mutations list and test_command."""
+        """All edit tasks have a non-empty mutations or mutation_sequence, plus a test_command.
+
+        debug-category edit tasks use mutation_sequence (committed history) instead of
+        the plain mutations list — both are valid ways to introduce a regression.
+        """
         edit_count = 0
         for path in _discover_task_files():
             task = _load_task(path)
@@ -131,38 +133,31 @@ class TestEditTasks:
             edit_count += 1
 
             mutations = task.get("mutations", [])
-            assert isinstance(mutations, list), (
-                f"{path.name}: mutations must be a list"
+            mutation_sequence = task.get("mutation_sequence", [])
+            assert isinstance(mutations, list), f"{path.name}: mutations must be a list"
+            assert isinstance(mutation_sequence, list), (
+                f"{path.name}: mutation_sequence must be a list"
             )
-            assert len(mutations) > 0, (
-                f"{path.name}: edit task must have at least one mutation"
+            assert len(mutations) > 0 or len(mutation_sequence) > 0, (
+                f"{path.name}: edit task must have at least one mutation "
+                f"(in 'mutations' or 'mutation_sequence')"
             )
 
             gt = task.get("ground_truth", {})
             test_cmd = gt.get("test_command", [])
-            assert isinstance(test_cmd, list), (
-                f"{path.name}: test_command must be a list"
-            )
-            assert len(test_cmd) > 0, (
-                f"{path.name}: edit task must have a non-empty test_command"
-            )
+            assert isinstance(test_cmd, list), f"{path.name}: test_command must be a list"
+            assert len(test_cmd) > 0, f"{path.name}: edit task must have a non-empty test_command"
 
-        assert edit_count >= 5, (
-            f"Expected at least 5 edit tasks, found {edit_count}"
-        )
+        assert edit_count >= 5, f"Expected at least 5 edit tasks, found {edit_count}"
 
 
 class TestCounts:
     def test_count_at_least_five_each(self):
         """At least 5 comprehension and 5 edit tasks."""
         comp = sum(
-            1 for p in _discover_task_files()
-            if _load_task(p).get("type") == "comprehension"
+            1 for p in _discover_task_files() if _load_task(p).get("type") == "comprehension"
         )
-        edit = sum(
-            1 for p in _discover_task_files()
-            if _load_task(p).get("type") == "edit"
-        )
+        edit = sum(1 for p in _discover_task_files() if _load_task(p).get("type") == "edit")
         assert comp >= 5, f"Expected >= 5 comprehension tasks, got {comp}"
         assert edit >= 5, f"Expected >= 5 edit tasks, got {edit}"
 
@@ -170,20 +165,15 @@ class TestCounts:
 class TestLanguages:
     def test_languages_include_rust_python_go_javascript(self):
         """Task files cover all 4 required languages."""
-        seen = {
-            _load_task(p).get("language", "")
-            for p in _discover_task_files()
-        }
+        seen = {_load_task(p).get("language", "") for p in _discover_task_files()}
         missing = REQUIRED_LANGUAGES - seen
-        assert not missing, (
-            f"Missing languages: {missing}. Found: {seen}"
-        )
+        assert not missing, f"Missing languages: {missing}. Found: {seen}"
 
 
 class TestRepos:
     def test_all_repos_referenced_exist_in_repos_yaml(self):
         """Every task's repo key exists in repos.yaml."""
-        repos_yaml = PROJECT_ROOT / "repos.yaml"
+        repos_yaml = data_path("repos.yaml")
         with open(repos_yaml) as f:
             repo_data = yaml.safe_load(f)
         known_repos = set(repo_data.keys())

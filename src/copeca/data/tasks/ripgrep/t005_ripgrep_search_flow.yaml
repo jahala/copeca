@@ -1,0 +1,28 @@
+name: t005_ripgrep_search_flow
+description: "Trace ripgrep's execution from main() to a first line match, covering file opening, Worker coordination, and matcher/printer handoff; tests deep call-chain tracing across concurrent code."
+source: "SWE-QA (Apache-2.0)"
+repo: ripgrep
+type: comprehension
+category: trace
+language: rust
+difficulty: hard
+version: 1
+prompt: |
+  Trace the search execution flow from `main()` to the first line match in
+  ripgrep. What function opens the file? How does the search worker
+  coordinate across threads? Describe the key function calls from the entry
+  point through to a match being produced.
+ground_truth:
+  required_strings:
+    - search
+    - Worker
+    - grep
+    - matcher
+    - printer
+  all_of:
+    - search
+    - Worker
+    - grep
+  forbidden_strings:
+    - "I cannot"
+    - "unable to"

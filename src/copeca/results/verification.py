@@ -1,16 +1,77 @@
-"""Artifact verification — content_hash integrity checks for .copeca zips.
+"""Artifact verification — content_hash integrity + detached-signature checks.
 
 Architecture: adapter. Filesystem I/O for artifact verification.
 Never imports from orchestration/.
+
+Two levels of verification:
+  - ``verify_artifact`` — recomputes the content_hash and per-file hashes from
+    the zip's own members. Detects accidental corruption. NOT tamper-proof: an
+    attacker who rewrites the zip can recompute these too.
+  - ``verify_signed_artifact`` — additionally checks the detached Ed25519
+    ``manifest.sig`` against a trusted public key. A tampered-and-recomputed
+    artifact fails here (the attacker lacks the private key). An unsigned
+    artifact is reported as unsigned and given corruption detection only.
 """
 
 from __future__ import annotations
 
 import hashlib
+import itertools
 import json
+import re
 import zipfile
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+from copeca.results.artifact import MANIFEST_SIG_NAME
+
+if TYPE_CHECKING:
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+
+
+# Matches: {task}__{mode}__{model}__rep{NN}.copeca.zip
+_ARTIFACT_RE = re.compile(
+    r"^(?P<task>.+)__(?P<mode>.+)__(?P<model>.+)__rep(?P<rep>\d+)\.copeca\.zip$"
+)
+
+# Zip-bomb guard: maximum allowed decompressed size per member (100 MiB).
+# Checked against ZipInfo.file_size before any bytes are read into memory.
+MAX_MEMBER_BYTES: int = 100 * 1024 * 1024  # 100 MiB
+
+
+def _parse_artifact_identity(filename: str) -> dict[str, Any] | None:
+    """Parse a .copeca zip filename into its (task, mode, model, repetition) identity.
+
+    Returns None if the filename does not match the expected pattern.
+
+    Pure function — no I/O.
+    """
+    m = _ARTIFACT_RE.match(filename)
+    if not m:
+        return None
+    return {
+        "task": m.group("task"),
+        "mode": m.group("mode"),
+        "model": m.group("model"),
+        "repetition": int(m.group("rep")),
+    }
+
+
+def _expected_identities(scenario: Any) -> list[dict[str, Any]]:
+    """Build the full cross-product of expected (task, mode, model, rep) identities.
+
+    Pure function — no I/O.
+    """
+    return [
+        {"task": task, "mode": mode, "model": model, "repetition": rep}
+        for task, mode, model, rep in itertools.product(
+            scenario.tasks,
+            scenario.modes,
+            scenario.models,
+            range(scenario.repetitions),
+        )
+    ]
 
 
 def verify_artifact(path: Path) -> tuple[bool, str]:
@@ -57,10 +118,32 @@ def verify_artifact(path: Path) -> tuple[bool, str]:
         if not expected_content_hash:
             return False, "content_hash missing from manifest.json"
 
-        # Recompute hashes for all non-manifest files
+        # Zip-bomb guard: check decompressed sizes from central-directory headers
+        # before reading any member bytes into memory.
+        cumulative_bytes = 0
+        for info in zf.infolist():
+            if info.filename in ("manifest.json", MANIFEST_SIG_NAME):
+                continue
+            if info.file_size > MAX_MEMBER_BYTES:
+                return (
+                    False,
+                    f"Artifact rejected: member '{info.filename}' decompressed size "
+                    f"({info.file_size} bytes) exceeds cap ({MAX_MEMBER_BYTES} bytes)",
+                )
+            cumulative_bytes += info.file_size
+            if cumulative_bytes > MAX_MEMBER_BYTES:
+                return (
+                    False,
+                    f"Artifact rejected: total decompressed size exceeds cap "
+                    f"({MAX_MEMBER_BYTES} bytes)",
+                )
+
+        # Recompute hashes for all content files. manifest.json holds the
+        # expected hashes; manifest.sig is the detached signature that stands
+        # OUTSIDE the content_hash (it signs the hash, so it cannot be hashed in).
         file_hashes: dict[str, str] = {}
         for name in sorted(namelist):
-            if name == "manifest.json":
+            if name in ("manifest.json", MANIFEST_SIG_NAME):
                 continue
             try:
                 data = zf.read(name)
@@ -73,9 +156,7 @@ def verify_artifact(path: Path) -> tuple[bool, str]:
 
         # Compute content_hash from sorted per-file hashes
         sorted_hashes = [file_hashes[k] for k in sorted(file_hashes)]
-        computed_content_hash = hashlib.sha256(
-            "".join(sorted_hashes).encode("utf-8")
-        ).hexdigest()
+        computed_content_hash = hashlib.sha256("".join(sorted_hashes).encode("utf-8")).hexdigest()
 
         if computed_content_hash != expected_content_hash:
             # Determine which file(s) are mismatched
@@ -102,46 +183,186 @@ def verify_artifact(path: Path) -> tuple[bool, str]:
         return True, "Artifact valid: content_hash matches all files"
 
 
+@dataclass(frozen=True)
+class SignatureReport:
+    """Result of signature-aware artifact verification.
+
+    Attributes:
+        signed: Whether the artifact carries a detached signature (manifest.sig).
+        valid: Whether a signature was verified against the trusted public key
+            over the recomputed content_hash. False for unsigned artifacts, for a
+            signature that fails the key, and when no public key was supplied.
+        corruption_ok: The integrity-manifest result (True = no corruption).
+        message: Human-readable summary.
+    """
+
+    signed: bool
+    valid: bool
+    corruption_ok: bool
+    message: str
+
+
+def _read_zip_members(
+    path: Path,
+) -> tuple[str | None, bytes | None]:
+    """Read (content_hash, signature_bytes) from a .copeca zip.
+
+    Returns (None, None) for content_hash when the manifest is absent/unparseable
+    and None for signature_bytes when manifest.sig is absent. Thin I/O wrapper.
+    """
+    with zipfile.ZipFile(path, "r") as zf:
+        namelist = zf.namelist()
+        content_hash: str | None = None
+        if "manifest.json" in namelist:
+            try:
+                content_hash = json.loads(zf.read("manifest.json")).get("content_hash")
+            except (KeyError, json.JSONDecodeError):
+                content_hash = None
+        signature: bytes | None = None
+        if MANIFEST_SIG_NAME in namelist:
+            signature = zf.read(MANIFEST_SIG_NAME)
+    return content_hash, signature
+
+
+def verify_signed_artifact(
+    path: Path,
+    public_key: Ed25519PublicKey | None = None,
+) -> SignatureReport:
+    """Verify integrity AND, when present, the detached signature.
+
+    This is the real tamper-evidence path (F-C2). Steps:
+      1. Run the integrity-manifest check (corruption detection).
+      2. If a signature is present and a trusted public key is supplied, verify
+         it over the recomputed content_hash.
+
+    An UNSIGNED artifact reports ``signed=False`` and is given corruption
+    detection only — it is never reported as tamper-proof. A signed artifact with
+    a tampered-and-recomputed manifest fails (``valid=False``) because the
+    attacker cannot re-sign the new content_hash.
+
+    Args:
+        path: Path to the .copeca zip.
+        public_key: Trusted Ed25519 public key. When None, the signature (if any)
+            is not checked — but its presence is still reported via ``signed``.
+
+    Returns:
+        A SignatureReport.
+
+    Raises:
+        FileNotFoundError: If the path does not exist.
+    """
+    corruption_ok, corruption_msg = verify_artifact(path)
+
+    # If the zip could not be opened/parsed, there is nothing further to check.
+    try:
+        content_hash, signature = _read_zip_members(path)
+    except (zipfile.BadZipFile, OSError):
+        return SignatureReport(
+            signed=False,
+            valid=False,
+            corruption_ok=corruption_ok,
+            message=corruption_msg,
+        )
+
+    if signature is None:
+        return SignatureReport(
+            signed=False,
+            valid=False,
+            corruption_ok=corruption_ok,
+            message=(f"Unsigned artifact (corruption detection only): {corruption_msg}"),
+        )
+
+    if public_key is None:
+        return SignatureReport(
+            signed=True,
+            valid=False,
+            corruption_ok=corruption_ok,
+            message=(
+                "Artifact is signed; no public key supplied to verify it "
+                f"(corruption detection only): {corruption_msg}"
+            ),
+        )
+
+    if content_hash is None:
+        return SignatureReport(
+            signed=True,
+            valid=False,
+            corruption_ok=corruption_ok,
+            message="Artifact is signed but content_hash is missing/unparseable",
+        )
+
+    from copeca.results.signing import verify_signature
+
+    sig_valid = verify_signature(content_hash, signature, public_key)
+    if sig_valid:
+        return SignatureReport(
+            signed=True,
+            valid=True,
+            corruption_ok=corruption_ok,
+            message="Artifact signature valid: content_hash signed by the trusted key",
+        )
+    return SignatureReport(
+        signed=True,
+        valid=False,
+        corruption_ok=corruption_ok,
+        message=(
+            "Artifact signature INVALID: signature does not match the content_hash "
+            "under the supplied key (tampered, wrong key, or corrupt signature)"
+        ),
+    )
+
+
 def verify_batch(
     results_dir: Path,
     scenario: Any | None = None,
 ) -> dict[str, object]:
     """Verify all .copeca zips in a directory.
 
+    When a scenario is provided, compares by IDENTITY: parses each artifact
+    filename into (task, mode, model, rep) and returns the specific missing
+    and unexpected run identities.
+
     Args:
         results_dir: Directory containing .copeca zip files.
-        scenario: Optional Scenario to compute expected run count.
-                  When provided, missing = expected - actual (minimum 0).
-                  When None, missing defaults to 0.
+        scenario: Optional Scenario for identity-based completeness checking.
+                  When None, missing/unexpected identity fields are empty lists.
 
     Returns:
-        {"authentic": N, "tampered": [...], "missing": N}
+        {
+            "authentic": N,
+            "tampered": [filename, ...],
+            "missing": N,               # len(missing_ids) for backward compat
+            "missing_ids": [...],       # specific absent identities (with scenario)
+            "unexpected_ids": [...],    # identities present but not in expected set
+        }
     """
     authentic = 0
     tampered: list[str] = []
-    actual_count = 0
+    found_ids: list[dict[str, Any]] = []
 
     if not results_dir.is_dir():
         if scenario is not None:
-            expected = (
-                len(scenario.tasks)
-                * len(scenario.modes)
-                * len(scenario.models)
-                * scenario.repetitions
-            )
+            expected_ids = _expected_identities(scenario)
             return {
                 "authentic": 0,
                 "tampered": [],
-                "missing": max(expected, 0),
+                "missing": len(expected_ids),
+                "missing_ids": expected_ids,
+                "unexpected_ids": [],
             }
-        return {"authentic": 0, "tampered": [], "missing": 0}
+        return {
+            "authentic": 0,
+            "tampered": [],
+            "missing": 0,
+            "missing_ids": [],
+            "unexpected_ids": [],
+        }
 
     for entry in sorted(results_dir.iterdir()):
         if not entry.is_file():
             continue
-        if entry.suffix != ".zip" and not entry.name.endswith(".copeca.zip"):
+        if not entry.name.endswith(".copeca.zip"):
             continue
-        actual_count += 1
         try:
             valid, message = verify_artifact(entry)
         except FileNotFoundError:
@@ -152,14 +373,40 @@ def verify_batch(
         else:
             tampered.append(entry.name)
 
-    missing = 0
-    if scenario is not None:
-        expected = (
-            len(scenario.tasks)
-            * len(scenario.modes)
-            * len(scenario.models)
-            * scenario.repetitions
-        )
-        missing = max(expected - actual_count, 0)
+        identity = _parse_artifact_identity(entry.name)
+        if identity is not None:
+            found_ids.append(identity)
 
-    return {"authentic": authentic, "tampered": tampered, "missing": missing}
+    if scenario is None:
+        return {
+            "authentic": authentic,
+            "tampered": tampered,
+            "missing": 0,
+            "missing_ids": [],
+            "unexpected_ids": [],
+        }
+
+    expected_ids = _expected_identities(scenario)
+    # Use frozensets of items for O(1) membership test
+    expected_set = {(d["task"], d["mode"], d["model"], d["repetition"]) for d in expected_ids}
+    found_set = {(d["task"], d["mode"], d["model"], d["repetition"]) for d in found_ids}
+
+    missing_keys = expected_set - found_set
+    unexpected_keys = found_set - expected_set
+
+    missing_ids = [
+        {"task": t, "mode": mo, "model": ml, "repetition": r}
+        for t, mo, ml, r in sorted(missing_keys)
+    ]
+    unexpected_ids = [
+        {"task": t, "mode": mo, "model": ml, "repetition": r}
+        for t, mo, ml, r in sorted(unexpected_keys)
+    ]
+
+    return {
+        "authentic": authentic,
+        "tampered": tampered,
+        "missing": len(missing_ids),
+        "missing_ids": missing_ids,
+        "unexpected_ids": unexpected_ids,
+    }

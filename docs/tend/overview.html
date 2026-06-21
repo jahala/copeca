@@ -2770,7 +2770,7 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
     {
       "id": "copeca-single-run",
       "title": "copeca-single-run",
-      "status": "planned",
+      "status": "verified",
       "priority": "high",
       "dependencies": [
         "copeca-validate-tasks"
@@ -2861,7 +2861,7 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
         "pricing-drift-unchecked"
       ],
       "journey_phase": "calibrate",
-      "what": "Cross-provider cost normalization — every run's cost is computed as Σ tokens × runner.pricing[model], never trusted from vendor self-reported numbers. Vendor cost is a cross-check only; >5% divergence",
+      "what": "Cost recorded two ways. The vendor's BILLED cost is the authoritative headline (`total_cost_usd`, `cost_source=vendor`) when the runner reports it — it captures cache hits, cache TTL (1h vs 5m), servi",
       "thumbnail": {
         "kind": "svg",
         "content": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 200 120\" fill=\"none\">\n  <rect width=\"200\" height=\"120\" rx=\"8\" fill=\"#FAF5E9\"/>\n  <g transform=\"translate(30,28)\">\n    <circle cx=\"70\" cy=\"30\" r=\"28\" fill=\"none\" stroke=\"#E89227\" stroke-width=\"2\" opacity=\"0.5\"/>\n    <circle cx=\"70\" cy=\"30\" r=\"18\" fill=\"#E89227\" opacity=\"0.12\"/>\n    <text x=\"70\" y=\"26\" text-anchor=\"middle\" font-family=\"system-ui, sans-serif\" font-size=\"10\" fill=\"#3A2718\" font-weight=\"700\">T</text>\n    <text x=\"70\" y=\"38\" text-anchor=\"middle\" font-family=\"system-ui, sans-serif\" font-size=\"7\" fill=\"#3A2718\" font-weight=\"600\">tokens</text>\n  </g>\n  <path d=\"M88,58 L112,58\" stroke=\"#357E2C\" stroke-width=\"2.5\"/>\n  <polygon points=\"108,54 118,58 108,62\" fill=\"#357E2C\"/>\n  <text x=\"100\" y=\"78\" text-anchor=\"middle\" font-family=\"system-ui, sans-serif\" font-size=\"12\" fill=\"#357E2C\" font-weight=\"700\">$</text>\n  <text x=\"100\" y=\"100\" text-anchor=\"middle\" font-family=\"system-ui, sans-serif\" font-size=\"9\" fill=\"#3A2718\" font-weight=\"600\">COST</text>\n</svg>"
@@ -2887,7 +2887,7 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
         "no-verifiable-results"
       ],
       "journey_phase": "verify",
-      "what": "Tamper-evident `.copeca` artifact zips — every run optionally produces a SHA-256-hash-chained archive containing the full session (stdout, stderr, parsed turns), the task/runner/repos config, the post",
+      "what": "`.copeca` artifact zips — every run optionally produces a SHA-256 integrity manifest covering the full session (stdout, stderr, parsed turns), the task/runner/repos config, the post-mutation diff, and",
       "thumbnail": {
         "kind": "svg",
         "content": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 200 120\" fill=\"none\">\n  <rect width=\"200\" height=\"120\" rx=\"8\" fill=\"#FAF5E9\"/>\n  <g transform=\"translate(50,20)\">\n    <rect x=\"0\" y=\"10\" width=\"48\" height=\"56\" rx=\"3\" fill=\"#3F7186\" opacity=\"0.1\" stroke=\"#3F7186\" stroke-width=\"2\"/>\n    <rect x=\"4\" y=\"14\" width=\"40\" height=\"5\" rx=\"1\" fill=\"#3A2718\" opacity=\"0.15\"/>\n    <rect x=\"4\" y=\"22\" width=\"30\" height=\"4\" rx=\"1\" fill=\"#3A2718\" opacity=\"0.12\"/>\n    <rect x=\"4\" y=\"28\" width=\"36\" height=\"4\" rx=\"1\" fill=\"#3A2718\" opacity=\"0.12\"/>\n    <line x1=\"4\" y1=\"36\" x2=\"44\" y2=\"36\" stroke=\"#3A2718\" stroke-width=\"0.5\" opacity=\"0.2\"/>\n    <rect x=\"4\" y=\"40\" width=\"28\" height=\"4\" rx=\"1\" fill=\"#E89227\" opacity=\"0.25\"/>\n    <rect x=\"4\" y=\"47\" width=\"34\" height=\"4\" rx=\"1\" fill=\"#E89227\" opacity=\"0.25\"/>\n    <rect x=\"4\" y=\"54\" width=\"22\" height=\"4\" rx=\"1\" fill=\"#E89227\" opacity=\"0.25\"/>\n    <circle cx=\"74\" cy=\"38\" r=\"8\" fill=\"none\" stroke=\"#3F7186\" stroke-width=\"2.5\"/>\n    <rect x=\"71\" y=\"35\" width=\"6\" height=\"6\" rx=\"1\" fill=\"none\" stroke=\"#3F7186\" stroke-width=\"1.5\"/>\n  </g>\n  <text x=\"85\" y=\"95\" text-anchor=\"middle\" font-family=\"system-ui, sans-serif\" font-size=\"9\" fill=\"#3A2718\" font-weight=\"600\">VERIFY</text>\n</svg>"
@@ -2896,7 +2896,7 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
     {
       "id": "copeca-analysis-reporting",
       "title": "copeca-analysis-reporting",
-      "status": "planned",
+      "status": "verified",
       "priority": "high",
       "dependencies": [
         "copeca-scenario-matrix",
@@ -2925,7 +2925,7 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
     {
       "id": "copeca-task-corpus",
       "title": "copeca-task-corpus",
-      "status": "planned",
+      "status": "verified",
       "priority": "high",
       "dependencies": [
         "copeca-validate-tasks"
@@ -2950,7 +2950,7 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
     {
       "id": "copeca-docs-and-init",
       "title": "copeca-docs-and-init",
-      "status": "planned",
+      "status": "verified",
       "priority": "medium",
       "dependencies": [
         "copeca-validate-tasks",
@@ -2971,7 +2971,7 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
       "what": "Production-ready documentation and project scaffolding — `copeca init ./my-benchmark` bootstraps a working suite in one command. Docs cover task authoring, runner configuration, metrics, methodology, ",
       "thumbnail": {
         "kind": "svg",
-        "content": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"200\" height=\"120\" viewBox=\"0 0 200 120\">\n  <rect width=\"200\" height=\"120\" fill=\"#FAF5E9\"/>\n  <rect x=\"100\" y=\"15\" width=\"80\" height=\"90\" rx=\"4\" fill=\"#3A2718\" opacity=\"0.08\"/>\n  <rect x=\"108\" y=\"23\" width=\"64\" height=\"5\" rx=\"1\" fill=\"#3A2718\" opacity=\"0.15\"/>\n  <rect x=\"108\" y=\"32\" width=\"52\" height=\"5\" rx=\"1\" fill=\"#3A2718\" opacity=\"0.12\"/>\n  <rect x=\"108\" y=\"41\" width=\"58\" height=\"5\" rx=\"1\" fill=\"#3A2718\" opacity=\"0.15\"/>\n  <rect x=\"108\" y=\"50\" width=\"40\" height=\"5\" rx=\"1\" fill=\"#3A2718\" opacity=\"0.1\"/>\n  <rect x=\"108\" y=\"59\" width=\"48\" height=\"5\" rx=\"1\" fill=\"#3A2718\" opacity=\"0.12\"/>\n  <rect x=\"108\" y=\"68\" width=\"56\" height=\"5\" rx=\"1\" fill=\"#3A2718\" opacity=\"0.15\"/>\n  <rect x=\"108\" y=\"77\" width=\"35\" height=\"5\" rx=\"1\" fill=\"#3A2718\" opacity=\"0.1\"/>\n  <rect x=\"108\" y=\"86\" width=\"44\" height=\"5\" rx=\"1\" fill=\"#3A2718\" opacity=\"0.12\"/>\n  <path d=\"M35,90 Q35,60 50,55 L55,55 M50,55 L45,50 M50,55 L45,60\" stroke=\"#357E2C\" stroke-width=\"2\" fill=\"none\"/>\n  <circle cx=\"35\" cy=\"94\" r=\"5\" fill=\"#3A2718\"/>\n  <text x=\"35\" y=\"108\" text-anchor=\"middle\" font-family=\"sans-serif\" font-size=\"7\" fill=\"#3A2718\" opacity=\"0.6\">seed</text>\n  <circle cx=\"25\" cy=\"30\" r=\"3\" fill=\"#E89227\" opacity=\"0.8\"/>\n  <text x=\"32\" y=\"30\" font-family=\"monospace\" font-size=\"7\" fill=\"#3A2718\">copeca init</text>\n  <text x=\"32\" y=\"42\" font-family=\"monospace\" font-size=\"7\" fill=\"#3A2718\">/benchmark</text>\n  <rect x=\"25\" y=\"52\" width=\"4\" height=\"7\" fill=\"#357E2C\" opacity=\"0.6\"/>\n  <text x=\"34\" y=\"58\" font-family=\"monospace\" font-size=\"7\" fill=\"#3A2718\">tasks/ *85</text>\n  <rect x=\"25\" y=\"66\" width=\"4\" height=\"7\" fill=\"#357E2C\" opacity=\"0.6\"/>\n  <text x=\"34\" y=\"72\" font-family=\"monospace\" font-size=\"7\" fill=\"#3A2718\">repos.yaml</text>\n  <rect x=\"25\" y=\"80\" width=\"4\" height=\"7\" fill=\"#357E2C\" opacity=\"0.6\"/>\n  <text x=\"34\" y=\"86\" font-family=\"monospace\" font-size=\"7\" fill=\"#3A2718\">scenarios/</text>\n</svg>"
+        "content": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"200\" height=\"120\" viewBox=\"0 0 200 120\">\n  <rect width=\"200\" height=\"120\" fill=\"#FAF5E9\"/>\n  <rect x=\"100\" y=\"15\" width=\"80\" height=\"90\" rx=\"4\" fill=\"#3A2718\" opacity=\"0.08\"/>\n  <rect x=\"108\" y=\"23\" width=\"64\" height=\"5\" rx=\"1\" fill=\"#3A2718\" opacity=\"0.15\"/>\n  <rect x=\"108\" y=\"32\" width=\"52\" height=\"5\" rx=\"1\" fill=\"#3A2718\" opacity=\"0.12\"/>\n  <rect x=\"108\" y=\"41\" width=\"58\" height=\"5\" rx=\"1\" fill=\"#3A2718\" opacity=\"0.15\"/>\n  <rect x=\"108\" y=\"50\" width=\"40\" height=\"5\" rx=\"1\" fill=\"#3A2718\" opacity=\"0.1\"/>\n  <rect x=\"108\" y=\"59\" width=\"48\" height=\"5\" rx=\"1\" fill=\"#3A2718\" opacity=\"0.12\"/>\n  <rect x=\"108\" y=\"68\" width=\"56\" height=\"5\" rx=\"1\" fill=\"#3A2718\" opacity=\"0.15\"/>\n  <rect x=\"108\" y=\"77\" width=\"35\" height=\"5\" rx=\"1\" fill=\"#3A2718\" opacity=\"0.1\"/>\n  <rect x=\"108\" y=\"86\" width=\"44\" height=\"5\" rx=\"1\" fill=\"#3A2718\" opacity=\"0.12\"/>\n  <path d=\"M35,90 Q35,60 50,55 L55,55 M50,55 L45,50 M50,55 L45,60\" stroke=\"#357E2C\" stroke-width=\"2\" fill=\"none\"/>\n  <circle cx=\"35\" cy=\"94\" r=\"5\" fill=\"#3A2718\"/>\n  <text x=\"35\" y=\"108\" text-anchor=\"middle\" font-family=\"sans-serif\" font-size=\"7\" fill=\"#3A2718\" opacity=\"0.6\">seed</text>\n  <circle cx=\"25\" cy=\"30\" r=\"3\" fill=\"#E89227\" opacity=\"0.8\"/>\n  <text x=\"32\" y=\"30\" font-family=\"monospace\" font-size=\"7\" fill=\"#3A2718\">copeca init</text>\n  <text x=\"32\" y=\"42\" font-family=\"monospace\" font-size=\"7\" fill=\"#3A2718\">/benchmark</text>\n  <rect x=\"25\" y=\"52\" width=\"4\" height=\"7\" fill=\"#357E2C\" opacity=\"0.6\"/>\n  <text x=\"34\" y=\"58\" font-family=\"monospace\" font-size=\"7\" fill=\"#3A2718\">tasks/ *16</text>\n  <rect x=\"25\" y=\"66\" width=\"4\" height=\"7\" fill=\"#357E2C\" opacity=\"0.6\"/>\n  <text x=\"34\" y=\"72\" font-family=\"monospace\" font-size=\"7\" fill=\"#3A2718\">repos.yaml</text>\n  <rect x=\"25\" y=\"80\" width=\"4\" height=\"7\" fill=\"#357E2C\" opacity=\"0.6\"/>\n  <text x=\"34\" y=\"86\" font-family=\"monospace\" font-size=\"7\" fill=\"#3A2718\">scenarios/</text>\n</svg>"
       }
     }
   ],
@@ -2990,26 +2990,23 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
     "reason_codes": [
       "coverage_unclaimed",
       "coverage_path_missing",
-      "false_done",
-      "blocked",
-      "unblocked"
+      "narrative_cite_stale",
+      "narrative_media_orphan"
     ],
     "truth": {
-      "verified": 5,
+      "verified": 9,
       "total": 18,
       "stale": 0,
       "mock_only": 0,
-      "false_done": 2,
+      "false_done": 0,
       "auditable": 9,
       "audited": 9
     },
     "flow": {
-      "ready_now": 3,
-      "blocked": 1,
-      "bottleneck_feature_id": "copeca-analysis-reporting"
+      "ready_now": 0,
+      "blocked": 0
     },
     "value": {
-      "highest_value_unblocked": "copeca-analysis-reporting",
       "weakest_opportunity_coverage": "contamination-erodes-trust"
     },
     "lifecycle": {
@@ -3023,21 +3020,21 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
         "blocked": 0
       },
       "built": {
-        "count": 4,
-        "blocked": 1
+        "count": 0,
+        "blocked": 0
       },
       "verified": {
-        "count": 5,
+        "count": 9,
         "at_risk": 0
       }
     },
     "coherence": {
-      "total": 32,
+      "total": 60,
       "groups": [
         {
           "kind": "judgment_missing",
           "label": "judgment refresh",
-          "count": 19,
+          "count": 47,
           "route": "/tend brainstorm",
           "section": "spine"
         },
@@ -3057,7 +3054,7 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
         }
       ]
     },
-    "computed_at": "2026-06-20T11:33:59.651Z"
+    "computed_at": "2026-06-21T15:56:57.900Z"
   },
   "progress": {
     "implementation": 0,

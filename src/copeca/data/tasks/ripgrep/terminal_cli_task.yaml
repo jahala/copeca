@@ -1,0 +1,34 @@
+name: terminal_cli_task
+description: "Add validation to ripgrep's --max-depth flag parser so negative values produce a clear error instead of a panic; tests input-guard insertion in CLI argument parsing."
+source: "Terminal-Bench 2.0 (Apache-2.0)"
+repo: ripgrep
+type: edit
+category: fix
+language: rust
+difficulty: easy
+version: 1
+prompt: |
+  The ripgrep CLI accepts a --max-depth flag but does not validate that its
+  value is non-negative. Passing a negative value (e.g. --max-depth -1) leads
+  to a panic or undefined behavior. Locate where max-depth is parsed and add
+  input validation that rejects negative values with a clear error message.
+ground_truth:
+  required_strings:
+    - max_depth
+    - max-depth
+    - error
+    - negative
+  test_command:
+    - cargo
+    - build
+    - --bin
+    - rg
+  forbidden_strings:
+    - "I cannot"
+    - "unable to"
+mutations:
+  - file: crates/core/flags.rs
+    action: replace
+    find: "max_depth: Option<usize>"
+    replace: "max_depth: Option<isize>"
+    occurrence: 1

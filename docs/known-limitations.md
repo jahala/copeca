@@ -16,11 +16,11 @@ and the per-task breakdown in the report lets you spot correlated failures.
 
 ## Adversarial flags are heuristics, not proofs
 
-`token_snowball`, `talkative_failure`, and `tool_storm` use configurable
-thresholds. They catch obvious patterns (an agent burning 10x more tokens on
-turn 5 than turn 1) but may miss subtle waste or flag borderline cases.
-Threshold tuning is task-corpus-dependent. Flags that depend on data the
-runner does not provide are `null`, not `false`.
+`token_snowball`, `talkative_failure`, and `tool_storm` use hardcoded thresholds
+(per-scenario configuration is planned). They catch obvious patterns (an agent
+burning 10x more tokens on turn 5 than turn 1) but may miss subtle waste or flag
+borderline cases. Flags that depend on data the runner does not provide are
+`null`, not `false`.
 
 ## Pricing data goes stale
 
@@ -29,45 +29,97 @@ pricing table is older than 30 days but does not block runs. A pricing change
 between two runs of the same scenario breaks comparability — use the same
 pricing table version for all modes in a comparison.
 
-## Seed corpus is 16 tasks from 1 source family (planned: 5 more)
+## Seed corpus is 16 tasks, heavily skewed toward one source family
 
-The current seed corpus contains 16 tasks, all from the `SWE-QA (Apache-2.0)`
-source family. The roadmap targets approximately 85 tasks drawn from 6 independent
-source families (SWE-QA, SCBench, Long Code Arena, CrossCodeEval,
-SWE-bench-Live, Terminal-Bench 2.0). A corpus dominated by one source risks
-overfitting — a tool that performs well on SWE-QA tasks may not generalize.
+The current seed corpus contains 16 tasks spanning six source families, but
+11 of 16 are from `SWE-QA (Apache-2.0)` and all target just four repositories
+(express, fastapi, gin, ripgrep). The roadmap targets approximately 85 tasks
+balanced across the six families (SWE-QA, SCBench, Long Code Arena,
+CrossCodeEval, SWE-bench-Live, Terminal-Bench 2.0). A corpus this small and
+this dominated by one source risks overfitting — a tool that performs well on
+SWE-QA tasks may not generalize.
 
-## check-task mutation validity CLI not yet built
+## Repo cross-validation is skipped when no repos.yaml is present
 
-The `check-task` subcommand that pre-verifies edit task mutations (test passes
-on clean code, fails on mutated code) is not yet implemented as a CLI command.
-The mutation engine itself (`src/copeca/tasks/mutations.py`) is complete and
-tested. Until the CLI wrapper is built, mutation validity must be verified
-manually or via the orchestrator's edit-task pipeline.
+The `copeca validate` command checks task YAML against the JSON Schema and
+auto-discovers a `repos.yaml` in the working directory to cross-reference repo
+references. If no `repos.yaml` is present (and `--repos` is not passed), the
+cross-reference is skipped: tasks referencing repos not in any registry pass
+schema validation and only fail at runtime when the worktree manager cannot
+find a bare clone.
 
-## Matrix runner is sequential
+## Correctness grading uses substring matching (gameable)
 
-The `max_workers` field in scenario YAML is acknowledged but deferred.
-`orchestration/run.py:run_matrix()` iterates tasks x modes x reps sequentially
-in nested loops. Parallel workers would reduce wall-clock time for large
-scenarios (~200+ runs) but are not yet wired.
+Comprehension task grading is case-insensitive substring matching on
+`required_strings` and `forbidden_strings`. This is gameable: a wrong answer
+that happens to contain the required keywords passes, and a correct paraphrase
+that omits an exact token fails. Single-task verdicts are therefore noisy; the
+intended signal is the aggregate delta across the corpus, where random noise
+averages out. Semantic grading (embedding similarity, LLM judge) is planned but
+is not in the scoring path (see `architecture.md` §8 — LLM judge is
+deliberately excluded from scoring).
 
-## test_command_passed always None in orchestrator
+## Cost figures depend on the runner's self-report
 
-In `orchestration/run.py:run_single()`, the call to `check_correctness` passes
-`test_command_passed=None` with a comment: `# mode-mechanism will wire this
-from subprocess`. The mode mechanism that would run the test command as a
-subprocess and pass the exit code is deferred. In practice this means edit
-tasks are currently graded only by `required_strings`, not by the test
-command exit code.
+The headline `total_cost_usd` is the vendor's billed cost when the runner reports
+one (e.g. Claude Code's result-event cost). It is the real bill — it reflects cache
+hits, cache TTL, service tier, and discounts — and it is frozen into the `.copeca`
+artifact at run time, so later vendor price drift does not change a published
+result. copeca also records `computed_cost_usd` (Σ tokens × a pinned price table)
+as a reproducible, provider-neutral cross-check and as the fallback when no vendor
+cost is reported.
 
-## Layer 3 repo validation requires --repos flag on validate
+Two honest caveats. (1) The computed figure is a **rough estimate** — it can differ
+from the bill by ~30% because token counts cannot capture cache TTL (1h vs 5m
+writes are priced differently), service tier, or discounts; copeca deliberately
+does not model these, so a computed-vs-vendor divergence is informational, not
+proof the vendor is wrong. (2) Both figures ultimately trace to the agent CLI's own
+output (the billed dollar figure and the token counts are self-reported; copeca
+does not independently re-tokenize the transcript). A runner that misreports both
+consistently would mislead — the cross-check catches gross inconsistency between
+the two, and artifact signing addresses provenance — but transcript re-tokenization
+is planned. Token usage is now de-duplicated per message id; the parser previously
+counted each assistant message's usage 2–3× because the stream emits it once per
+content block.
 
-The `copeca validate` command checks task YAML against the JSON Schema but
-does not automatically cross-reference the `repos.yaml` registry unless the
-`--repos` flag is provided. Tasks referencing repos not in `repos.yaml` will
-pass schema validation and only fail at runtime when the worktree manager
-cannot find a bare clone.
+## codex runner: baseline arm shipped, tool-augmented arm pending
+
+copeca ships a codex runner (`--runner codex`, parser `codex_json`) verified against
+codex-cli 0.133.0 and validated end-to-end on a real baseline run (command built →
+`codex exec --json` → parsed tokens/answer → cost → graded → recorded). Two
+limitations. (1) codex reports no billed cost, so a codex run's headline cost is the
+**modeled** figure (Σ tokens × a pinned price table), never a vendor bill — it carries
+the same rough-estimate caveat as any modeled cost, and `cost_source` on the record is
+`"modeled"`. (2) The tool-augmented (experimental) arm via codex is **not yet wired**:
+codex configures MCP servers with repeated `-c mcp_servers.<name>.…` overrides rather
+than claude's `--mcp-config <file>`, so a copeca A/B that augments the codex agent with
+an MCP tool is pending that translation. Today codex is usable as the baseline arm and
+for codex-vs-codex comparisons that do not add an MCP tool.
+
+## Edit task correctness is decided solely by test command exit code
+
+For edit tasks, `check_correctness` treats the test command exit code as
+authoritative (`validator.py:96-113`). Any `required_strings` or
+`forbidden_strings` on an edit task are evaluated and stored in the result
+record for diagnostics, but they do not affect the verdict. Only the test
+command exit code determines whether an edit task run is counted as correct.
+
+## Unsigned artifacts get corruption detection only, not tamper-evidence
+
+The integrity manifest inside a `.copeca` zip (per-file SHA-256 + a content_hash
+over them) catches accidental corruption, but an attacker who rewrites the zip
+can recompute it — so an unsigned artifact is **not tamper-proof**. Real
+tamper-evidence requires signing: `copeca run … --artifacts --sign-key
+<private.pem>` writes a detached Ed25519 signature over the content_hash, and
+`copeca verify ARTIFACT --pubkey <public.pem>` rejects any artifact a holder of
+the private key did not sign. Two residual limitations: (1) verification trust
+is only as good as the operator's out-of-band knowledge that a given public key
+belongs to the claimed runner — copeca does not distribute or attest keys; and
+(2) a signature proves *who produced* an artifact, not *when* — there is no
+external append-only anchor, so a signer can still re-sign a later, cherry-picked
+set under the same key. Batch completeness (`verify --batch --scenario`) is the
+partial defence against selective publishing; external transparency-log anchoring
+of content hashes is a planned further option.
 
 ---
 

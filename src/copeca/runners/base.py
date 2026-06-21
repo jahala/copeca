@@ -4,13 +4,43 @@ Architecture: port. The BaseRunner ABC defines the contract that adapter
 implementations (subprocess runner, future HTTP runner) must satisfy.
 """
 
+import json
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
+from pathlib import Path
 
 from copeca.runners.parsers.base import RunResult
 
+
 class InvokeError(Exception):
     """Raised when the runner cannot build a valid CLI invocation."""
+
+
+def _mcp_config_overrides(mcp_config_path: str) -> list[str]:
+    """Translate an MCP config JSON file into codex -c override tokens.
+
+    Reads the JSON file and emits, for each server in mcpServers:
+      -c mcp_servers.<name>.command=<cmd>
+      -c mcp_servers.<name>.args=<json-array>
+
+    This matches codex's config-override convention (TILTH_MCP_CODEX_ARGS shape).
+    The command value is bare (no extra quoting — the shell layer adds quotes if
+    needed when the list is joined; subprocess passes it verbatim).
+
+    Args:
+        mcp_config_path: Absolute path to the MCP config JSON file.
+
+    Returns:
+        Flat list of CLI tokens ready to splice into the command list.
+    """
+    data = json.loads(Path(mcp_config_path).read_text())
+    tokens: list[str] = []
+    for server_name, server_cfg in data.get("mcpServers", {}).items():
+        command = server_cfg.get("command", "")
+        args = server_cfg.get("args", [])
+        tokens += ["-c", f"mcp_servers.{server_name}.command={command}"]
+        tokens += ["-c", f"mcp_servers.{server_name}.args={json.dumps(args)}"]
+    return tokens
 
 
 @dataclass
@@ -26,6 +56,13 @@ class BaseRunner(ABC):
     default_args: list[str] = field(default_factory=list)
     arg_map: dict[str, str] = field(default_factory=dict)
     invoke_template: str = ""
+    # When True, fold the system prompt into the positional prompt instead of
+    # passing a flag — for CLIs (e.g. codex exec) that have no system-prompt flag.
+    prepend_system_prompt: bool = False
+    # When True, MCP is delivered as repeated -c mcp_servers.<name>.command/args
+    # overrides instead of a --mcp-config flag. Codex has no --mcp-config; it
+    # reads MCP config through its -c config-override mechanism.
+    mcp_via_config_overrides: bool = False
 
     def build_command(
         self,
@@ -77,6 +114,11 @@ class BaseRunner(ABC):
         # arg_map path: flag-style arguments
         cmd.extend(self.default_args)
 
+        # MCP via -c overrides (codex) — mutually exclusive with arg_map mcp_config key.
+        # Emitted BEFORE the arg_map loop so the override block is a coherent unit.
+        if self.mcp_via_config_overrides and mcp_config:
+            cmd.extend(_mcp_config_overrides(mcp_config))
+
         for key, flag in self.arg_map.items():
             if key == "prompt_separator":
                 # The separator comes before the positional prompt
@@ -89,14 +131,21 @@ class BaseRunner(ABC):
                 cmd.extend([flag, system_prompt])
             elif key == "tools" and tools:
                 cmd.extend([flag, ",".join(tools)])
-            elif key == "mcp_config" and mcp_config:
+            elif key == "mcp_config" and mcp_config and not self.mcp_via_config_overrides:
+                # When mcp_via_config_overrides is set, the file was already translated
+                # into -c pairs above — skip the flag-path form here.
                 cmd.extend([flag, mcp_config])
 
-        # prompt_separator + positional prompt always comes last
+        # prompt_separator + positional prompt always comes last. A runner with
+        # no system-prompt flag (codex) folds the system prompt into the positional
+        # prompt here, so the instructions are carried rather than silently dropped.
+        effective_prompt = prompt
+        if self.prepend_system_prompt and system_prompt:
+            effective_prompt = f"{system_prompt}\n\n{prompt}"
         separator = self.arg_map.get("prompt_separator", "")
         if separator:
             cmd.append(separator)
-        cmd.append(prompt)
+        cmd.append(effective_prompt)
 
         return cmd
 

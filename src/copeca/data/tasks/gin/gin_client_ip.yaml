@@ -1,0 +1,20 @@
+name: gin_client_ip
+description: "Locate the complete ClientIP() implementation on gin's Context and map the header-check order and trusted-proxy logic; tests reading a single method to extract a multi-step conditional algorithm."
+source: "tilth-benchmark (MIT)"
+repo: gin
+commit: d7776de7d444935ea4385999711bd6331a98fecb
+type: comprehension
+category: locate
+language: go
+difficulty: medium
+version: 1
+prompt: |
+  In gin's Context, show the complete implementation of the ClientIP() method.
+  What headers does it check, in what order? How does it handle trusted proxies
+  and the X-Forwarded-For header?
+ground_truth:
+  required_strings:
+    - "func (c *Context) ClientIP"
+    - RemoteIPHeaders
+    - X-Forwarded-For
+    - trustedCIDRs

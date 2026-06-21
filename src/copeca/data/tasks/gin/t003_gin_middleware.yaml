@@ -1,0 +1,28 @@
+name: t003_gin_middleware
+description: "Trace Gin's middleware chain through c.Next() showing how HandlersChain is stored, invoked, and short-circuited by Abort(); tests sequential execution flow tracing."
+source: "SWE-QA (Apache-2.0)"
+repo: gin
+type: comprehension
+category: trace
+language: go
+difficulty: medium
+version: 1
+prompt: |
+  Locate the middleware chain implementation in the Gin framework. How does
+  `c.Next()` work internally? Trace the execution flow through the middleware
+  chain, explaining how handlers are stored, invoked, and how `Abort()`
+  short-circuits the chain.
+ground_truth:
+  required_strings:
+    - Next
+    - handlers
+    - HandlersChain
+    - index
+    - Abort
+  all_of:
+    - Next
+    - HandlersChain
+    - Abort
+  forbidden_strings:
+    - "I cannot"
+    - "unable to"

@@ -1,0 +1,33 @@
+name: fastapi_edit_dep_cache
+description: "Restore the correct boolean operator in FastAPI's dependency cache lookup so caching is bypassed when use_cache is False; tests logical-operator repair in a dependency resolution conditional."
+source: "tilth-benchmark (MIT)"
+repo: fastapi
+commit: 6fa573ce0bc16fe445f93db413d20146dd9ff35d
+type: edit
+category: fix
+language: python
+difficulty: medium
+version: 1
+prompt: |
+  In FastAPI's dependency injection system
+  (fastapi/dependencies/utils.py), dependency caching is broken.
+  When two route parameters both depend on the same dependency, the
+  dependency should be resolved once per request and the cached result
+  reused. Instead, it's hitting the cache even when caching is
+  disabled (use_cache=False). The bug is in the cache lookup condition
+  in the dependency resolution loop. Find the logic error and fix it.
+ground_truth:
+  required_strings: []
+  test_command:
+    - /usr/local/bin/python3.10
+    - -m
+    - pytest
+    - tests/test_dependency_cache.py::test_sub_counter
+    - -x
+    - -q
+mutations:
+  - file: fastapi/dependencies/utils.py
+    action: replace
+    find: "if sub_dependant.use_cache and sub_dependant.cache_key in dependency_cache:"
+    replace: "if sub_dependant.use_cache or sub_dependant.cache_key in dependency_cache:"
+    occurrence: 1

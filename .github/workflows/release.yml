@@ -1,0 +1,56 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  # Fail fast if pyproject.toml version doesn't match the tag
+  version-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # ratchet:actions/checkout@v6
+
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # ratchet:actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Verify version matches tag
+        run: |
+          TAG="${GITHUB_REF#refs/tags/v}"
+          PKG_VER=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
+          echo "Tag: $TAG  pyproject.toml: $PKG_VER"
+          if [ "$PKG_VER" != "$TAG" ]; then
+            echo "::error::pyproject.toml version ($PKG_VER) does not match tag ($TAG)"
+            exit 1
+          fi
+
+  build:
+    needs: version-check
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # softprops/action-gh-release uploads release assets
+      id-token: write  # PyPI OIDC trusted publishing
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # ratchet:actions/checkout@v6
+
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # ratchet:actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install build dependencies
+        run: pip install build
+
+      - name: Build sdist and wheel
+        run: python -m build
+
+      - uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # ratchet:softprops/action-gh-release@v3
+        with:
+          files: dist/*
+          generate_release_notes: true
+
+      # Trusted publishing (OIDC): no PYPI_TOKEN needed; provenance is automatic.
+      - uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # ratchet:pypa/gh-action-pypi-publish@release/v1

@@ -49,6 +49,25 @@ def _map_difficulty(task: dict[str, Any]) -> str:
     return raw
 
 
+def _map_category(task: dict[str, Any]) -> str:
+    """Map to copeca's capability category (orthogonal to type).
+
+    Prefer tilth's own finer classification when present (task_type: read/navigate/
+    edit -> locate/trace/fix); otherwise derive from the copeca type. The derived
+    comprehension default is ``trace``; whether a comprehension task is really
+    ``locate`` (one self-contained target) vs ``trace`` (a cross-file relationship)
+    should be reviewed during migration.
+    """
+    tilth_kind = str(task.get("task_type", "")).lower()
+    if tilth_kind == "read":
+        return "locate"
+    if tilth_kind == "navigate":
+        return "trace"
+    if tilth_kind == "edit":
+        return "fix"
+    return "fix" if _map_type(task) == "edit" else "trace"
+
+
 def _map_name(task: dict[str, Any]) -> str:
     """Ensure the task name matches copeca's naming pattern: ^[a-z][a-z0-9_]*$."""
     import re
@@ -226,6 +245,7 @@ def migrate(tilth_path: Path, output_dir: Path) -> dict[str, int]:
                 "source": SOURCE_FIELD,
                 "repo": repo,
                 "type": task_type,
+                "category": _map_category(task),
                 "language": language,
                 "difficulty": difficulty,
                 "version": 1,

@@ -41,10 +41,7 @@ class TestDocsExist:
 
     def test_metrics_doc_defines_cost_per_correct(self) -> None:
         content = (DOCS_DIR / "metrics.md").read_text()
-        assert (
-            "cost per correct" in content.lower()
-            or "cost_per_correct" in content.lower()
-        )
+        assert "cost per correct" in content.lower() or "cost_per_correct" in content.lower()
 
     def test_methodology_mentions_delta(self) -> None:
         content = (DOCS_DIR / "methodology.md").read_text()

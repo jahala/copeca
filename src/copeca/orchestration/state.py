@@ -8,6 +8,7 @@ is the single boundary function; the dataclass is pure state.
 from __future__ import annotations
 
 import json
+import shlex
 import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -22,6 +23,7 @@ class ArmHarness:
     env: dict[str, str] = field(default_factory=dict)
     config_dir: Path | None = None
     wrapper: list[str] | None = None
+    mcp_config_path: str | None = None
 
 
 def provision_arm(mode: Mode, worktree: Path, arm_name: str = "arm") -> ArmHarness:
@@ -46,13 +48,7 @@ def provision_arm(mode: Mode, worktree: Path, arm_name: str = "arm") -> ArmHarne
         RuntimeError: If a setup command exits non-zero.
     """
     # ── Baseline: no integration paths → clean harness ───────────────
-    has_paths = bool(
-        mode.mcp_config
-        or mode.env
-        or mode.agent_config
-        or mode.wrapper
-        or mode.setup
-    )
+    has_paths = bool(mode.mcp_config or mode.env or mode.agent_config or mode.wrapper or mode.setup)
     if not has_paths:
         return ArmHarness()
 
@@ -68,6 +64,14 @@ def provision_arm(mode: Mode, worktree: Path, arm_name: str = "arm") -> ArmHarne
         src = Path(mode.agent_config)
         _copy_settings_file(src, config_dir)
 
+    # ── mcp_config: write dict as JSON → arms_dir/mcp.json ───────────
+    mcp_config_path: str | None = None
+    if mode.mcp_config is not None:
+        mcp_file = arms_dir / "mcp.json"
+        with open(mcp_file, "w", encoding="utf-8") as fh:
+            json.dump(mode.mcp_config, fh, indent=2)
+        mcp_config_path = str(mcp_file)
+
     # ── env: return as-is (caller applies during subprocess) ─────────
     env: dict[str, str] = dict(mode.env) if mode.env else {}
 
@@ -78,7 +82,12 @@ def provision_arm(mode: Mode, worktree: Path, arm_name: str = "arm") -> ArmHarne
     if mode.setup:
         _run_setup_commands(mode.setup, worktree)
 
-    return ArmHarness(env=env, config_dir=config_dir, wrapper=wrapper)
+    return ArmHarness(
+        env=env,
+        config_dir=config_dir,
+        wrapper=wrapper,
+        mcp_config_path=mcp_config_path,
+    )
 
 
 # ── I/O helpers (private, at the edge) ────────────────────────────────────────
@@ -97,14 +106,20 @@ def _copy_settings_file(src: Path, dest_dir: Path) -> None:
 
 
 def _run_setup_commands(commands: list[str], cwd: Path) -> None:
-    """Run each setup command in *cwd*. Raises RuntimeError on failure."""
+    """Run each setup command in *cwd*. Raises RuntimeError on failure.
+
+    Commands are split into argv form via ``shlex.split`` and executed with
+    ``shell=False`` — no shell features (globbing, pipes, ``&&``, ``;``) are
+    available.  If a shell is genuinely needed, pass an explicit argv such as
+    ``["bash", "-c", "cmd1 && cmd2"]``.
+    """
     for cmd in commands:
         result = subprocess.run(
-            cmd,
+            shlex.split(cmd),
             cwd=str(cwd),
             capture_output=True,
             text=True,
-            shell=True,
+            shell=False,
         )
         if result.returncode != 0:
             raise RuntimeError(

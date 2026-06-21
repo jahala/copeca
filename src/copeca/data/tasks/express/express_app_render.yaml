@@ -1,0 +1,20 @@
+name: express_app_render
+description: "Locate app.render in Express's application.js and trace how it uses the View class to resolve template file paths; tests reading an application method alongside its primary dependency."
+source: "tilth-benchmark (MIT)"
+repo: express
+commit: 1140301f6a0ed5a05bc1ef38d48294f75a49580c
+type: comprehension
+category: trace
+language: javascript
+difficulty: medium
+version: 1
+prompt: |
+  Find app.render in Express's application.js. Show its
+  implementation, then find the View class it uses and explain
+  how View resolves template file paths.
+ground_truth:
+  required_strings:
+    - app.render
+    - View
+    - application.js
+    - view.js

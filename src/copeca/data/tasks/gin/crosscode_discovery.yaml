@@ -1,0 +1,31 @@
+name: crosscode_discovery
+description: "Map Gin's JSON request binding from context method to decoder, contrasting Bind vs ShouldBind error handling and where struct-tag validation runs; tests end-to-end binding flow tracing."
+source: "CrossCodeEval (Apache-2.0)"
+repo: gin
+type: comprehension
+category: trace
+language: go
+difficulty: medium
+version: 2
+prompt: |
+  In the Gin web framework, find the code that handles HTTP request binding to
+  Go structs. When a JSON request body is deserialized into a user-defined
+  struct: (1) which file contains the binding logic and which core function
+  performs the actual JSON decoding; and (2) describe the public binding methods
+  Gin exposes on the request context for this, including how they differ in
+  error handling — which abort the request on a bad body versus which return the
+  error to the caller — and where struct-tag validation runs.
+ground_truth:
+  required_strings:
+    - Bind
+    - ShouldBind
+    - binding
+    - "func"
+    - JSON
+  all_of:
+    - Bind
+    - ShouldBind
+    - binding
+  forbidden_strings:
+    - "I cannot"
+    - "unable to"

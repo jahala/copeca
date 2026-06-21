@@ -1,0 +1,17 @@
+name: fastapi_depends_function
+description: "Locate the Depends function in FastAPI and report its complete signature and docstring; tests direct navigation to a named public API entry point."
+source: "tilth-benchmark (MIT)"
+repo: fastapi
+commit: 6fa573ce0bc16fe445f93db413d20146dd9ff35d
+type: comprehension
+category: locate
+language: python
+difficulty: medium
+version: 1
+prompt: |
+  Find the Depends function in FastAPI. Show its complete signature
+  and docstring.
+ground_truth:
+  required_strings:
+    - def Depends
+    - use_cache

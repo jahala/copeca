@@ -1,0 +1,14 @@
+name: hook
+description: >
+  Config-dir hook integration: copies a settings overlay (settings.json) into
+  the per-arm config directory so the agent's PreToolUse hooks are activated
+  for the experimental arm only. Supply the path to your tool's settings file
+  via agent_config.
+tools:
+  - Bash
+  - Read
+  - Write
+  - Edit
+  - Glob
+  - Grep
+agent_config: "path/to/your-hook-settings.json"

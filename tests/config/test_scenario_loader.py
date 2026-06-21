@@ -9,8 +9,9 @@ import pytest
 import yaml
 from pydantic import ValidationError
 
-from copeca.config.loader import load_scenario
+from copeca.config.loader import LoadError, load_scenario
 from copeca.config.models import Scenario
+from copeca.config.resources import data_path
 
 FIXTURES = Path(__file__).resolve().parent.parent / "fixtures"
 SCENARIO_DIR = Path(__file__).resolve().parent.parent.parent / "scenarios"
@@ -95,7 +96,7 @@ class TestLoadScenario:
 
     def test_malformed_yaml_raises(self):
         tmp = FIXTURES / "scenarios" / "malformed.yaml"
-        with pytest.raises(Exception):
+        with pytest.raises(LoadError):
             load_scenario(tmp)
 
 
@@ -112,15 +113,13 @@ class TestShippedScenario:
     def test_example_scenario_tasks_exist_in_corpus(self) -> None:
         """Tasks referenced in example.yaml should exist in tasks/."""
         scenario = load_scenario(SCENARIO_DIR / "example.yaml")
-        tasks_dir = (
-            Path(__file__).resolve().parent.parent.parent / "tasks"
-        )
+        tasks_dir = data_path("tasks")
         available: set[str] = set()
         for yf in tasks_dir.rglob("*.yaml"):
             doc = yaml.safe_load(yf.read_text())
             if isinstance(doc, dict) and "name" in doc:
                 available.add(doc["name"])
         for task_name in scenario.tasks:
-            assert (
-                task_name in available
-            ), f"Scenario references '{task_name}' which is not in tasks/"
+            assert task_name in available, (
+                f"Scenario references '{task_name}' which is not in tasks/"
+            )

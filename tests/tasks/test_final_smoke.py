@@ -10,8 +10,10 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
+from copeca.config.resources import data_path
+
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-TASKS_DIR = PROJECT_ROOT / "tasks"
+TASKS_DIR = data_path("tasks")
 COPECA = PROJECT_ROOT / ".venv" / "bin" / "copeca"
 
 
@@ -42,8 +44,7 @@ class TestSmokeList:
     def test_smoke_list_shows_tasks(self):
         result = _run_copeca("list", str(TASKS_DIR))
         assert result.returncode == 0, (
-            f"copeca list tasks/ failed (exit {result.returncode}):\n"
-            f"stderr={result.stderr}"
+            f"copeca list tasks/ failed (exit {result.returncode}):\nstderr={result.stderr}"
         )
 
         # The list output should contain known task names
@@ -54,6 +55,4 @@ class TestSmokeList:
             "t003_gin_middleware",
         ]
         for name in known_names:
-            assert name in result.stdout, (
-                f"Expected task '{name}' in list output:\n{result.stdout}"
-            )
+            assert name in result.stdout, f"Expected task '{name}' in list output:\n{result.stdout}"

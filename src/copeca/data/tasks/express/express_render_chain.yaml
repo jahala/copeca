@@ -1,0 +1,21 @@
+name: express_render_chain
+description: "Trace the full template rendering chain from res.render() through app.render and the View class to template-file path resolution; tests multi-hop call-chain comprehension across three components."
+source: "tilth-benchmark (MIT)"
+repo: express
+commit: 1140301f6a0ed5a05bc1ef38d48294f75a49580c
+type: comprehension
+category: trace
+language: javascript
+difficulty: medium
+version: 1
+prompt: |
+  Trace the full template rendering chain in Express. When res.render() is called,
+  how does it reach the template engine? Show the code path through res.render,
+  app.render, and the View class. How does View resolve the template file path?
+ground_truth:
+  required_strings:
+    - res.render
+    - app.render
+    - View
+    - lookup
+    - view.js

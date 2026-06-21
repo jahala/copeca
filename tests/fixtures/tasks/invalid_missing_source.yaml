@@ -2,6 +2,7 @@ name: rg_test
 source: ""
 repo: ripgrep
 type: comprehension
+category: locate
 language: rust
 difficulty: hard
 version: 1
