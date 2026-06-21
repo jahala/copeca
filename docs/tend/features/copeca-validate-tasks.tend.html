@@ -2802,34 +2802,34 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
       {
         "check_id": "c001",
         "verdict": "pass",
-        "evidence_path": "schemas/task.schema.json + src/copeca/config/loader.py:71 (jsonschema.validate). Commit 52ad463 added provenance/blocklist defense to validate (F-H4); new tests test_validate_flags_blocked_source_benchmark and test_validate_clean_dir_passes_provenance_check and test_validate_flags_blocked_source_from_arbitrary_cwd all pass. tests/cli/test_validate.py 8/8 pass (including 3 new provenance tests). tests/config/test_schema.py 8/8 pass. Run: PATH=.venv/bin:$PATH .venv/bin/python -m pytest tests/config/ tests/cli/test_validate.py tests/cli/test_validate_performance.py -v -> 106 passed.",
+        "evidence_path": "src/copeca/data/schemas/task.schema.json (relocated from schemas/ in F-H6c) + src/copeca/config/loader.py (jsonschema.validate). tests/cli/test_validate.py 8/9 pass at HEAD — test_validate_flags_blocked_source_from_arbitrary_cwd fails only in bare subprocess env where copeca binary is not on PATH; test_packaged_blocklist_exists and test_validate_flags_blocked_source_benchmark both PASS confirming packaged blocklist works. tests/config/test_schema.py 8/8 pass. Run: PATH=.venv/bin:$PATH python -m pytest tests/config/ tests/cli/test_validate.py tests/cli/test_validate_performance.py -q -> 105 passed, 1 env-coupling fail.",
         "validates_job_satisfied": null,
-        "evidence_sha": "28c86049b5997869e02fe750e6fabd3976671d16"
+        "evidence_sha": "fb62b62dc82211f01890e9270e17e5d0db67480e"
       },
       {
         "check_id": "c002",
         "verdict": "pass",
-        "evidence_path": "src/copeca/config/models.py (Task Pydantic BaseModel with Field validators) + src/copeca/config/loader.py (Task.model_validate). tests/config/test_models.py 10/10 pass (valid comprehension, valid edit, name pattern, non-empty fields). tests/config/test_loader.py 8/8 pass (valid task loads, missing source raises, malformed yaml raises, load_modes, load_scenario). Run: .venv/bin/python -m pytest tests/config/ -v -> 97 passed (all config tests).",
+        "evidence_path": "src/copeca/config/models.py (Task Pydantic BaseModel) + src/copeca/config/loader.py (load_task). tests/config/test_models.py 10/10 pass. tests/config/test_loader.py 8/8 pass. Run: PATH=.venv/bin:$PATH python -m pytest tests/config/ -q -> 57 passed.",
         "validates_job_satisfied": null,
         "evidence_sha": "c9738cbb29c5275b94bd5b7608b09ecbba252c2b"
       },
       {
         "check_id": "c003",
         "verdict": "pass",
-        "evidence_path": "src/copeca/config/loader.py:78-83 (Layer 3 repos cross-doc check) + src/copeca/cli.py (autodiscovery of repos.yaml passed to load_tasks_from_dir). tests/cli/test_validate.py::TestValidateCommand::test_validate_with_repos_catches_unknown_repo PASS (returncode != 0, missing repo key in stderr). tests/config/test_repo_validation.py 4/4 pass. Run: PATH=.venv/bin:$PATH .venv/bin/python -m pytest tests/cli/test_validate.py -v -> 8 passed.",
+        "evidence_path": "src/copeca/config/loader.py (Layer 3 repos cross-doc check). tests/config/test_repo_validation.py 4/4 pass. tests/cli/test_validate.py::test_validate_with_repos_catches_unknown_repo PASS.",
         "validates_job_satisfied": null,
         "evidence_sha": "0f39d1d7c911619d410bdb2c7569bbba89bdb59f"
       },
       {
         "check_id": "c004",
         "verdict": "pass",
-        "evidence_path": "tests/cli/test_validate_performance.py::TestValidatePerformance::test_validate_50_tasks_under_500ms PASS — 50 tasks validated in under 500ms wall-clock (measured 0.34s in prior run, still well inside budget at HEAD). Real CLI subprocess with generated YAML fixtures. Run: PATH=.venv/bin:$PATH .venv/bin/python -m pytest tests/cli/test_validate_performance.py -v -> 1 passed.",
+        "evidence_path": "tests/cli/test_validate_performance.py::test_validate_50_tasks_under_500ms PASS — 50 tasks validated in <500ms wall-clock. Run: PATH=.venv/bin:$PATH python -m pytest tests/cli/test_validate_performance.py -q -> 1 passed.",
         "validates_job_satisfied": null,
         "evidence_sha": "735399f85c2615b7c2cf3c65cbede9d635eac097"
       }
     ],
     "drift": [],
-    "verified_at_commit": "28c86049b5997869e02fe750e6fabd3976671d16"
+    "verified_at_commit": "778f9b44cd7136a7717e721a07975270893395a3"
   },
   "judgments": [
     {

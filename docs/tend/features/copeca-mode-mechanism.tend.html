@@ -2510,7 +2510,7 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
 {
   "id": "copeca-mode-mechanism",
   "title": "copeca-mode-mechanism",
-  "status": "in-progress",
+  "status": "verified",
   "priority": "high",
   "dependencies": [
     "copeca-single-run"
@@ -2578,7 +2578,7 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
   },
   "progress": {
     "implementation": 100,
-    "verification": 0
+    "verification": 100
   },
   "personas_resolved": [
     {
@@ -2732,7 +2732,43 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
       "rationale": "negctrl proves discrimination mechanically for all 3 checks; semantic re-judgment skipped.",
       "judged_sha": "8ea489f802e002cc8f999871042db8cb6f2a1402"
     }
-  ]
+  ],
+  "audit": {
+    "ran_at": "2026-06-21T00:00:00Z",
+    "result": "pass",
+    "verified_at_commit": "778f9b44cd7136a7717e721a07975270893395a3",
+    "verdicts": [
+      {
+        "check_id": "c001",
+        "verdict": "pass",
+        "evidence_path": "src/copeca/config/models.py (Mode Pydantic model, 5 integration paths) + src/copeca/data/defaults/modes/ (5 YAML files). tests/config/test_mode_models.py 9/9 pass (all 5 paths, tools-only, multi-path, name pattern). tests/config/test_mode_yaml.py 11/11 pass (all 5 YAMLs load as valid Mode, content assertions per path). Python validation: load_mode('baseline'), load_mode('hook'), load_mode('proxy'), load_mode('wrapper'), load_mode('indexed') all succeed. Smoke: copeca validate --modes defaults/modes/ flag does not exist; instead, all 5 mode YAMLs validated via load_mode() in Python — all OK. Run: PATH=.venv/bin:$PATH python -m pytest tests/config/test_mode_models.py tests/config/test_mode_yaml.py -q -> 20 passed.",
+        "validates_job_satisfied": null,
+        "evidence_sha": "c9738cbb29c5275b94bd5b7608b09ecbba252c2b"
+      },
+      {
+        "check_id": "c002",
+        "verdict": "pass",
+        "evidence_path": "src/copeca/orchestration/state.py (provision_arm, ArmHarness) + src/copeca/orchestration/run.py (run_matrix). tests/orchestration/test_mode_isolation.py: 16 pass (baseline clean, env isolation, wrapper prefix, agent_config copy, setup run, per-arm isolation). tests/orchestration/test_provision_arm_wiring.py::TestMatrixPathModeWiring::test_run_matrix_threads_mode_env_to_runner PASS — experimental mode env reaches runner while baseline stays clean, through real run_matrix path. Run: PATH=.venv/bin:$PATH python -m pytest tests/orchestration/test_mode_isolation.py tests/orchestration/test_provision_arm_wiring.py -q -> 21 passed.",
+        "validates_job_satisfied": null,
+        "evidence_sha": "ce37d5c5791d294e6d1839b4ee2b7e45096d5734"
+      },
+      {
+        "check_id": "c003",
+        "verdict": "pass",
+        "evidence_path": "src/copeca/orchestration/state.py (provision_arm env isolation). tests/orchestration/test_mode_isolation.py — env dict copy per arm, baseline gets no overrides, experimental gets ANTHROPIC_BASE_URL. Env isolation confirmed: each arm gets its own env dict copy, no cross-contamination between arms. Run: PATH=.venv/bin:$PATH python -m pytest tests/orchestration/test_mode_isolation.py -q -> 16 passed.",
+        "validates_job_satisfied": null,
+        "evidence_sha": "ce37d5c5791d294e6d1839b4ee2b7e45096d5734"
+      },
+      {
+        "check_id": "c004",
+        "verdict": "pass",
+        "evidence_path": "tests/orchestration/test_provision_arm_wiring.py::TestMatrixPathModeWiring::test_run_matrix_threads_mode_env_to_runner PASS (env through real run_matrix). tests/orchestration/test_config_dir_delivery.py 4/4 pass (config dir delivered via runner-declared env var when agent_config set). tests/orchestration/test_mcp_materialization.py 6/6 pass (mcp_config written as mcp.json, path passed to build_command). tests/runners/test_mcp_command_wiring.py 6/6 pass (mcp flag in command when arg_map declares it, end-to-end from run_single). tests/config/test_loader.py::TestLoadMode::test_load_mode_baseline_returns_mode PASS (mode names resolve from defaults/modes/<name>.yaml). Run: PATH=.venv/bin:$PATH python -m pytest tests/orchestration/test_provision_arm_wiring.py tests/orchestration/test_config_dir_delivery.py tests/orchestration/test_mcp_materialization.py tests/runners/test_mcp_command_wiring.py -q -> 21 passed.",
+        "validates_job_satisfied": null,
+        "evidence_sha": "90f57694107a83aadd2e52a83eaad9241ffa9266"
+      }
+    ],
+    "drift": []
+  }
 }
 </script>
 <!-- OO:DATA:END -->

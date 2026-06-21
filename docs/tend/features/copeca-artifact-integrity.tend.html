@@ -2510,7 +2510,7 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
 {
   "id": "copeca-artifact-integrity",
   "title": "copeca-artifact-integrity",
-  "status": "in-progress",
+  "status": "verified",
   "priority": "high",
   "dependencies": [
     "copeca-single-run"
@@ -2568,7 +2568,7 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
   },
   "progress": {
     "implementation": 100,
-    "verification": 0
+    "verification": 100
   },
   "personas_resolved": [
     {
@@ -2737,7 +2737,36 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
       "rationale": "negctrl proves discrimination mechanically for all 3 checks; semantic re-judgment skipped.",
       "judged_sha": "6f08435040848a6b1815646653056058551aa3bc"
     }
-  ]
+  ],
+  "audit": {
+    "ran_at": "2026-06-21T00:00:00Z",
+    "result": "pass",
+    "verified_at_commit": "778f9b44cd7136a7717e721a07975270893395a3",
+    "verdicts": [
+      {
+        "check_id": "c001",
+        "verdict": "pass",
+        "evidence_path": "src/copeca/results/artifact.py (build_artifact SHA-256 hash-chained zip) + src/copeca/results/verification.py (verify_artifact). tests/results/test_artifact.py 10/10 pass. tests/results/test_verify_single.py 8/8 pass (authentic exits 0, tampered exits 1 naming file). tests/results/test_verify_signature.py 5/5 pass. Smoke (single artifact): PATH=.venv/bin:$PATH copeca verify results/artifact_test__baseline__test-model.copeca.zip -> 'Artifact valid: content_hash matches all files' exit 0. Batch smoke (copeca verify --batch results/ --scenario scenarios/smoke_test.yaml) declined — no pre-run batch present at HEAD; batch logic verified through test_verify_batch.py 12/12. Run: PATH=.venv/bin:$PATH python -m pytest tests/results/ -q -> 50 passed.",
+        "validates_job_satisfied": null,
+        "evidence_sha": "ed5504f2770cce786de815adecc78c6c31296cc6"
+      },
+      {
+        "check_id": "c002",
+        "verdict": "pass",
+        "evidence_path": "src/copeca/results/verification.py (verify_batch). tests/results/test_verify_batch.py 12/12 pass — all authentic, tampered reported, empty dir, ignores non-zips, scenario completeness with missing IDs named, unexpected extras reported. Run: PATH=.venv/bin:$PATH python -m pytest tests/results/test_verify_batch.py -q -> 12 passed.",
+        "validates_job_satisfied": null,
+        "evidence_sha": "0e1b4fb278728e5fe6d4504a537f8f986e0ce781"
+      },
+      {
+        "check_id": "c003",
+        "verdict": "pass",
+        "evidence_path": "src/copeca/results/artifact.py (content_hash = SHA-256 of sorted per-file hashes). tests/results/test_artifact.py::test_content_hash_is_sha256_of_sorted_hashes PASS — extracts files from zip, recomputes SHA-256 independently, asserts match. Run: PATH=.venv/bin:$PATH python -m pytest tests/results/test_artifact.py -k test_content_hash -q -> 1 passed.",
+        "validates_job_satisfied": null,
+        "evidence_sha": "ed5504f2770cce786de815adecc78c6c31296cc6"
+      }
+    ],
+    "drift": []
+  }
 }
 </script>
 <!-- OO:DATA:END -->

@@ -2795,7 +2795,7 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
     {
       "id": "copeca-mode-mechanism",
       "title": "copeca-mode-mechanism",
-      "status": "in-progress",
+      "status": "verified",
       "priority": "high",
       "dependencies": [
         "copeca-single-run"
@@ -2870,7 +2870,7 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
     {
       "id": "copeca-artifact-integrity",
       "title": "copeca-artifact-integrity",
-      "status": "in-progress",
+      "status": "verified",
       "priority": "high",
       "dependencies": [
         "copeca-single-run"
@@ -2896,7 +2896,7 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
     {
       "id": "copeca-analysis-reporting",
       "title": "copeca-analysis-reporting",
-      "status": "planned",
+      "status": "verified",
       "priority": "high",
       "dependencies": [
         "copeca-scenario-matrix",
@@ -2950,7 +2950,7 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
     {
       "id": "copeca-docs-and-init",
       "title": "copeca-docs-and-init",
-      "status": "planned",
+      "status": "verified",
       "priority": "medium",
       "dependencies": [
         "copeca-validate-tasks",
@@ -2991,28 +2991,22 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
       "orphan_check",
       "coverage_unclaimed",
       "coverage_path_missing",
-      "stale_evidence",
-      "false_done",
-      "narrative_cite_stale",
-      "blocked",
-      "unblocked"
+      "narrative_cite_stale"
     ],
     "truth": {
-      "verified": 5,
+      "verified": 9,
       "total": 18,
-      "stale": 1,
+      "stale": 0,
       "mock_only": 0,
-      "false_done": 5,
+      "false_done": 0,
       "auditable": 9,
-      "audited": 5
+      "audited": 9
     },
     "flow": {
-      "ready_now": 2,
-      "blocked": 2,
-      "bottleneck_feature_id": "copeca-artifact-integrity"
+      "ready_now": 0,
+      "blocked": 0
     },
     "value": {
-      "highest_value_unblocked": "copeca-artifact-integrity",
       "weakest_opportunity_coverage": "contamination-erodes-trust"
     },
     "lifecycle": {
@@ -3026,22 +3020,22 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
         "blocked": 0
       },
       "built": {
-        "count": 4,
-        "blocked": 2
+        "count": 0,
+        "blocked": 0
       },
       "verified": {
-        "count": 5,
-        "at_risk": 1
+        "count": 9,
+        "at_risk": 0
       }
     },
     "coherence": {
-      "total": 49,
+      "total": 59,
       "groups": [
         {
-          "kind": "judgment_stale",
+          "kind": "judgment_missing",
           "label": "judgment refresh",
-          "count": 35,
-          "route": "/tend audit",
+          "count": 45,
+          "route": "/tend brainstorm",
           "section": "spine"
         },
         {
@@ -3067,7 +3061,7 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
         }
       ]
     },
-    "computed_at": "2026-06-21T11:11:25.366Z"
+    "computed_at": "2026-06-21T11:35:57.104Z"
   },
   "progress": {
     "implementation": 0,
