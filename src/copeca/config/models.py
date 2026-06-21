@@ -121,6 +121,10 @@ class Task(BaseModel):
     description: str = ""
     source: str = Field(..., min_length=1)
     repo: str = Field(..., min_length=1)
+    # Optional per-task commit override: pins this task's worktree at a specific
+    # code state, overriding the repos.yaml default so one repo can serve tasks
+    # authored against different commits (SD-O). None = use the repos.yaml pin.
+    commit: str | None = None
     type: TaskType
     category: Category
     language: Language

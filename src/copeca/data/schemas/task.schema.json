@@ -38,6 +38,11 @@
       "minLength": 1,
       "description": "Repository key — must match an entry in repos.yaml."
     },
+    "commit": {
+      "type": "string",
+      "pattern": "^[0-9a-fA-F]{7,40}$",
+      "description": "Optional git commit SHA to pin this task's worktree at, overriding repos.yaml — lets one repo serve tasks authored against different code states."
+    },
     "type": {
       "type": "string",
       "enum": ["comprehension", "edit"],

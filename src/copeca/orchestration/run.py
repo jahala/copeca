@@ -83,8 +83,11 @@ def run_single(
             "tool availability preflight failed: " + "; ".join(_tool_errors)
         )
 
-    # 2. Create worktree at pinned commit — scoped to this work item so
-    #    concurrent workers for the same repo never share a path.
+    # 2. Create worktree at the pinned commit. A task may pin its OWN commit
+    #    (task.commit), overriding the repos.yaml default — so one repo can serve
+    #    tasks authored against different code states (SD-O). Scoped to this work
+    #    item so concurrent workers for the same repo never share a path.
+    repo_commit = task.commit or repo_commit
     worktree = repo_mgr.create_worktree(
         task.repo, commit=repo_commit, uri=repo_uri, worktree_id=worktree_id
     )
