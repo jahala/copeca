@@ -167,7 +167,7 @@ Reviewer checks (CI enforces where possible):
    and commit. Tasks from blocked sources (SWE-bench Verified, RepoBench, ClassEval,
    DevEval, CoderEval) are rejected before review.
 5. **Schema validation.** `copeca validate tasks/` passes. New fields are in
-   `schemas/task.schema.json` before they appear in any task YAML.
+   `src/copeca/data/schemas/task.schema.json` before they appear in any task YAML.
 6. **Documentation.** `--help` text is updated. The README's quick-start still works
    from a clean `copeca init`. Any new CLI flag appears in the docs.
 7. **tend updated.** If a feature's spec-of-truth changed (slots, checks, steps),
@@ -222,10 +222,10 @@ been verified. A PR that implements a step should update the step's status.
 |---|---|---|
 | What we're building + why | `docs/ideas/agent-bench-plan.md` | Review checklist item 2 |
 | How we build (this handbook) | `docs/engineering.md` | Review |
-| Task schema | `schemas/task.schema.json` | `copeca validate` |
-| Runner schema | `schemas/runner.schema.json` | `copeca validate --runners` |
+| Task schema | `src/copeca/data/schemas/task.schema.json` | `copeca validate` |
+| Runner config | `src/copeca/data/defaults/runners/*.yaml` | validated by `RunnerConfig` (Pydantic) at load via `load_runner` |
 | Repo registry | `repos.yaml` | `copeca validate` (cross-document) |
-| Cost model | `defaults/runners/*.yaml` | Staleness warnings |
+| Cost model | `src/copeca/data/defaults/runners/*.yaml` | Staleness warnings |
 | Lint/format/types | `pyproject.toml` (ruff, mypy) | CI |
 | Test policy | §6 here | CI + review |
 | Decisions + rationale | `docs/ideas/agent-bench-plan.md` §10, §13 | Review checklist item 2 |

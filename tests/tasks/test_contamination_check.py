@@ -16,8 +16,7 @@ from scripts.contamination_check import (
 from copeca.config.resources import data_path
 
 TASKS_DIR = data_path("tasks")
-SCRIPTS_DIR = Path(__file__).resolve().parent.parent.parent / "scripts"
-BLOCKLIST_FILE = SCRIPTS_DIR / "contamination_blocklist.txt"
+BLOCKLIST_FILE = data_path("contamination_blocklist.txt")
 
 
 def _load_blocklist() -> set[str]:

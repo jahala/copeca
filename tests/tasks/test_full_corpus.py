@@ -143,8 +143,9 @@ class TestContaminationCheck:
             check_contamination,
         )
 
-        # Load blocklist
-        blocklist_file = SCRIPTS_DIR / "contamination_blocklist.txt"
+        # Load blocklist from packaged data (moved from scripts/ to src/copeca/data/).
+        from copeca.config.resources import data_path as _data_path
+        blocklist_file = _data_path("contamination_blocklist.txt")
         blocklist: set[str] = set()
         with open(blocklist_file) as f:
             for line in f:

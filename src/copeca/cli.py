@@ -19,8 +19,11 @@ from copeca.results.writer import append_jsonl
 from copeca.runners.parsers import get_parser
 from copeca.runners.subprocess import SubprocessRunner
 
-# Autodiscovered at call time (cwd-relative), matching the repos.yaml pattern.
-_BLOCKLIST_RELATIVE = Path("scripts") / "contamination_blocklist.txt"
+# Packaged default blocklist — always present in a wheel install.
+# A project-local override (scripts/contamination_blocklist.txt in cwd) takes
+# precedence if it exists, matching the same autodiscovery pattern as repos.yaml.
+_BLOCKLIST_LOCAL = Path("scripts") / "contamination_blocklist.txt"
+_BLOCKLIST_PACKAGED = data_path("contamination_blocklist.txt")
 
 
 # ── Contamination provenance helpers (pure logic + thin I/O) ──────────────
@@ -163,22 +166,21 @@ def validate(
         raise typer.Exit(code=1)
 
     # ── Provenance / contamination check ────────────────────────────────────
-    # Load blocked source benchmarks from the scripts blocklist and flag any
-    # task whose `source:` field names a blocked benchmark.  This is the
-    # shipped contamination defense: a static provenance check that rejects
-    # tasks from known-contaminated source benchmarks at validation time.
-    if _BLOCKLIST_RELATIVE.exists():
-        from copeca.contamination import load_blocked_sources
+    # Load blocked source benchmarks and flag any task whose `source:` field
+    # names a blocked benchmark.  Project-local override takes precedence;
+    # falls back to the packaged default (always present in a wheel install).
+    blocklist_path = _BLOCKLIST_LOCAL if _BLOCKLIST_LOCAL.exists() else _BLOCKLIST_PACKAGED
+    from copeca.contamination import load_blocked_sources
 
-        blocked_sources = load_blocked_sources(_BLOCKLIST_RELATIVE)
-        blocked_findings = _find_blocked_source_tasks(tasks, blocked_sources)
-        if blocked_findings:
-            for task_name, reason in blocked_findings:
-                typer.echo(
-                    f"Contamination: task '{task_name}' blocked — {reason}",
-                    err=True,
-                )
-            raise typer.Exit(code=1)
+    blocked_sources = load_blocked_sources(blocklist_path)
+    blocked_findings = _find_blocked_source_tasks(tasks, blocked_sources)
+    if blocked_findings:
+        for task_name, reason in blocked_findings:
+            typer.echo(
+                f"Contamination: task '{task_name}' blocked — {reason}",
+                err=True,
+            )
+        raise typer.Exit(code=1)
 
     typer.echo(f"Validated {len(tasks)} task(s) successfully.")
 

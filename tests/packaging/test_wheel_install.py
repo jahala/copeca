@@ -66,3 +66,11 @@ def test_wheel_bundles_task_corpus(wheel_members: list[str]) -> None:
         if m.startswith("copeca/data/tasks/") and m.endswith(".yaml")
     ]
     assert corpus, f"no task YAML found in wheel; members: {wheel_members}"
+
+
+def test_wheel_bundles_contamination_blocklist(wheel_members: list[str]) -> None:
+    """The contamination blocklist is inside the wheel (Fix 2 — packaged default)."""
+    assert "copeca/data/contamination_blocklist.txt" in wheel_members, (
+        f"contamination_blocklist.txt missing from wheel; "
+        f"data members: {[m for m in wheel_members if 'contamination' in m or m.startswith('copeca/data/')]}"
+    )

@@ -1,6 +1,7 @@
 """Test `copeca validate` CLI command end-to-end."""
 
 import subprocess
+import tempfile
 from pathlib import Path
 
 import yaml
@@ -97,3 +98,39 @@ class TestValidateCommand:
         assert result.returncode == 0, (
             f"Clean dir should pass provenance check: stdout={result.stdout} stderr={result.stderr}"
         )
+
+    def test_validate_flags_blocked_source_from_arbitrary_cwd(self):
+        """validate flags a blocked source task even when run from a tmp cwd with no local blocklist.
+
+        This is the regression test for the silent no-op: the packaged blocklist
+        (src/copeca/data/contamination_blocklist.txt) must be used when no local
+        scripts/contamination_blocklist.txt is present.
+        """
+        with tempfile.TemporaryDirectory() as tmp_cwd:
+            # Confirm there is no local blocklist in this tmp dir
+            assert not (Path(tmp_cwd) / "scripts" / "contamination_blocklist.txt").exists()
+            result = subprocess.run(
+                ["copeca", "validate", str(BLOCKED_SOURCE_DIR)],
+                capture_output=True,
+                text=True,
+                timeout=10,
+                cwd=tmp_cwd,
+            )
+        combined = result.stdout + result.stderr
+        assert result.returncode != 0 or "contamination" in combined.lower() or "blocked" in combined.lower(), (
+            f"Expected contamination rejection from packaged blocklist when run from tmp cwd "
+            f"(no local blocklist), got returncode={result.returncode}, output={combined!r}"
+        )
+
+
+def test_packaged_blocklist_exists():
+    """The contamination blocklist is bundled inside the package (ships in the wheel).
+
+    This pins the fix: data_path('contamination_blocklist.txt') must resolve to a
+    real file so validate always runs the provenance check regardless of cwd.
+    """
+    blocklist = data_path("contamination_blocklist.txt")
+    assert blocklist.exists(), (
+        f"Packaged contamination_blocklist.txt not found at {blocklist}. "
+        "The file must be at src/copeca/data/contamination_blocklist.txt so it ships in the wheel."
+    )
