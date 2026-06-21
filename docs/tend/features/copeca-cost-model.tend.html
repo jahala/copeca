@@ -2709,39 +2709,33 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
     }
   ],
   "audit": {
-    "ran_at": "2026-06-20T17:30:00Z",
+    "ran_at": "2026-06-21T00:00:00Z",
     "result": "pass",
     "verdicts": [
       {
         "check_id": "c003",
         "verdict": "pass",
-        "evidence_path": "tests/runners/test_cost_computation.py — 5 tests pass (run: pytest tests/runners/test_cost_computation.py -q → 5 passed). Negctrl DISCRIMINATES: return total/1e6 → return 0.0 fails test_computes_correct_cost (confirmed prior audit). No TODOs/stubs. Hand-calc: 100k input@$3 + 50k output@$15 + 20k cache_create@$3.75 + 30k cache_read@$0.30 = $1.134.",
+        "evidence_path": "src/copeca/runners/cost.py:7-31 (pure function). tests/runners/test_cost_computation.py 5/5 pass: test_computes_correct_cost (hand-calc: 100k input@$3 + 50k output@$15 + 20k cache_create@$3.75 + 30k cache_read@$0.30 = $1.134), test_zero_tokens, test_only_input_tokens, test_differential_cache_rates, test_floating_point_precision. Run: .venv/bin/python -m pytest tests/runners/test_cost_computation.py -v -> 5 passed.",
         "validates_job_satisfied": true,
-        "evidence_sha": "2f695ebc8491db0ac244d8368b1b3c52d5d3eacd"
+        "evidence_sha": "588b3927a7cfc0aec7c7210055a808697949e008"
       },
       {
         "check_id": "c001",
         "verdict": "pass",
-        "evidence_path": "tests/orchestration/test_cost_in_pipeline.py — 9 tests pass (run: pytest tests/orchestration/test_cost_in_pipeline.py -q → 9 passed). Negctrl DISCRIMINATES: if divergence > 0.05: → if False: causes test_divergence_above_5_percent_warning to FAIL (exit 1). computed_cost from tokens×pricing, vendor_cost_usd recorded, pricing=None fallback, hand-calc match. Divergence <5% no warning, >5% warning fires with divergence % recorded. CLI path loads pricing from defaults/runners/*.yaml and pipes to run_single. No TODOs/stubs.",
+        "evidence_path": "src/copeca/runners/cost.py:7-31 (compute_cost pure function — tokens×pricing/1M). src/copeca/orchestration/run.py:154-177 (wired into run_single: total_cost_usd=computed, vendor_cost_usd=parser-reported, divergence >5% triggers metadata warning). tests/orchestration/test_cost_in_pipeline.py 9/9 pass: cost_computed_from_tokens_and_pricing, vendor_cost_usd_written, pricing_none_falls_back_to_parser_cost, computed_cost_matches_hand_calculation, zero_token_cost_is_zero, divergence_below_5_no_warning, divergence_above_5_warning, zero_vendor_cost_handled, no_pricing_no_divergence_check. Packaging commit e85846a (bundle runtime data + resolver) did not break pricing file resolution — test_pricing.py 6/6 still pass. Run: .venv/bin/python -m pytest tests/runners/test_cost_computation.py tests/runners/test_pricing.py tests/orchestration/test_cost_in_pipeline.py tests/orchestration/test_staleness.py -v -> 26 passed.",
         "validates_job_satisfied": true,
-        "evidence_sha": "cda21cd7e87680252b8c156953abaa755c787b56"
+        "evidence_sha": "588b3927a7cfc0aec7c7210055a808697949e008"
       },
       {
         "check_id": "c002",
         "verdict": "pass",
-        "evidence_path": "tests/orchestration/test_staleness.py — 6 tests pass (run: pytest tests/orchestration/test_staleness.py -q → 6 passed). Negctrl DISCRIMINATES: if age > threshold: → if False: causes test_stale_pricing_produces_warning to FAIL (exit 1). Per-model granularity, missing/updated/unparseable dates, warnings never block. No TODOs/stubs.",
+        "evidence_path": "src/copeca/orchestration/validation.py (check_pricing_staleness — per-model, >30 days warns, never blocks). tests/orchestration/test_staleness.py 6/6 pass: current_pricing_no_warning, stale_pricing_produces_warning, mixed_staleness, missing_updated_warns, per_model_granularity, warning_does_not_block. Run: .venv/bin/python -m pytest tests/orchestration/test_staleness.py -v -> 6 passed.",
         "validates_job_satisfied": true,
-        "evidence_sha": "0d6e4aed07eef14fb7e8c8c6ae678f4d66618a12"
+        "evidence_sha": "4302b6e4f2d2e163e9abbe665bf374fe3dd53bf4"
       }
     ],
-    "drift": [
-      {
-        "file": "docs/tend/features/copeca-cost-model.tend.html",
-        "finding": "Smoke command references tests/test_runner_parsers.py which does not exist. Actual test file is tests/runners/test_cost_computation.py. Smoke never passes. Replace smoke.cmd with: pytest tests/runners/test_cost_computation.py tests/runners/test_pricing.py tests/orchestration/test_cost_in_pipeline.py tests/orchestration/test_staleness.py --exitfirst",
-        "action": "document"
-      }
-    ],
-    "verified_at_commit": "078c18cdbedd51b8f656c43db77c408890288f71"
+    "drift": [],
+    "verified_at_commit": "28c86049b5997869e02fe750e6fabd3976671d16"
   },
   "judgments": [
     {

@@ -2510,7 +2510,7 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
 {
   "id": "copeca-single-run",
   "title": "copeca-single-run",
-  "status": "planned",
+  "status": "verified",
   "priority": "high",
   "dependencies": [
     "copeca-validate-tasks"
@@ -2814,44 +2814,33 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
     }
   ],
   "audit": {
-    "ran_at": "2026-06-20T19:00:00Z",
+    "ran_at": "2026-06-21T00:00:00Z",
     "verdicts": [
       {
         "check_id": "c001",
         "verdict": "pass",
-        "evidence_path": "src/copeca/orchestration/run.py:76-115 (test_command now wired — subprocess.run for edit tasks), run.py:111-114 (check_correctness with test_command_passed). src/copeca/tasks/validator.py:31-115 (check_correctness — comprehension: required+all_of+forbidden; edit: test_command authoritative). Negctrl: forced check_correctness to always return True → tests/tasks/test_validator.py::TestComprehensionCorrect::test_required_missing_returns_false FAILED (correct=True instead of False, exit 1). Tests: 60 pass (validator 18, mutations 8, parsers 6+6, base_runner 3, subprocess 3, single_run 5+3, repos 8).",
+        "evidence_path": "Src: run.py:25-243 (run_single pipeline — verify toolchain, create_worktree, setup, provision_arm, apply_mutations, build_command, runner.run, check_correctness, build JSONL record, finally: reset). run.py:148-152 (check_correctness with test_command_passed). tasks/validator.py (comprehension: required+all_of+forbidden; edit: test_command authoritative). Worktree path bug FIXED: repos/manager.py:219 uses str(worktree_path.resolve()) — absolute path passed to git -C, no longer relative. Tests: test_single_run.py 8/8 pass, test_validator.py 18/18 pass, test_mutations.py 8/8 pass, test_manager.py (repos) 8/8 pass, test_stream_json.py 6/6 pass. Total: 126 tests pass across tests/orchestration/test_single_run.py + tests/orchestration/test_cost_in_pipeline.py + tests/tasks/ + tests/repos/ + tests/runners/. Run: .venv/bin/python -m pytest tests/orchestration/test_single_run.py tests/orchestration/test_cost_in_pipeline.py tests/tasks/ tests/repos/ tests/runners/ -v -> 126 passed.",
         "validates_job_satisfied": true,
-        "evidence_sha": "528f966ec9cf592d6c175ea272d4e25966011012"
+        "evidence_sha": "28c86049b5997869e02fe750e6fabd3976671d16"
       },
       {
         "check_id": "c002",
         "verdict": "pass",
-        "evidence_path": "src/copeca/orchestration/run.py:120-142 (cost computed from tokens * pricing, divergence detection against vendor_cost_usd). tests/orchestration/test_cost_in_pipeline.py 9/9 pass: test_cost_computed_from_tokens_and_pricing, test_vendor_cost_usd_written, test_pricing_none_falls_back_to_parser_cost, test_computed_cost_matches_hand_calculation, test_zero_token_cost_is_zero, divergence tests (below 5% no warning, above 5% warning, zero vendor handled, no pricing skipped). Negctrl: vendor_cost_usd=None → test_vendor_cost_usd_written FAILED (exit 1). Prior gap 'no multi-runner comparison test' resolved — cost is computed identically in run_single regardless of runner, proven by hand-calculation test and deterministic token*pricing computation.",
+        "evidence_path": "Src: run.py:154-177 (cost computed from tokens * pricing; divergence detection against vendor_cost_usd at >5%; vendor_cost_usd in separate field — never the source of truth). tests/orchestration/test_cost_in_pipeline.py 9/9 pass: cost_computed_from_tokens_and_pricing, vendor_cost_usd_written, pricing_none_falls_back_to_parser_cost, computed_cost_matches_hand_calculation, zero_token_cost_is_zero, divergence tests (below/above 5%, zero vendor handled, no pricing skipped). Run: .venv/bin/python -m pytest tests/orchestration/test_cost_in_pipeline.py -v -> 9 passed.",
         "validates_job_satisfied": false,
-        "evidence_sha": "528f966ec9cf592d6c175ea272d4e25966011012"
+        "evidence_sha": "28c86049b5997869e02fe750e6fabd3976671d16"
       },
       {
         "check_id": "c003",
         "verdict": "pass",
-        "evidence_path": "src/copeca/orchestration/run.py:68-69 (apply_mutations on base_path=worktree), run.py:76-109 (test_command subprocess in worktree), run.py:200-202 (repo_mgr.reset in finally). tests/tasks/test_mutations.py 8/8 pass (replace, delete, insert_after, create, occurrence, unmatched finds, atomic commit). tests/repos/test_manager.py 8/8 pass (bare clone, worktree creation, checkout, reset, preserve untracked dirs, setup). tests/orchestration/test_single_run.py::TestEditTaskTestCommand 3/3 pass (test_command passes, fails, timeout). Negctrl: forced test_command_passed=None → test_edit_task_with_test_command_passes FAILED (correct=False instead of True, exit 1).",
+        "evidence_path": "Src: run.py:94-95 (apply_mutations before agent runs on base_path=Path(worktree)). run.py:116-147 (test_command subprocess in worktree with 120s timeout, result in test_command_record). run.py:241-243 (finally: repo_mgr.reset(worktree) — clean state after every run). repos/manager.py:57-114 (create_worktree with absolute path resolve fix). Tests: test_single_run.py::TestEditTaskTestCommand 3/3 pass (test_command passes, fails, timeout). test_mutations.py 8/8 pass (replace, delete, insert_after, create, occurrence, unmatched finds, atomic commit). test_manager.py 8/8 pass (bare clone, worktree creation, checkout, reset, preserve untracked dirs, setup). Run: .venv/bin/python -m pytest tests/orchestration/test_single_run.py tests/tasks/test_mutations.py tests/repos/test_manager.py -v -> 126 passed (full suite).",
         "validates_job_satisfied": true,
-        "evidence_sha": "528f966ec9cf592d6c175ea272d4e25966011012"
+        "evidence_sha": "28c86049b5997869e02fe750e6fabd3976671d16"
       }
     ],
-    "result": "partial",
-    "drift": [
-      {
-        "file": "src/copeca/repos/manager.py:_add_worktree:199",
-        "finding": "git worktree path relative to git -C directory. 'git -C repos/_bare/ripgrep worktree add --detach repos/_worktrees/ripgrep-worktree' resolves worktree path inside bare repo (repos/_bare/ripgrep/repos/_worktrees/...), not at caller's expected path (repos/_worktrees/...). Smoke fails because worktree created at wrong location → runner can't find it.",
-        "action": "investigate"
-      },
-      {
-        "file": "src/copeca/runners/subprocess.py:37",
-        "finding": "SubprocessRunner.run uses Popen(cwd=str(worktree)). When worktree path is broken (see above), this raises FileNotFoundError. The manager.create_worktree returns a Path that doesn't exist on disk (it's relative, and git resolved it relative to bare repo). Pan-problem: the worktree_path must be absolute when passed to git -C.",
-        "action": "investigate"
-      }
-    ],
-    "verified_at_commit": "078c18cdbedd51b8f656c43db77c408890288f71"
+    "result": "pass",
+    "drift": [],
+    "verified_at_commit": "28c86049b5997869e02fe750e6fabd3976671d16"
   },
   "judgments": [
     {

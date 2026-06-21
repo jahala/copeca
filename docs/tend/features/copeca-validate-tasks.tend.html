@@ -2796,40 +2796,40 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
     }
   ],
   "audit": {
-    "ran_at": "2026-06-20T19:00:00Z",
+    "ran_at": "2026-06-21T00:00:00Z",
     "result": "pass",
     "verdicts": [
       {
         "check_id": "c001",
         "verdict": "pass",
-        "evidence_path": "schemas/task.schema.json + src/copeca/config/loader.py:71 (jsonschema.validate). Negctrl: removed 'name' from schema required[] → tests/config/test_schema.py::TestComprehensionTaskSchema::test_missing_name_fails FAILED (DID NOT RAISE ValidationError, exit 1). Smoke: 'copeca validate tasks/ --strict' exits 0, 'Validated 16 task(s) successfully.'. 38 related tests all pass (schema 7, models 10, loader 7, repo_validation 4, CLI 6, perf 1, plus cost/validate extras).",
+        "evidence_path": "schemas/task.schema.json + src/copeca/config/loader.py:71 (jsonschema.validate). Commit 52ad463 added provenance/blocklist defense to validate (F-H4); new tests test_validate_flags_blocked_source_benchmark and test_validate_clean_dir_passes_provenance_check and test_validate_flags_blocked_source_from_arbitrary_cwd all pass. tests/cli/test_validate.py 8/8 pass (including 3 new provenance tests). tests/config/test_schema.py 8/8 pass. Run: PATH=.venv/bin:$PATH .venv/bin/python -m pytest tests/config/ tests/cli/test_validate.py tests/cli/test_validate_performance.py -v -> 106 passed.",
         "validates_job_satisfied": null,
-        "evidence_sha": "fb62b62dc82211f01890e9270e17e5d0db67480e"
+        "evidence_sha": "28c86049b5997869e02fe750e6fabd3976671d16"
       },
       {
         "check_id": "c002",
         "verdict": "pass",
-        "evidence_path": "src/copeca/config/models.py:104 (Task.name Field pattern=r'^[a-z][a-z0-9_-]*$' — now allows hyphens) + src/copeca/config/loader.py:76 (Task.model_validate). Negctrl: removed pattern from Task.name Field → tests/config/test_models.py::TestTaskConstruction::test_name_must_match_pattern FAILED (DID NOT RAISE ValidationError, exit 1). Tests: test_valid_comprehension_task, test_valid_edit_task, test_name_must_be_non_empty, test_name_must_match_pattern all pass.",
+        "evidence_path": "src/copeca/config/models.py (Task Pydantic BaseModel with Field validators) + src/copeca/config/loader.py (Task.model_validate). tests/config/test_models.py 10/10 pass (valid comprehension, valid edit, name pattern, non-empty fields). tests/config/test_loader.py 8/8 pass (valid task loads, missing source raises, malformed yaml raises, load_modes, load_scenario). Run: .venv/bin/python -m pytest tests/config/ -v -> 97 passed (all config tests).",
         "validates_job_satisfied": null,
-        "evidence_sha": "4d2c57e01bd86e27a24a3cdf0b75d93cdfcff0f4"
+        "evidence_sha": "c9738cbb29c5275b94bd5b7608b09ecbba252c2b"
       },
       {
         "check_id": "c003",
         "verdict": "pass",
-        "evidence_path": "src/copeca/config/loader.py:78-83 (Layer 3 repos cross-doc check) + src/copeca/cli.py:37-46 (autodiscovery of repos.yaml, passed to load_tasks_from_dir at line 49). Negctrl: if False: bypass repos check → tests/cli/test_validate.py::TestValidateCommand::test_validate_with_repos_catches_unknown_repo FAILED (returncode 0 ≠ nonzero, exit 1). CLI test also passes normally (returncode != 0, 'nonexistent-repo-abc123' in stderr). Repo validation unit test passes (test_missing_repo_raises).",
+        "evidence_path": "src/copeca/config/loader.py:78-83 (Layer 3 repos cross-doc check) + src/copeca/cli.py (autodiscovery of repos.yaml passed to load_tasks_from_dir). tests/cli/test_validate.py::TestValidateCommand::test_validate_with_repos_catches_unknown_repo PASS (returncode != 0, missing repo key in stderr). tests/config/test_repo_validation.py 4/4 pass. Run: PATH=.venv/bin:$PATH .venv/bin/python -m pytest tests/cli/test_validate.py -v -> 8 passed.",
         "validates_job_satisfied": null,
-        "evidence_sha": "125cfdd47a430dc53a730d66153829bd5833f448"
+        "evidence_sha": "0f39d1d7c911619d410bdb2c7569bbba89bdb59f"
       },
       {
         "check_id": "c004",
         "verdict": "pass",
-        "evidence_path": "tests/cli/test_validate_performance.py::TestValidatePerformance::test_validate_50_tasks_under_500ms — 50 tasks validated in 0.34s wall-clock (budget: 500ms). Test runs real CLI subprocess with generated YAML fixtures. Negctrl not applicable (timing assertion), but the test exercises real I/O with realistic load — if loader did unnecessary work the budget would fail. 38 related tests pass (0.34s for 50 tasks).",
+        "evidence_path": "tests/cli/test_validate_performance.py::TestValidatePerformance::test_validate_50_tasks_under_500ms PASS — 50 tasks validated in under 500ms wall-clock (measured 0.34s in prior run, still well inside budget at HEAD). Real CLI subprocess with generated YAML fixtures. Run: PATH=.venv/bin:$PATH .venv/bin/python -m pytest tests/cli/test_validate_performance.py -v -> 1 passed.",
         "validates_job_satisfied": null,
         "evidence_sha": "735399f85c2615b7c2cf3c65cbede9d635eac097"
       }
     ],
     "drift": [],
-    "verified_at_commit": "078c18cdbedd51b8f656c43db77c408890288f71"
+    "verified_at_commit": "28c86049b5997869e02fe750e6fabd3976671d16"
   },
   "judgments": [
     {
