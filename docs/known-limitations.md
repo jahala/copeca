@@ -82,6 +82,20 @@ is planned. Token usage is now de-duplicated per message id; the parser previous
 counted each assistant message's usage 2–3× because the stream emits it once per
 content block.
 
+## codex runner: baseline arm shipped, tool-augmented arm pending
+
+copeca ships a codex runner (`--runner codex`, parser `codex_json`) verified against
+codex-cli 0.133.0 and validated end-to-end on a real baseline run (command built →
+`codex exec --json` → parsed tokens/answer → cost → graded → recorded). Two
+limitations. (1) codex reports no billed cost, so a codex run's headline cost is the
+**modeled** figure (Σ tokens × a pinned price table), never a vendor bill — it carries
+the same rough-estimate caveat as any modeled cost, and `cost_source` on the record is
+`"modeled"`. (2) The tool-augmented (experimental) arm via codex is **not yet wired**:
+codex configures MCP servers with repeated `-c mcp_servers.<name>.…` overrides rather
+than claude's `--mcp-config <file>`, so a copeca A/B that augments the codex agent with
+an MCP tool is pending that translation. Today codex is usable as the baseline arm and
+for codex-vs-codex comparisons that do not add an MCP tool.
+
 ## Edit task correctness is decided solely by test command exit code
 
 For edit tasks, `check_correctness` treats the test command exit code as
