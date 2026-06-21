@@ -103,6 +103,9 @@ class SubprocessRunner(BaseRunner):
         process = subprocess.Popen(
             command,
             cwd=cwd,
+            stdin=subprocess.DEVNULL,  # codex reads its prompt from stdin if piped;
+            # hand every child an empty stdin so a stdin-reading agent gets immediate
+            # EOF and never blocks on the orchestrator's inherited stdin (SD-L).
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,

@@ -139,3 +139,35 @@ class TestRunnerFailureSurfacing:
         result = runner.run(["echo", "hi"])
         assert result.exit_code == 0
         assert result.error is None
+
+
+class TestChildStdinClosed:
+    """codex `exec` reads its prompt from stdin whenever stdin is a pipe; a child
+    that inherited the orchestrator's stdin could block forever waiting on EOF.
+    The runner must hand every child an empty stdin (DEVNULL) so a stdin-reading
+    agent gets immediate EOF and never hangs. (claude -p never read stdin, so this
+    surfaced only when wiring the codex runner — SD-L.)
+    """
+
+    def test_child_stdin_is_devnull(self, monkeypatch):
+        import subprocess as sp
+
+        captured: dict = {}
+        real_popen = sp.Popen
+
+        def spy_popen(*args, **kwargs):
+            captured["stdin"] = kwargs.get("stdin", "ABSENT")
+            return real_popen(*args, **kwargs)  # call through — real subprocess runs
+
+        monkeypatch.setattr(sp, "Popen", spy_popen)
+
+        runner = SubprocessRunner(
+            name="stdin-test",
+            cli="echo",
+            default_args=[],
+            arg_map={"prompt_separator": ""},
+            parser=None,
+        )
+        runner.run(["echo", "hi"])
+
+        assert captured["stdin"] is sp.DEVNULL
