@@ -10,7 +10,7 @@ This means operators can declare any flag they like.
 
 from __future__ import annotations
 
-import pytest
+from pathlib import Path
 
 from copeca.runners.base import BaseRunner
 from copeca.runners.parsers.base import RunResult
@@ -69,13 +69,10 @@ class TestMcpCommandWiring:
         )
 
         assert "--mcp-config" in cmd, (
-            "'--mcp-config' must appear when arg_map declares it "
-            "and mcp_config is provided"
+            "'--mcp-config' must appear when arg_map declares it and mcp_config is provided"
         )
         idx = cmd.index("--mcp-config")
-        assert cmd[idx + 1] == "/tmp/x.json", (
-            "Path must immediately follow the flag"
-        )
+        assert cmd[idx + 1] == "/tmp/x.json", "Path must immediately follow the flag"
 
     def test_mcp_config_absent_when_mcp_config_is_none(self) -> None:
         """mcp_config=None → flag is NOT emitted (build_command no-ops it)."""
@@ -106,8 +103,7 @@ class TestMcpCommandWiring:
         # No mcp flag at all (runner didn't declare one)
         mcp_tokens = [t for t in cmd if "mcp" in t.lower() or ".json" in t]
         assert mcp_tokens == [], (
-            f"No mcp-related tokens expected when arg_map has no mcp_config key; "
-            f"got: {mcp_tokens}"
+            f"No mcp-related tokens expected when arg_map has no mcp_config key; got: {mcp_tokens}"
         )
 
     def test_custom_flag_name_is_used(self) -> None:
@@ -146,7 +142,6 @@ class TestMcpCommandWiring:
         the file written by provision_arm ends up in the built command.
         """
         import json
-        from pathlib import Path
 
         from copeca.config.models import (
             Category,
@@ -213,7 +208,8 @@ class TestMcpCommandWiring:
             name="t",
             source="test",
             repo="r",
-            type=TaskType.comprehension, category=Category.locate,
+            type=TaskType.comprehension,
+            category=Category.locate,
             language=Language.python,
             difficulty=Difficulty.easy,
             version=1,

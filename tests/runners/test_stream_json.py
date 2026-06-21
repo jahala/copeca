@@ -88,33 +88,37 @@ class TestStreamJsonDedup:
         }
 
         def _ev(content):
-            return _json.dumps({
-                "type": "assistant",
-                "message": {
-                    "id": "msg_AAA",
-                    "role": "assistant",
-                    "usage": usage_a,
-                    "content": content,
-                },
-            })
+            return _json.dumps(
+                {
+                    "type": "assistant",
+                    "message": {
+                        "id": "msg_AAA",
+                        "role": "assistant",
+                        "usage": usage_a,
+                        "content": content,
+                    },
+                }
+            )
 
         thinking_ev = _ev([{"type": "thinking", "thinking": "..."}])
         text_ev = _ev([{"type": "text", "text": "Running the command."}])
         tool_ev = _ev([{"type": "tool_use", "name": "Bash", "input": {"command": "echo one"}}])
-        b_ev = _json.dumps({
-            "type": "assistant",
-            "message": {
-                "id": "msg_BBB",
-                "role": "assistant",
-                "usage": {
-                    "input_tokens": 3,
-                    "output_tokens": 71,
-                    "cache_creation_input_tokens": 174,
-                    "cache_read_input_tokens": 30941,
+        b_ev = _json.dumps(
+            {
+                "type": "assistant",
+                "message": {
+                    "id": "msg_BBB",
+                    "role": "assistant",
+                    "usage": {
+                        "input_tokens": 3,
+                        "output_tokens": 71,
+                        "cache_creation_input_tokens": 174,
+                        "cache_read_input_tokens": 30941,
+                    },
+                    "content": [{"type": "text", "text": "Done."}],
                 },
-                "content": [{"type": "text", "text": "Done."}],
-            },
-        })
+            }
+        )
 
         result = parse_stream_json("\n".join([thinking_ev, text_ev, tool_ev, b_ev]))
 
@@ -133,18 +137,20 @@ class TestStreamJsonDedup:
         is counted (cannot dedupe) — preserves prior behavior."""
         import json as _json
 
-        ev = _json.dumps({
-            "type": "assistant",
-            "message": {
-                "role": "assistant",
-                "usage": {
-                    "input_tokens": 1,
-                    "output_tokens": 1,
-                    "cache_creation_input_tokens": 0,
-                    "cache_read_input_tokens": 0,
+        ev = _json.dumps(
+            {
+                "type": "assistant",
+                "message": {
+                    "role": "assistant",
+                    "usage": {
+                        "input_tokens": 1,
+                        "output_tokens": 1,
+                        "cache_creation_input_tokens": 0,
+                        "cache_read_input_tokens": 0,
+                    },
+                    "content": [{"type": "text", "text": "x"}],
                 },
-                "content": [{"type": "text", "text": "x"}],
-            },
-        })
+            }
+        )
         result = parse_stream_json("\n".join([ev, ev, ev]))
         assert result.num_turns == 3

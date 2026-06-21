@@ -88,9 +88,7 @@ class TestBuildArtifact:
             "stdout.txt": hash_stdout,
         }
         sorted_hashes = [file_hashes_dict[k] for k in sorted(file_hashes_dict)]
-        expected_content_hash = hashlib.sha256(
-            "".join(sorted_hashes).encode("utf-8")
-        ).hexdigest()
+        expected_content_hash = hashlib.sha256("".join(sorted_hashes).encode("utf-8")).hexdigest()
 
         assert manifest["content_hash"] == expected_content_hash
 

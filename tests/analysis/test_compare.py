@@ -1,7 +1,5 @@
 """Test compare_runs — pairwise comparison of JSONL result sets."""
 
-import pytest
-
 from copeca.analysis.compare import compare_runs
 
 

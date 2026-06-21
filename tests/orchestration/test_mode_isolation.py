@@ -11,7 +11,6 @@ import pytest
 from copeca.config.models import Mode
 from copeca.orchestration.state import ArmHarness, provision_arm
 
-
 # ── Mode factories ────────────────────────────────────────────────────────────
 
 
@@ -114,9 +113,7 @@ class TestWrapperModeSetsWrapper:
 
 
 class TestAgentConfigCopiesSettings:
-    def test_hook_mode_creates_config_dir_and_copies_settings(
-        self, tmp_path: Path
-    ) -> None:
+    def test_hook_mode_creates_config_dir_and_copies_settings(self, tmp_path: Path) -> None:
         """Hook mode creates config dir and copies settings file."""
         settings = {"hooks": {"PreToolUse": [{"command": "my-hook compress"}]}}
         settings_file = tmp_path / "hook-settings.json"
@@ -140,9 +137,7 @@ class TestAgentConfigCopiesSettings:
 
     def test_missing_settings_file_raises(self, tmp_path: Path) -> None:
         """Nonexistent agent_config file raises FileNotFoundError."""
-        mode = _mode(
-            name="hook", agent_config=str(tmp_path / "nonexistent.json")
-        )
+        mode = _mode(name="hook", agent_config=str(tmp_path / "nonexistent.json"))
         worktree = tmp_path / "repo"
         worktree.mkdir()
 
@@ -277,9 +272,7 @@ class TestWorktreeNotModifiedByConfigCopy:
         worktree.mkdir()
 
         # Initialize a git repo so we can detect modifications
-        subprocess.run(
-            ["git", "init", "-b", "main"], cwd=worktree, check=True
-        )
+        subprocess.run(["git", "init", "-b", "main"], cwd=worktree, check=True)
         subprocess.run(
             ["git", "config", "user.email", "test@copeca.dev"],
             cwd=worktree,
@@ -292,9 +285,7 @@ class TestWorktreeNotModifiedByConfigCopy:
         )
         (worktree / "README.md").write_text("# Test\n")
         subprocess.run(["git", "add", "README.md"], cwd=worktree, check=True)
-        subprocess.run(
-            ["git", "commit", "-m", "initial"], cwd=worktree, check=True
-        )
+        subprocess.run(["git", "commit", "-m", "initial"], cwd=worktree, check=True)
 
         settings = {"hooks": {"PreToolUse": [{"command": "my-hook compress"}]}}
         settings_file = tmp_path / "hook-settings.json"

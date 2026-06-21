@@ -97,9 +97,7 @@ def build_artifact(
 
     # Compute content_hash: SHA-256 of sorted per-file hashes concatenated
     sorted_hashes = [file_hashes[k] for k in sorted(file_hashes)]
-    content_hash = hashlib.sha256(
-        "".join(sorted_hashes).encode("utf-8")
-    ).hexdigest()
+    content_hash = hashlib.sha256("".join(sorted_hashes).encode("utf-8")).hexdigest()
 
     # Determine repo_commit from worktree (if available)
     repo_commit = _repo_commit_from_worktree(worktree)
@@ -135,7 +133,7 @@ def build_artifact(
 
 def _safe_filename(s: str) -> str:
     """Replace characters that are problematic in filenames."""
-    for ch in "/\\:*?\"<>| ":
+    for ch in '/\\:*?"<>| ':
         s = s.replace(ch, "_")
     return s
 

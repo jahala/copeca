@@ -2,18 +2,15 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import yaml
 
+from copeca.config.resources import data_path
 from scripts.contamination_check import (
     build_probe,
     check_contamination,
     check_source_provenance,
     load_blocked_sources,
 )
-
-from copeca.config.resources import data_path
 
 TASKS_DIR = data_path("tasks")
 BLOCKLIST_FILE = data_path("contamination_blocklist.txt")
@@ -48,7 +45,11 @@ def _discover_comprehension_tasks() -> list[dict]:
 class TestBuildProbe:
     def test_build_probe_returns_task_name_and_first_10_words(self):
         task_name = "t001_find_matcher_trait"
-        prompt = "Find the Matcher trait definition in the ripgrep codebase and list all structs that implement it. For each implementor, note which crate it lives in and what methods it provides."
+        prompt = (
+            "Find the Matcher trait definition in the ripgrep codebase and list all structs"
+            " that implement it. For each implementor, note which crate it lives in and what"
+            " methods it provides."
+        )
         probe = build_probe(task_name, prompt)
         assert task_name in probe
         # First 10 words of the prompt
@@ -144,9 +145,7 @@ class TestExistingComprehensionTasks:
         assert len(blocklist) > 0, "Blocklist must be non-empty"
 
         tasks = _discover_comprehension_tasks()
-        assert len(tasks) >= 5, (
-            f"Expected at least 5 comprehension tasks, found {len(tasks)}"
-        )
+        assert len(tasks) >= 5, f"Expected at least 5 comprehension tasks, found {len(tasks)}"
 
         for task in tasks:
             name = task.get("name", "")
@@ -172,23 +171,15 @@ class TestExistingComprehensionTasks:
 class TestBlocklistFile:
     def test_blocklist_file_exists_and_has_entries(self):
         """Blocklist file exists and contains known patterns."""
-        assert BLOCKLIST_FILE.exists(), (
-            f"Blocklist file not found at {BLOCKLIST_FILE}"
-        )
+        assert BLOCKLIST_FILE.exists(), f"Blocklist file not found at {BLOCKLIST_FILE}"
 
         patterns = _load_blocklist()
         assert len(patterns) > 0, "Blocklist must have at least one entry"
 
         # Verify the key known patterns are present
-        assert "swe-bench-verified" in patterns, (
-            "swe-bench-verified must be in blocklist"
-        )
-        assert "humaneval_" in patterns, (
-            "humaneval_ must be in blocklist"
-        )
-        assert "mbpp_" in patterns, (
-            "mbpp_ must be in blocklist"
-        )
+        assert "swe-bench-verified" in patterns, "swe-bench-verified must be in blocklist"
+        assert "humaneval_" in patterns, "humaneval_ must be in blocklist"
+        assert "mbpp_" in patterns, "mbpp_ must be in blocklist"
 
 
 # ── provenance / source-benchmark check tests ─────────────────────────────────
@@ -252,9 +243,7 @@ class TestLoadBlockedSources:
         """load_blocked_sources reads the blocklist file and returns the five benchmarks."""
         sources = load_blocked_sources(BLOCKLIST_FILE)
         expected = {"SWE-bench Verified", "RepoBench", "ClassEval", "DevEval", "CoderEval"}
-        assert expected.issubset(sources), (
-            f"Missing blocked sources: {expected - sources}"
-        )
+        assert expected.issubset(sources), f"Missing blocked sources: {expected - sources}"
 
     def test_real_corpus_tasks_all_pass_provenance_check(self):
         """All 16 real tasks have non-blocked sources and pass provenance check."""
@@ -264,9 +253,7 @@ class TestLoadBlockedSources:
             with open(path) as f:
                 all_tasks.append(yaml.safe_load(f))
 
-        assert len(all_tasks) >= 16, (
-            f"Expected at least 16 tasks, found {len(all_tasks)}"
-        )
+        assert len(all_tasks) >= 16, f"Expected at least 16 tasks, found {len(all_tasks)}"
 
         for task in all_tasks:
             source = task.get("source", "")

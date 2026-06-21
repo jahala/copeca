@@ -22,25 +22,27 @@ from copeca.runners.parsers.base import Parser, RunResult
 # Locale vars: matched by the LC_* prefix in _build_child_env — non-ASCII
 #              repos need them.
 # Provider credentials: real agent runs need the API key and optional overrides.
-BASE_ENV_ALLOWLIST: frozenset[str] = frozenset({
-    # Infra — shell / process environment
-    "PATH",
-    "HOME",
-    "USER",
-    "LOGNAME",
-    "SHELL",
-    "LANG",
-    "TERM",
-    "TMPDIR",
-    "TZ",
-    # Provider credentials
-    "ANTHROPIC_API_KEY",
-    "ANTHROPIC_AUTH_TOKEN",
-    "ANTHROPIC_BASE_URL",
-    "OPENAI_API_KEY",
-    "GEMINI_API_KEY",
-    "GOOGLE_API_KEY",
-})
+BASE_ENV_ALLOWLIST: frozenset[str] = frozenset(
+    {
+        # Infra — shell / process environment
+        "PATH",
+        "HOME",
+        "USER",
+        "LOGNAME",
+        "SHELL",
+        "LANG",
+        "TERM",
+        "TMPDIR",
+        "TZ",
+        # Provider credentials
+        "ANTHROPIC_API_KEY",
+        "ANTHROPIC_AUTH_TOKEN",
+        "ANTHROPIC_BASE_URL",
+        "OPENAI_API_KEY",
+        "GEMINI_API_KEY",
+        "GOOGLE_API_KEY",
+    }
+)
 
 
 def _build_child_env(
@@ -59,9 +61,7 @@ def _build_child_env(
         A new dict to pass as ``env=`` to subprocess.Popen.
     """
     env: dict[str, str] = {
-        k: v
-        for k, v in os.environ.items()
-        if k in BASE_ENV_ALLOWLIST or k.startswith("LC_")
+        k: v for k, v in os.environ.items() if k in BASE_ENV_ALLOWLIST or k.startswith("LC_")
     }
     if extra:
         env.update(extra)
@@ -74,7 +74,9 @@ class SubprocessRunner(BaseRunner):
 
     timeout: int = 300
     parser: Parser | None = field(default=None)
-    config_dir_env: str | None = None  # env var name to deliver per-arm config dir (e.g. "CLAUDE_CONFIG_DIR")
+    config_dir_env: str | None = (
+        None  # env var name to deliver per-arm config dir (e.g. "CLAUDE_CONFIG_DIR")
+    )
 
     def run(
         self,
@@ -136,9 +138,7 @@ class SubprocessRunner(BaseRunner):
         # completion — record it as an error so the run is never mistaken for a
         # legitimate empty answer (shakedown SD-B). Don't clobber an error the
         # parser already set.
-        if result.error is None and (
-            returncode != 0 or (not stdout.strip() and stderr.strip())
-        ):
+        if result.error is None and (returncode != 0 or (not stdout.strip() and stderr.strip())):
             stderr_tail = stderr.strip()[-500:]
             detail = f": {stderr_tail}" if stderr_tail else ""
             result.error = f"runner exited with code {returncode}{detail}"

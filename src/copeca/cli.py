@@ -189,9 +189,7 @@ def _build_artifacts_for_records(
         worktree = repo_mgr.create_worktree(repo_key, commit=repo_commit, uri=repo_uri)
         try:
             for record in repo_records:
-                paths.append(
-                    build_artifact(record, worktree, output_dir, sign_key=signing_key)
-                )
+                paths.append(build_artifact(record, worktree, output_dir, sign_key=signing_key))
         finally:
             if not keep_worktrees:
                 repo_mgr.reset(worktree)
@@ -200,7 +198,10 @@ def _build_artifacts_for_records(
 
 app = typer.Typer(
     name="copeca",
-    help="cost per correct answer — a neutral, reproducible, verifiable benchmark for CLI-based coding agents",
+    help=(
+        "cost per correct answer — a neutral, reproducible, verifiable benchmark"
+        " for CLI-based coding agents"
+    ),
     no_args_is_help=True,
 )
 
@@ -232,13 +233,13 @@ def validate(
         tasks = load_tasks_from_dir(tasks_dir, repos=repos)
     except FileNotFoundError:
         typer.echo(f"Error: directory not found: {tasks_dir}", err=True)
-        raise typer.Exit(code=2)
+        raise typer.Exit(code=2) from None
     except SchemaValidationError as e:
         typer.echo(f"Validation error: {e}", err=True)
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from e
     except LoadError as e:
         typer.echo(f"Error loading tasks: {e}", err=True)
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from e
 
     # ── Provenance / contamination check ────────────────────────────────────
     # Load blocked source benchmarks and flag any task whose `source:` field
@@ -282,10 +283,10 @@ def list_tasks(
         tasks = load_tasks_from_dir(tasks_dir)
     except FileNotFoundError:
         typer.echo(f"Error: directory not found: {tasks_dir}", err=True)
-        raise typer.Exit(code=2)
+        raise typer.Exit(code=2) from None
     except LoadError as e:
         typer.echo(f"Error: {e}", err=True)
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from e
 
     for t in tasks:
         typer.echo(f"  {t.name:40s} {t.type.value:15s} {t.language.value:8s} {t.difficulty.value}")
@@ -295,7 +296,9 @@ def list_tasks(
 def run(
     task: Path = typer.Option(..., "--task", help="Path to task YAML or scenario YAML file"),
     runner: str = typer.Option("claude", "--runner", help="Runner name"),
-    model: str = typer.Option("", "--model", help="Model ID (matches pricing key; optional for scenario mode)"),
+    model: str = typer.Option(
+        "", "--model", help="Model ID (matches pricing key; optional for scenario mode)"
+    ),
     mode: str = typer.Option("default", "--mode", help="Mode name (single-task mode only)"),
     budget: float = typer.Option(1.0, "--budget", help="Max spend per run in USD"),
     timeout: int = typer.Option(300, "--timeout", help="Max wall time in seconds"),
@@ -337,11 +340,7 @@ def run(
     # ── Detect: scenario or single task? ────────────────────────────────
     lookup_text = task.read_text()
     doc = yaml.safe_load(lookup_text)
-    is_scenario = (
-        isinstance(doc, dict)
-        and "tasks" in doc
-        or "scenario" in task.name.lower()
-    )
+    is_scenario = isinstance(doc, dict) and "tasks" in doc or "scenario" in task.name.lower()
 
     # ── Resolve signing key (opt-in tamper-evidence) at the boundary ──────
     signing_key = None
@@ -355,14 +354,16 @@ def run(
             signing_key = load_private_key_file(str(sign_key))
         except FileNotFoundError:
             typer.echo(f"Error: signing key not found: {sign_key}", err=True)
-            raise typer.Exit(code=2)
+            raise typer.Exit(code=2) from None
         except ValueError as e:
             typer.echo(f"Error: invalid signing key: {e}", err=True)
-            raise typer.Exit(code=2)
+            raise typer.Exit(code=2) from e
 
     repos_path = Path("repos.yaml")
     if not repos_path.exists():
-        repos_path = task.parent.parent / "repos.yaml" if task.parent.parent.name else Path("repos.yaml")
+        repos_path = (
+            task.parent.parent / "repos.yaml" if task.parent.parent.name else Path("repos.yaml")
+        )
     repos = load_repos(repos_path) if repos_path.exists() else {}
 
     # ── Resolve runner dirs: project-local first, then the packaged defaults.
@@ -373,11 +374,12 @@ def run(
         runner_cfg = load_runner(runner, runner_dirs=runner_dirs)
     except FileNotFoundError as e:
         typer.echo(f"Error: {e}", err=True)
-        raise typer.Exit(2)
+        raise typer.Exit(2) from e
 
     pricing = runner_cfg.pricing
     if pricing is not None:
         from copeca.orchestration.validation import check_pricing_staleness
+
         emit_staleness_warnings(check_pricing_staleness(pricing))
 
     if is_scenario:
@@ -398,7 +400,7 @@ def run(
             mode_defs = load_modes(scenario.modes, modes_dirs=modes_dirs)
         except FileNotFoundError as e:
             typer.echo(f"Error: {e}", err=True)
-            raise typer.Exit(1)
+            raise typer.Exit(1) from e
 
         # Tautology fix: validate against the set of modes that actually loaded,
         # not the scenario's own mode list (which would always pass).
@@ -413,7 +415,9 @@ def run(
         results_dir = Path(scenario.output_dir) if scenario.output_dir else Path("results")
         results_path = results_dir / f"{scenario.name}.jsonl"
 
-        total_runs = len(scenario.tasks) * len(scenario.modes) * scenario.repetitions * len(scenario.models)
+        total_runs = (
+            len(scenario.tasks) * len(scenario.modes) * scenario.repetitions * len(scenario.models)
+        )
         typer.echo(
             f"Running scenario '{scenario.name}': "
             f"{len(scenario.tasks)} task(s) x {len(scenario.modes)} mode(s) x "
@@ -524,13 +528,10 @@ def run(
             typer.echo(f"Worktree preserved under {pool} for inspection")
 
 
-
 @app.command()
 def check_task(
     task_file: Path = typer.Argument(..., help="Path to an edit task YAML file"),
-    repos_dir: Path = typer.Option(
-        Path("repos"), "--repos-dir", help="Directory for git repos"
-    ),
+    repos_dir: Path = typer.Option(Path("repos"), "--repos-dir", help="Directory for git repos"),
 ) -> None:
     """Verify an edit task: test passes on clean code, fails after mutation."""
     from copeca.config.loader import load_repos, load_task
@@ -601,7 +602,7 @@ def verify(
             scn = load_scenario(scenario)
         except FileNotFoundError:
             typer.echo(f"Error: scenario not found: {scenario}", err=True)
-            raise typer.Exit(code=2)
+            raise typer.Exit(code=2) from None
 
         result = verify_batch(batch, scenario=scn)
 
@@ -647,16 +648,16 @@ def verify(
             public_key = load_public_key_file(str(pubkey))
         except FileNotFoundError:
             typer.echo(f"Error: public key not found: {pubkey}", err=True)
-            raise typer.Exit(code=2)
+            raise typer.Exit(code=2) from None
         except ValueError as e:
             typer.echo(f"Error: invalid public key: {e}", err=True)
-            raise typer.Exit(code=2)
+            raise typer.Exit(code=2) from e
 
         try:
             report = verify_signed_artifact(artifact, public_key=public_key)
         except FileNotFoundError:
             typer.echo(f"Error: file not found: {artifact}", err=True)
-            raise typer.Exit(code=2)
+            raise typer.Exit(code=2) from None
 
         signed_label = "signed" if report.signed else "unsigned"
         valid_label = "valid" if report.valid else "INVALID"
@@ -674,7 +675,7 @@ def verify(
         valid, message = verify_artifact(artifact)
     except FileNotFoundError:
         typer.echo(f"Error: file not found: {artifact}", err=True)
-        raise typer.Exit(code=2)
+        raise typer.Exit(code=2) from None
 
     if valid:
         typer.echo(message)

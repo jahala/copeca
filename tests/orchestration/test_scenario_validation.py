@@ -3,8 +3,8 @@
 from copeca.config.models import Scenario
 from copeca.orchestration.validation import validate_scenario
 
-
 # ── Helpers ─────────────────────────────────────────────────────────────────
+
 
 def _make_scenario(**overrides) -> Scenario:
     """Build a minimal valid scenario with overrides."""
@@ -21,6 +21,7 @@ def _make_scenario(**overrides) -> Scenario:
 
 
 # ── Tests ───────────────────────────────────────────────────────────────────
+
 
 class TestValidateScenarioBasics:
     """Core pre-flight validation coverage."""

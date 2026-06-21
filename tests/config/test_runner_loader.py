@@ -5,8 +5,6 @@ parses the interface block, and returns a structured RunnerConfig exposing
 pricing + the CLI interface (cli, default_args, arg_map, config_dir_env, parser).
 """
 
-from pathlib import Path
-
 import pytest
 
 from copeca.config.loader import load_runner
@@ -126,10 +124,7 @@ class TestLoadRunnerCustomCli:
         d = tmp_path / "runners"
         d.mkdir()
         (d / "mycli.yaml").write_text(
-            "runner:\n"
-            "  default_args: [go]\n"
-            "  arg_map: {model: --model}\n"
-            "  parser: stream_json\n"
+            "runner:\n  default_args: [go]\n  arg_map: {model: --model}\n  parser: stream_json\n"
         )
         rc = load_runner("mycli", runner_dirs=[d])
         assert rc.cli == "mycli"

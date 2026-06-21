@@ -1,6 +1,5 @@
 """Test the bundled repos.yaml registry file."""
 
-import pytest
 import yaml
 
 from copeca.config.loader import load_repos

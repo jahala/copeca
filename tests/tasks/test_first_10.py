@@ -18,13 +18,13 @@ COPECA = PROJECT_ROOT / ".venv" / "bin" / "copeca"
 # Approved source families — sources that tasks may draw from.
 # Each entry is a prefix that task.source must start with.
 APPROVED_SOURCE_PREFIXES = (
-    "SWE-QA",            # Apache-2.0 — QA tasks
-    "SCBench",           # MIT — function retrieval
-    "Long Code Arena",   # Apache-2.0 — bug localization
-    "CrossCodeEval",     # Apache-2.0 — repository discovery
-    "SWE-bench-Live",    # MIT — time-gated edits
-    "Terminal-Bench 2.0", # Apache-2.0 — CLI tasks
-    "tilth-benchmark",   # MIT — migrated tasks
+    "SWE-QA",  # Apache-2.0 — QA tasks
+    "SCBench",  # MIT — function retrieval
+    "Long Code Arena",  # Apache-2.0 — bug localization
+    "CrossCodeEval",  # Apache-2.0 — repository discovery
+    "SWE-bench-Live",  # MIT — time-gated edits
+    "Terminal-Bench 2.0",  # Apache-2.0 — CLI tasks
+    "tilth-benchmark",  # MIT — migrated tasks
 )
 # Sources that are explicitly disallowed (NWC/NC/ND, contaminated, deprecated).
 BLOCKED_SOURCE_PREFIXES = (
@@ -94,9 +94,7 @@ class TestSourceFields:
         approved = set(APPROVED_SOURCE_PREFIXES)
         blocked = set(BLOCKED_SOURCE_PREFIXES)
         overlap = approved & blocked
-        assert not overlap, (
-            f"Overlap between APPROVED and BLOCKED source prefixes: {overlap}"
-        )
+        assert not overlap, f"Overlap between APPROVED and BLOCKED source prefixes: {overlap}"
 
 
 class TestComprehensionTasks:
@@ -110,9 +108,7 @@ class TestComprehensionTasks:
             comprehension_count += 1
             gt = task.get("ground_truth", {})
             required = gt.get("required_strings", [])
-            assert isinstance(required, list), (
-                f"{path.name}: required_strings must be a list"
-            )
+            assert isinstance(required, list), f"{path.name}: required_strings must be a list"
             assert len(required) > 0, (
                 f"{path.name}: comprehension task must have at least one required_string"
             )
@@ -138,9 +134,7 @@ class TestEditTasks:
 
             mutations = task.get("mutations", [])
             mutation_sequence = task.get("mutation_sequence", [])
-            assert isinstance(mutations, list), (
-                f"{path.name}: mutations must be a list"
-            )
+            assert isinstance(mutations, list), f"{path.name}: mutations must be a list"
             assert isinstance(mutation_sequence, list), (
                 f"{path.name}: mutation_sequence must be a list"
             )
@@ -151,29 +145,19 @@ class TestEditTasks:
 
             gt = task.get("ground_truth", {})
             test_cmd = gt.get("test_command", [])
-            assert isinstance(test_cmd, list), (
-                f"{path.name}: test_command must be a list"
-            )
-            assert len(test_cmd) > 0, (
-                f"{path.name}: edit task must have a non-empty test_command"
-            )
+            assert isinstance(test_cmd, list), f"{path.name}: test_command must be a list"
+            assert len(test_cmd) > 0, f"{path.name}: edit task must have a non-empty test_command"
 
-        assert edit_count >= 5, (
-            f"Expected at least 5 edit tasks, found {edit_count}"
-        )
+        assert edit_count >= 5, f"Expected at least 5 edit tasks, found {edit_count}"
 
 
 class TestCounts:
     def test_count_at_least_five_each(self):
         """At least 5 comprehension and 5 edit tasks."""
         comp = sum(
-            1 for p in _discover_task_files()
-            if _load_task(p).get("type") == "comprehension"
+            1 for p in _discover_task_files() if _load_task(p).get("type") == "comprehension"
         )
-        edit = sum(
-            1 for p in _discover_task_files()
-            if _load_task(p).get("type") == "edit"
-        )
+        edit = sum(1 for p in _discover_task_files() if _load_task(p).get("type") == "edit")
         assert comp >= 5, f"Expected >= 5 comprehension tasks, got {comp}"
         assert edit >= 5, f"Expected >= 5 edit tasks, got {edit}"
 
@@ -181,14 +165,9 @@ class TestCounts:
 class TestLanguages:
     def test_languages_include_rust_python_go_javascript(self):
         """Task files cover all 4 required languages."""
-        seen = {
-            _load_task(p).get("language", "")
-            for p in _discover_task_files()
-        }
+        seen = {_load_task(p).get("language", "") for p in _discover_task_files()}
         missing = REQUIRED_LANGUAGES - seen
-        assert not missing, (
-            f"Missing languages: {missing}. Found: {seen}"
-        )
+        assert not missing, f"Missing languages: {missing}. Found: {seen}"
 
 
 class TestRepos:

@@ -111,7 +111,9 @@ def local_repo(tmp_path: Path) -> tuple[Path, str]:
     src_dir = repo_dir / "src"
     src_dir.mkdir()
     (src_dir / "matcher.rs").write_text(
-        "pub trait Matcher {\n    fn find_at(&self, haystack: &[u8], at: usize) -> Option<usize>;\n}\n",
+        "pub trait Matcher {\n"
+        "    fn find_at(&self, haystack: &[u8], at: usize) -> Option<usize>;\n"
+        "}\n",
         encoding="utf-8",
     )
 
@@ -158,7 +160,7 @@ def repos(local_repo: tuple[Path, str]) -> dict[str, Repo]:
             url=str(repo_dir),  # local path — git clone --bare works on it
             commit=sha,
             language=Language.rust,
-            toolchain={},       # empty: verify_toolchain only checks git
+            toolchain={},  # empty: verify_toolchain only checks git
             setup_command=[],
         )
     }
@@ -172,7 +174,8 @@ def task() -> Task:
         description="Find the Matcher trait definition",
         source="e2e-test",
         repo="local-test-repo",
-        type=TaskType.comprehension, category=Category.trace,
+        type=TaskType.comprehension,
+        category=Category.trace,
         language=Language.rust,
         difficulty=Difficulty.easy,
         prompt="Where is the Matcher trait defined and what method does it declare?",
@@ -203,7 +206,7 @@ def mode_defs() -> dict[str, Mode]:
         "baseline": Mode(
             name="baseline",
             description="No tool augmentation",
-            tools=["bash"],     # at_least_one_path_or_tool_change satisfied
+            tools=["bash"],  # at_least_one_path_or_tool_change satisfied
         ),
         "exp": Mode(
             name="exp",
@@ -260,7 +263,7 @@ def test_full_pipeline(
         repo_mgr=repo_mgr,
         repos=repos,
         results_path=None,
-        max_workers=1,          # sequential — deterministic ordering
+        max_workers=1,  # sequential — deterministic ordering
         pricing=pricing,
         mode_defs=mode_defs,
     )
@@ -281,19 +284,14 @@ def test_full_pipeline(
         )
 
         # Cost computed from real token counts × pricing (not mocked).
-        assert rec["total_cost_usd"] > 0, (
-            f"total_cost_usd must be > 0, got {rec['total_cost_usd']}"
-        )
+        assert rec["total_cost_usd"] > 0, f"total_cost_usd must be > 0, got {rec['total_cost_usd']}"
         assert abs(rec["total_cost_usd"] - EXPECTED_COST_PER_RUN) < 1e-9, (
-            f"Cost mismatch: expected {EXPECTED_COST_PER_RUN}, "
-            f"got {rec['total_cost_usd']}"
+            f"Cost mismatch: expected {EXPECTED_COST_PER_RUN}, got {rec['total_cost_usd']}"
         )
 
         # Repetition field is set by run_matrix.
         assert "repetition" in rec, "record must carry repetition"
-        assert rec["repetition"] in (0, 1), (
-            f"repetition out of range: {rec['repetition']}"
-        )
+        assert rec["repetition"] in (0, 1), f"repetition out of range: {rec['repetition']}"
 
         # Mode names must match the scenario definition.
         assert rec["mode"] in ("baseline", "exp"), f"Unexpected mode: {rec['mode']}"
@@ -307,9 +305,7 @@ def test_full_pipeline(
     # ── 5. Repetition coverage: 0 and 1 appear for each mode ──────────────────
     for mode_name in ("baseline", "exp"):
         mode_recs = [r for r in records if r["mode"] == mode_name]
-        assert len(mode_recs) == 2, (
-            f"Expected 2 records for mode={mode_name}, got {len(mode_recs)}"
-        )
+        assert len(mode_recs) == 2, f"Expected 2 records for mode={mode_name}, got {len(mode_recs)}"
         reps = {r["repetition"] for r in mode_recs}
         assert reps == {0, 1}, f"Expected reps {{0,1}} for {mode_name}, got {reps}"
 
@@ -339,24 +335,18 @@ def test_full_pipeline(
     assert "### Per-Task Cost" in report
 
     # Two modes → delta line is present.
-    assert "**Delta:**" in report, (
-        "Report must contain a Delta headline when two modes are present"
-    )
+    assert "**Delta:**" in report, "Report must contain a Delta headline when two modes are present"
 
     # Cost-per-correct headline contains a dollar amount.
     assert "$" in report, "Report must contain cost-per-correct dollar values"
 
     # Per-task table must name our task.
-    assert "find-matcher-trait" in report, (
-        "Per-task table must include the task name"
-    )
+    assert "find-matcher-trait" in report, "Per-task table must include the task name"
 
     # CI bracket appears because we have per-task deltas from multiple tasks.
     # With 1 task and 2 modes the bootstrap may or may not produce a CI,
     # but the delta line itself must exist.
-    assert "baseline" in report and "exp" in report, (
-        "Both mode names must appear in the report"
-    )
+    assert "baseline" in report and "exp" in report, "Both mode names must appear in the report"
 
 
 @pytest.mark.e2e

@@ -57,12 +57,8 @@ def test_repo(tmp_path: Path) -> Path:
     repo_dir = tmp_path / "test-repo"
     repo_dir.mkdir()
     subprocess.run(["git", "init", "-b", "main"], cwd=repo_dir, check=True)
-    subprocess.run(
-        ["git", "config", "user.email", "test@copeca.dev"], cwd=repo_dir, check=True
-    )
-    subprocess.run(
-        ["git", "config", "user.name", "Copeca Test"], cwd=repo_dir, check=True
-    )
+    subprocess.run(["git", "config", "user.email", "test@copeca.dev"], cwd=repo_dir, check=True)
+    subprocess.run(["git", "config", "user.name", "Copeca Test"], cwd=repo_dir, check=True)
     (repo_dir / "README.md").write_text("# Test Repo\n")
     subprocess.run(["git", "add", "."], cwd=repo_dir, check=True)
     subprocess.run(["git", "commit", "-m", "initial"], cwd=repo_dir, check=True)
@@ -71,7 +67,8 @@ def test_repo(tmp_path: Path) -> Path:
 
 class TestCostInPipeline:
     def test_computed_cost_recorded_vendor_is_headline(self, tmp_path, test_repo):
-        """computed_cost_usd is derived from tokens * rates; the vendor's reported cost is the headline total_cost_usd (SD-D)."""
+        """computed_cost_usd is derived from tokens * rates; the vendor's reported
+        cost is the headline total_cost_usd (SD-D)."""
         parser = TokenEchoParser(
             turns=[
                 Turn(
@@ -88,7 +85,8 @@ class TestCostInPipeline:
             name="cost_test_1",
             source="test",
             repo="test-repo",
-            type=TaskType.comprehension, category=Category.locate,
+            type=TaskType.comprehension,
+            category=Category.locate,
             language=Language.python,
             difficulty=Difficulty.easy,
             version=1,
@@ -127,7 +125,7 @@ class TestCostInPipeline:
             pricing=SAMPLE_PRICING,
         )
         assert result["computed_cost_usd"] == pytest.approx(expected)
-        assert result["total_cost_usd"] == 0.05          # vendor billed cost = headline
+        assert result["total_cost_usd"] == 0.05  # vendor billed cost = headline
         assert result["cost_source"] == "vendor"
 
     def test_vendor_cost_usd_written(self, tmp_path, test_repo):
@@ -148,7 +146,8 @@ class TestCostInPipeline:
             name="cost_test_2",
             source="test",
             repo="test-repo",
-            type=TaskType.comprehension, category=Category.locate,
+            type=TaskType.comprehension,
+            category=Category.locate,
             language=Language.python,
             difficulty=Difficulty.easy,
             version=1,
@@ -195,7 +194,8 @@ class TestCostInPipeline:
             name="cost_test_3",
             source="test",
             repo="test-repo",
-            type=TaskType.comprehension, category=Category.locate,
+            type=TaskType.comprehension,
+            category=Category.locate,
             language=Language.python,
             difficulty=Difficulty.easy,
             version=1,
@@ -249,7 +249,8 @@ class TestCostInPipeline:
             name="cost_test_4",
             source="test",
             repo="test-repo",
-            type=TaskType.comprehension, category=Category.locate,
+            type=TaskType.comprehension,
+            category=Category.locate,
             language=Language.python,
             difficulty=Difficulty.easy,
             version=1,
@@ -276,11 +277,9 @@ class TestCostInPipeline:
             pricing=SAMPLE_PRICING,
         )
 
-        expected = (
-            10000 * 3.0 + 500 * 3.75 + 2000 * 0.30 + 500 * 15.0
-        ) / 1_000_000
+        expected = (10000 * 3.0 + 500 * 3.75 + 2000 * 0.30 + 500 * 15.0) / 1_000_000
         assert result["computed_cost_usd"] == pytest.approx(expected)
-        assert result["total_cost_usd"] == 0.10          # vendor billed cost = headline
+        assert result["total_cost_usd"] == 0.10  # vendor billed cost = headline
         assert result["vendor_cost_usd"] == 0.10
 
     def test_zero_token_cost_is_zero(self, tmp_path, test_repo):
@@ -301,7 +300,8 @@ class TestCostInPipeline:
             name="cost_test_5",
             source="test",
             repo="test-repo",
-            type=TaskType.comprehension, category=Category.locate,
+            type=TaskType.comprehension,
+            category=Category.locate,
             language=Language.python,
             difficulty=Difficulty.easy,
             version=1,
@@ -355,7 +355,8 @@ class TestCostDivergence:
             name="divergence_below_5",
             source="test",
             repo="test-repo",
-            type=TaskType.comprehension, category=Category.locate,
+            type=TaskType.comprehension,
+            category=Category.locate,
             language=Language.python,
             difficulty=Difficulty.easy,
             version=1,
@@ -405,7 +406,8 @@ class TestCostDivergence:
             name="divergence_above_5",
             source="test",
             repo="test-repo",
-            type=TaskType.comprehension, category=Category.locate,
+            type=TaskType.comprehension,
+            category=Category.locate,
             language=Language.python,
             difficulty=Difficulty.easy,
             version=1,
@@ -457,7 +459,8 @@ class TestCostDivergence:
             name="divergence_zero_vendor",
             source="test",
             repo="test-repo",
-            type=TaskType.comprehension, category=Category.locate,
+            type=TaskType.comprehension,
+            category=Category.locate,
             language=Language.python,
             difficulty=Difficulty.easy,
             version=1,
@@ -506,7 +509,8 @@ class TestCostDivergence:
             name="divergence_no_pricing",
             source="test",
             repo="test-repo",
-            type=TaskType.comprehension, category=Category.locate,
+            type=TaskType.comprehension,
+            category=Category.locate,
             language=Language.python,
             difficulty=Difficulty.easy,
             version=1,

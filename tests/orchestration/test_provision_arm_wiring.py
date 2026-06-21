@@ -8,8 +8,6 @@ These tests are hermetic — no real subprocess agent, no network.
 
 from pathlib import Path
 
-import pytest
-
 from copeca.config.models import (
     Category,
     ComprehensionGroundTruth,
@@ -36,8 +34,9 @@ class EnvCapturingRunner:
     def build_command(self, model: str, prompt: str, **kwargs: object) -> list[str]:
         return ["echo", "ok"]
 
-    def run(self, command: list[str], cwd: str | None = None,
-            env: dict[str, str] | None = None) -> RunResult:
+    def run(
+        self, command: list[str], cwd: str | None = None, env: dict[str, str] | None = None
+    ) -> RunResult:
         self.captured_env = dict(env) if env is not None else {}
         return RunResult(result_text="ok", total_cost_usd=0.0, duration_ms=0)
 
@@ -68,7 +67,8 @@ def _task(name: str = "t") -> Task:
         name=name,
         source="test",
         repo="test-repo",
-        type=TaskType.comprehension, category=Category.locate,
+        type=TaskType.comprehension,
+        category=Category.locate,
         language=Language.python,
         difficulty=Difficulty.easy,
         version=1,
@@ -183,13 +183,15 @@ class TestMatrixPathModeWiring:
         exp = Mode(name="exp", env={"COPECA_TEST_SIGNAL": "experimental"})
         mode_defs = {"baseline": baseline, "exp": exp}
 
-        scenario = Scenario.model_validate({
-            "name": "test-scenario",
-            "tasks": ["t"],
-            "modes": ["baseline", "exp"],
-            "models": ["m"],
-            "repetitions": 1,
-        })
+        scenario = Scenario.model_validate(
+            {
+                "name": "test-scenario",
+                "tasks": ["t"],
+                "modes": ["baseline", "exp"],
+                "models": ["m"],
+                "repetitions": 1,
+            }
+        )
 
         spies: dict[str, EnvCapturingRunner] = {}
         runner_factory = lambda mode_name, model: spies.setdefault(  # noqa: E731

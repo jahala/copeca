@@ -52,8 +52,6 @@ class MutationAction(Enum):
     create = "create"
 
 
-
-
 # ── Ground truth (discriminated: comprehension vs edit) ───────────────────────
 
 
@@ -94,7 +92,7 @@ class Mutation(BaseModel):
 
     @field_validator("find")
     @classmethod
-    def find_required_for_search_actions(cls, v: str, info: 'ValidationInfo') -> str:
+    def find_required_for_search_actions(cls, v: str, info: "ValidationInfo") -> str:
         action = info.data.get("action", MutationAction.replace)
         if action in (MutationAction.replace, MutationAction.delete, MutationAction.insert_after):
             if not v:
@@ -103,7 +101,7 @@ class Mutation(BaseModel):
 
     @field_validator("content")
     @classmethod
-    def content_required_for_create_and_insert(cls, v: str, info: 'ValidationInfo') -> str:
+    def content_required_for_create_and_insert(cls, v: str, info: "ValidationInfo") -> str:
         action = info.data.get("action", MutationAction.replace)
         if action in (MutationAction.create, MutationAction.insert_after):
             if not v:
@@ -216,9 +214,7 @@ class Mode(BaseModel):
                 self.tools,
             ]
         ):
-            raise ValueError(
-                "at least one integration path or tools list is required"
-            )
+            raise ValueError("at least one integration path or tools list is required")
         return self
 
 
@@ -297,6 +293,4 @@ class Scenario(BaseModel):
     timeout_seconds: int = Field(default=300, ge=1)
     max_workers: int = Field(default=1, ge=1)
     output_dir: str = "results"
-    adversarial_thresholds: AdversarialThresholds = Field(
-        default_factory=AdversarialThresholds
-    )
+    adversarial_thresholds: AdversarialThresholds = Field(default_factory=AdversarialThresholds)

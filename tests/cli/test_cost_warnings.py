@@ -13,7 +13,6 @@ cli.py boundary (S.U.P.E.R. — side effects at the edge).
 
 from __future__ import annotations
 
-from unittest.mock import patch
 from datetime import date
 
 
@@ -95,9 +94,7 @@ class TestPricingStalenessWarning:
         warnings = check_pricing_staleness(pricing)
         assert warnings == []
 
-    def test_emit_staleness_warnings_prints_to_stderr(
-        self, capsys
-    ) -> None:
+    def test_emit_staleness_warnings_prints_to_stderr(self, capsys) -> None:
         """emit_staleness_warnings echoes each warning to stderr."""
         from copeca.cli import emit_staleness_warnings
 
@@ -122,9 +119,7 @@ class TestPricingStalenessWarning:
         assert captured.err == ""
         assert captured.out == ""
 
-    def test_emit_vendor_divergence_warning_prints_to_stderr(
-        self, capsys
-    ) -> None:
+    def test_emit_vendor_divergence_warning_prints_to_stderr(self, capsys) -> None:
         """emit_vendor_divergence_warning echoes the warning to stderr."""
         from copeca.cli import emit_vendor_divergence_warning
 
@@ -135,9 +130,7 @@ class TestPricingStalenessWarning:
         assert "8.0%" in captured.err
         assert captured.out == ""
 
-    def test_emit_vendor_divergence_warning_silent_when_none(
-        self, capsys
-    ) -> None:
+    def test_emit_vendor_divergence_warning_silent_when_none(self, capsys) -> None:
         """emit_vendor_divergence_warning produces no output when warning is None."""
         from copeca.cli import emit_vendor_divergence_warning
 

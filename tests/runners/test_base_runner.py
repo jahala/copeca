@@ -7,8 +7,10 @@ from copeca.runners.base import BaseRunner, InvokeError
 
 class StubRunner(BaseRunner):
     """Concrete runner for testing — implements parse()."""
+
     def parse(self, stdout, supported_events=None):
         from copeca.runners.parsers.base import RunResult
+
         return RunResult(result_text=stdout)
 
     def run(self, command, cwd=None):
@@ -64,6 +66,7 @@ class TestArgMap:
 
 
 # ── Task 51: BaseRunner full args ─────────────────────────────────────────
+
 
 class TestFullArgs:
     """Discriminate tests for build_command with all optional parameters."""
@@ -257,9 +260,7 @@ class TestPrependSystemPrompt:
         )
 
     def test_prepends_system_prompt_to_positional(self):
-        cmd = self._codex_like().build_command(
-            model="m", prompt="USER", system_prompt="SYS"
-        )
+        cmd = self._codex_like().build_command(model="m", prompt="USER", system_prompt="SYS")
         assert "--system-prompt" not in cmd  # no flag — codex has none
         assert cmd[-1] == "SYS\n\nUSER"  # folded into the positional prompt
         sep_idx = cmd.index("--")

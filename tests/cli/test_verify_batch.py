@@ -9,8 +9,6 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
-import pytest
-
 from copeca.results.artifact import build_artifact
 
 
@@ -38,7 +36,9 @@ def _make_artifact(
     return build_artifact(record, worktree, output_dir)
 
 
-def _write_scenario(path: Path, tasks: list[str], modes: list[str], models: list[str], repetitions: int) -> None:
+def _write_scenario(
+    path: Path, tasks: list[str], modes: list[str], models: list[str], repetitions: int
+) -> None:
     """Write a minimal scenario YAML to path."""
     tasks_str = ", ".join(f'"{t}"' for t in tasks)
     modes_str = ", ".join(f'"{m}"' for m in modes)
@@ -63,15 +63,20 @@ class TestVerifyBatchCLI:
         output_dir.mkdir()
 
         # Only rep00 is present; scenario expects 2 reps
-        _make_artifact(output_dir, worktree, task="mytask", mode="baseline", model="mymodel", repetition=0)
+        _make_artifact(
+            output_dir, worktree, task="mytask", mode="baseline", model="mymodel", repetition=0
+        )
 
         scenario_path = tmp_path / "scenario.yaml"
-        _write_scenario(scenario_path, tasks=["mytask"], modes=["baseline"], models=["mymodel"], repetitions=2)
+        _write_scenario(
+            scenario_path, tasks=["mytask"], modes=["baseline"], models=["mymodel"], repetitions=2
+        )
 
         result = copeca("verify", "--batch", str(output_dir), "--scenario", str(scenario_path))
 
         assert result.returncode != 0, (
-            f"Expected non-zero exit for incomplete batch.\nstdout={result.stdout}\nstderr={result.stderr}"
+            f"Expected non-zero exit for incomplete batch.\n"
+            f"stdout={result.stdout}\nstderr={result.stderr}"
         )
         combined = result.stdout + result.stderr
         # Must name the missing run
@@ -88,15 +93,25 @@ class TestVerifyBatchCLI:
         output_dir.mkdir()
 
         for rep in range(2):
-            _make_artifact(output_dir, worktree, task="mytask", mode="baseline", model="mymodel", repetition=rep)
+            _make_artifact(
+                output_dir,
+                worktree,
+                task="mytask",
+                mode="baseline",
+                model="mymodel",
+                repetition=rep,
+            )
 
         scenario_path = tmp_path / "scenario.yaml"
-        _write_scenario(scenario_path, tasks=["mytask"], modes=["baseline"], models=["mymodel"], repetitions=2)
+        _write_scenario(
+            scenario_path, tasks=["mytask"], modes=["baseline"], models=["mymodel"], repetitions=2
+        )
 
         result = copeca("verify", "--batch", str(output_dir), "--scenario", str(scenario_path))
 
         assert result.returncode == 0, (
-            f"Expected zero exit for complete batch.\nstdout={result.stdout}\nstderr={result.stderr}"
+            f"Expected zero exit for complete batch.\n"
+            f"stdout={result.stdout}\nstderr={result.stderr}"
         )
 
     def test_batch_missing_scenario_flag_errors(self, tmp_path: Path) -> None:
@@ -107,7 +122,8 @@ class TestVerifyBatchCLI:
         result = copeca("verify", "--batch", str(output_dir))
 
         assert result.returncode != 0, (
-            f"Expected non-zero exit when --scenario is missing.\nstdout={result.stdout}\nstderr={result.stderr}"
+            f"Expected non-zero exit when --scenario is missing.\n"
+            f"stdout={result.stdout}\nstderr={result.stderr}"
         )
 
     def test_batch_empty_dir_exits_nonzero(self, tmp_path: Path) -> None:
@@ -116,7 +132,9 @@ class TestVerifyBatchCLI:
         output_dir.mkdir()
 
         scenario_path = tmp_path / "scenario.yaml"
-        _write_scenario(scenario_path, tasks=["t1"], modes=["baseline"], models=["m"], repetitions=1)
+        _write_scenario(
+            scenario_path, tasks=["t1"], modes=["baseline"], models=["m"], repetitions=1
+        )
 
         result = copeca("verify", "--batch", str(output_dir), "--scenario", str(scenario_path))
 
@@ -137,5 +155,6 @@ class TestVerifyBatchCLI:
         result = copeca("verify", str(artifact))
 
         assert result.returncode == 0, (
-            f"Single-artifact verify must still work.\nstdout={result.stdout}\nstderr={result.stderr}"
+            f"Single-artifact verify must still work.\n"
+            f"stdout={result.stdout}\nstderr={result.stderr}"
         )

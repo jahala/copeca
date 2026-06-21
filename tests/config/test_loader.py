@@ -108,9 +108,7 @@ class TestLoadMode:
         """When multiple dirs are given, the first containing <name>.yaml wins."""
         first = tmp_path / "first"
         first.mkdir()
-        (first / "custom.yaml").write_text(
-            "name: custom\ndescription: from first\ntools: [Bash]\n"
-        )
+        (first / "custom.yaml").write_text("name: custom\ndescription: from first\ntools: [Bash]\n")
         mode = load_mode("custom", modes_dirs=[first, DEFAULT_MODES_DIR])
         assert mode.name == "custom"
         assert mode.description == "from first"

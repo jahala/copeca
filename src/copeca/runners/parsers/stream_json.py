@@ -66,12 +66,14 @@ def parse_stream_json(raw: str) -> RunResult:
             if msg_id is None or msg_id not in seen_message_ids:
                 if msg_id is not None:
                     seen_message_ids.add(msg_id)
-                turns.append(Turn(
-                    input_tokens=usage.get("input_tokens", 0),
-                    output_tokens=usage.get("output_tokens", 0),
-                    cache_creation_tokens=usage.get("cache_creation_input_tokens", 0),
-                    cache_read_tokens=usage.get("cache_read_input_tokens", 0),
-                ))
+                turns.append(
+                    Turn(
+                        input_tokens=usage.get("input_tokens", 0),
+                        output_tokens=usage.get("output_tokens", 0),
+                        cache_creation_tokens=usage.get("cache_creation_input_tokens", 0),
+                        cache_read_tokens=usage.get("cache_read_input_tokens", 0),
+                    )
+                )
 
         # Extract tool calls from user messages
         content = msg.get("content", [])

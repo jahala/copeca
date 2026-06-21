@@ -44,8 +44,7 @@ class TestSmokeList:
     def test_smoke_list_shows_tasks(self):
         result = _run_copeca("list", str(TASKS_DIR))
         assert result.returncode == 0, (
-            f"copeca list tasks/ failed (exit {result.returncode}):\n"
-            f"stderr={result.stderr}"
+            f"copeca list tasks/ failed (exit {result.returncode}):\nstderr={result.stderr}"
         )
 
         # The list output should contain known task names
@@ -56,6 +55,4 @@ class TestSmokeList:
             "t003_gin_middleware",
         ]
         for name in known_names:
-            assert name in result.stdout, (
-                f"Expected task '{name}' in list output:\n{result.stdout}"
-            )
+            assert name in result.stdout, f"Expected task '{name}' in list output:\n{result.stdout}"

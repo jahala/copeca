@@ -48,13 +48,7 @@ def provision_arm(mode: Mode, worktree: Path, arm_name: str = "arm") -> ArmHarne
         RuntimeError: If a setup command exits non-zero.
     """
     # ── Baseline: no integration paths → clean harness ───────────────
-    has_paths = bool(
-        mode.mcp_config
-        or mode.env
-        or mode.agent_config
-        or mode.wrapper
-        or mode.setup
-    )
+    has_paths = bool(mode.mcp_config or mode.env or mode.agent_config or mode.wrapper or mode.setup)
     if not has_paths:
         return ArmHarness()
 

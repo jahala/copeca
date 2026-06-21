@@ -1,7 +1,5 @@
 """Test markdown report generation — pure text generation from JSONL records."""
 
-import pytest
-
 from copeca.analysis.report import generate_report
 
 
@@ -94,14 +92,20 @@ class TestGenerateReport:
         """Report must include token/cost breakdown per mode."""
         records = [
             _make_record(
-                task="task_a", mode="baseline",
-                input_tokens=2000, output_tokens=1000,
-                cache_creation_tokens=500, cache_read_tokens=100,
+                task="task_a",
+                mode="baseline",
+                input_tokens=2000,
+                output_tokens=1000,
+                cache_creation_tokens=500,
+                cache_read_tokens=100,
             ),
             _make_record(
-                task="task_a", mode="experimental",
-                input_tokens=1500, output_tokens=800,
-                cache_creation_tokens=300, cache_read_tokens=50,
+                task="task_a",
+                mode="experimental",
+                input_tokens=1500,
+                output_tokens=800,
+                cache_creation_tokens=300,
+                cache_read_tokens=50,
             ),
         ]
         report = generate_report(records)
@@ -189,7 +193,8 @@ class TestGenerateReport:
         """Report includes an Adversarial Flags section when records have flags."""
         records = [
             _make_record(
-                task="task_a", mode="baseline",
+                task="task_a",
+                mode="baseline",
                 adversarial_flags={
                     "token_snowball": True,
                     "talkative_failure": False,
@@ -199,7 +204,8 @@ class TestGenerateReport:
                 },
             ),
             _make_record(
-                task="task_a", mode="baseline",
+                task="task_a",
+                mode="baseline",
                 adversarial_flags={
                     "token_snowball": False,
                     "talkative_failure": False,
@@ -209,7 +215,8 @@ class TestGenerateReport:
                 },
             ),
             _make_record(
-                task="task_b", mode="experimental",
+                task="task_b",
+                mode="experimental",
                 adversarial_flags={
                     "token_snowball": False,
                     "talkative_failure": True,
@@ -244,11 +251,13 @@ class TestGenerateReport:
         """When records have per-turn data, sparklines section appears."""
         records = [
             _make_record(
-                task="task_a", mode="baseline",
+                task="task_a",
+                mode="baseline",
                 per_turn_output_tokens=[100, 250, 400, 300, 500],
             ),
             _make_record(
-                task="task_a", mode="experimental",
+                task="task_a",
+                mode="experimental",
                 per_turn_output_tokens=[80, 120, 200, 180, 220],
             ),
         ]
@@ -292,16 +301,37 @@ class TestGenerateReport:
     def test_report_contains_per_language_breakdown(self):
         """Report includes Per-Language Breakdown when records carry language."""
         records = [
-            _make_record(task="task_a", mode="baseline", language="python",
-                         total_cost_usd=0.10, correct=True),
-            _make_record(task="task_a", mode="baseline", language="python",
-                         total_cost_usd=0.10, correct=False),
-            _make_record(task="task_a", mode="experimental", language="python",
-                         total_cost_usd=0.05, correct=True),
-            _make_record(task="task_b", mode="baseline", language="javascript",
-                         total_cost_usd=0.20, correct=True),
-            _make_record(task="task_b", mode="experimental", language="javascript",
-                         total_cost_usd=0.10, correct=True),
+            _make_record(
+                task="task_a", mode="baseline", language="python", total_cost_usd=0.10, correct=True
+            ),
+            _make_record(
+                task="task_a",
+                mode="baseline",
+                language="python",
+                total_cost_usd=0.10,
+                correct=False,
+            ),
+            _make_record(
+                task="task_a",
+                mode="experimental",
+                language="python",
+                total_cost_usd=0.05,
+                correct=True,
+            ),
+            _make_record(
+                task="task_b",
+                mode="baseline",
+                language="javascript",
+                total_cost_usd=0.20,
+                correct=True,
+            ),
+            _make_record(
+                task="task_b",
+                mode="experimental",
+                language="javascript",
+                total_cost_usd=0.10,
+                correct=True,
+            ),
         ]
         report = generate_report(records)
 
@@ -314,16 +344,33 @@ class TestGenerateReport:
     def test_report_contains_per_difficulty_breakdown(self):
         """Report includes Per-Difficulty Breakdown when records carry difficulty."""
         records = [
-            _make_record(task="task_a", mode="baseline", difficulty="easy",
-                         total_cost_usd=0.10, correct=True),
-            _make_record(task="task_a", mode="experimental", difficulty="easy",
-                         total_cost_usd=0.05, correct=True),
-            _make_record(task="task_b", mode="baseline", difficulty="hard",
-                         total_cost_usd=0.30, correct=True),
-            _make_record(task="task_b", mode="baseline", difficulty="hard",
-                         total_cost_usd=0.30, correct=False),
-            _make_record(task="task_b", mode="experimental", difficulty="hard",
-                         total_cost_usd=0.20, correct=True),
+            _make_record(
+                task="task_a", mode="baseline", difficulty="easy", total_cost_usd=0.10, correct=True
+            ),
+            _make_record(
+                task="task_a",
+                mode="experimental",
+                difficulty="easy",
+                total_cost_usd=0.05,
+                correct=True,
+            ),
+            _make_record(
+                task="task_b", mode="baseline", difficulty="hard", total_cost_usd=0.30, correct=True
+            ),
+            _make_record(
+                task="task_b",
+                mode="baseline",
+                difficulty="hard",
+                total_cost_usd=0.30,
+                correct=False,
+            ),
+            _make_record(
+                task="task_b",
+                mode="experimental",
+                difficulty="hard",
+                total_cost_usd=0.20,
+                correct=True,
+            ),
         ]
         report = generate_report(records)
 
@@ -337,18 +384,24 @@ class TestGenerateReport:
         """Per-Capability (category) breakdown with a delta — the payoff: WHERE a
         tool helps. Records carry the `category` field (TX-3)."""
         records = [
-            _make_record(task="t1", mode="baseline", category="trace",
-                         total_cost_usd=0.20, correct=True),
-            _make_record(task="t1", mode="experimental", category="trace",
-                         total_cost_usd=0.10, correct=True),
-            _make_record(task="t2", mode="baseline", category="trace",
-                         total_cost_usd=0.40, correct=True),
-            _make_record(task="t2", mode="experimental", category="trace",
-                         total_cost_usd=0.30, correct=True),
-            _make_record(task="t3", mode="baseline", category="fix",
-                         total_cost_usd=0.10, correct=True),
-            _make_record(task="t3", mode="experimental", category="fix",
-                         total_cost_usd=0.10, correct=True),
+            _make_record(
+                task="t1", mode="baseline", category="trace", total_cost_usd=0.20, correct=True
+            ),
+            _make_record(
+                task="t1", mode="experimental", category="trace", total_cost_usd=0.10, correct=True
+            ),
+            _make_record(
+                task="t2", mode="baseline", category="trace", total_cost_usd=0.40, correct=True
+            ),
+            _make_record(
+                task="t2", mode="experimental", category="trace", total_cost_usd=0.30, correct=True
+            ),
+            _make_record(
+                task="t3", mode="baseline", category="fix", total_cost_usd=0.10, correct=True
+            ),
+            _make_record(
+                task="t3", mode="experimental", category="fix", total_cost_usd=0.10, correct=True
+            ),
         ]
         report = generate_report(records)
 
@@ -435,14 +488,24 @@ class TestReportExcludesFailedRuns:
     def test_failed_run_excluded_from_accuracy_and_noted(self):
         records = [
             {
-                "task": "t1", "mode": "baseline", "total_cost_usd": 0.20,
-                "correct": True, "input_tokens": 100, "output_tokens": 50,
-                "cache_creation_tokens": 0, "cache_read_tokens": 0,
+                "task": "t1",
+                "mode": "baseline",
+                "total_cost_usd": 0.20,
+                "correct": True,
+                "input_tokens": 100,
+                "output_tokens": 50,
+                "cache_creation_tokens": 0,
+                "cache_read_tokens": 0,
             },
             {
-                "task": "t1", "mode": "baseline", "total_cost_usd": 0.0,
-                "correct": False, "input_tokens": 0, "output_tokens": 0,
-                "cache_creation_tokens": 0, "cache_read_tokens": 0,
+                "task": "t1",
+                "mode": "baseline",
+                "total_cost_usd": 0.0,
+                "correct": False,
+                "input_tokens": 0,
+                "output_tokens": 0,
+                "cache_creation_tokens": 0,
+                "cache_read_tokens": 0,
                 "error": "runner exited with code 1",
             },
         ]

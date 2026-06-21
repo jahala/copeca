@@ -2,8 +2,6 @@
 
 from dataclasses import dataclass, field
 
-import pytest
-
 from copeca.config.models import Mode
 from copeca.orchestration.validation import check_mode_runner_compat
 
@@ -183,6 +181,7 @@ class FakeMode:
 
     No Pydantic validation — just the fields the function reads.
     """
+
     name: str = "test"
     mcp_config: dict | None = None
     env: dict | None = None

@@ -87,7 +87,11 @@ class TestValidateCommand:
         result = copeca("validate", str(BLOCKED_SOURCE_DIR))
         combined = result.stdout + result.stderr
         # Must surface the contamination finding — either via a warning or non-zero exit
-        assert result.returncode != 0 or "contamination" in combined.lower() or "blocked" in combined.lower(), (
+        assert (
+            result.returncode != 0
+            or "contamination" in combined.lower()
+            or "blocked" in combined.lower()
+        ), (
             f"Expected contamination warning or non-zero exit for blocked source task, "
             f"got returncode={result.returncode}, output={combined!r}"
         )
@@ -120,11 +124,14 @@ class TestValidateCommand:
         (d / "coupled_task.yaml").write_text(yaml.dump(task))
         result = copeca("validate", str(d))
         combined = (result.stdout + result.stderr).lower()
-        assert result.returncode != 0, f"expected non-zero exit, got {result.returncode}: {combined}"
+        assert result.returncode != 0, (
+            f"expected non-zero exit, got {result.returncode}: {combined}"
+        )
         assert "tool-coupling" in combined or "agnostic" in combined, combined
 
     def test_validate_flags_blocked_source_from_arbitrary_cwd(self):
-        """validate flags a blocked source task even when run from a tmp cwd with no local blocklist.
+        """validate flags a blocked source task even when run from a tmp cwd with no
+        local blocklist.
 
         This is the regression test for the silent no-op: the packaged blocklist
         (src/copeca/data/contamination_blocklist.txt) must be used when no local
@@ -141,7 +148,11 @@ class TestValidateCommand:
                 cwd=tmp_cwd,
             )
         combined = result.stdout + result.stderr
-        assert result.returncode != 0 or "contamination" in combined.lower() or "blocked" in combined.lower(), (
+        assert (
+            result.returncode != 0
+            or "contamination" in combined.lower()
+            or "blocked" in combined.lower()
+        ), (
             f"Expected contamination rejection from packaged blocklist when run from tmp cwd "
             f"(no local blocklist), got returncode={result.returncode}, output={combined!r}"
         )

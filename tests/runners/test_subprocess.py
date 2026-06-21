@@ -8,6 +8,7 @@ from copeca.runners.subprocess import SubprocessRunner
 
 class EchoParser:
     """Parser that returns a RunResult with the raw stdout as result_text."""
+
     def parse(self, stdout, supported_events=None):
         return RunResult(result_text=stdout, duration_ms=100)
 
@@ -50,7 +51,7 @@ class TestSubprocessRunner:
         )
         try:
             runner.run(["sleep", "10"])
-            assert False, "should have timed out"
+            raise AssertionError("should have timed out")
         except Exception:
             pass  # Expected — timeout or killed
 

@@ -57,9 +57,7 @@ class TestBaseEnvAllowlist:
         assert "CLAUDE_CODE_CUSTOM_HOOK" not in child_env, (
             "Ambient hook var must be excluded by the allowlist"
         )
-        assert "MCP_SERVER_URL" not in child_env, (
-            "MCP server URL must be excluded by the allowlist"
-        )
+        assert "MCP_SERVER_URL" not in child_env, "MCP server URL must be excluded by the allowlist"
 
     def test_allowed_infra_vars_are_present_in_child(self) -> None:
         """PATH, HOME, and ANTHROPIC_API_KEY must survive to the child (real runs need them)."""
@@ -93,9 +91,7 @@ class TestBaseEnvAllowlist:
             result = runner.run(_CMD, env={"MODE_TOOL_VAR": "x"})
 
         child_env: dict[str, str] = json.loads(result.result_text)
-        assert child_env.get("MODE_TOOL_VAR") == "x", (
-            "Key passed via env= kwarg must reach child"
-        )
+        assert child_env.get("MODE_TOOL_VAR") == "x", "Key passed via env= kwarg must reach child"
 
     def test_explicit_env_overrides_allowlist_value(self) -> None:
         """An env= key that also appears in the allowlist must use the explicit value."""

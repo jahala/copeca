@@ -1,9 +1,6 @@
 """Test the matrix runner — tasks x modes x repetitions produce correct cardinality."""
 
-import json
 from pathlib import Path
-
-import pytest
 
 from copeca.config.models import (
     Category,
@@ -14,12 +11,12 @@ from copeca.config.models import (
     Task,
     TaskType,
 )
+from copeca.orchestration.run import run_matrix
 from copeca.runners.parsers.base import RunResult
 from copeca.runners.subprocess import SubprocessRunner
-from copeca.orchestration.run import run_matrix
-
 
 # ── EchoParser — same pattern as test_single_run.py ─────────────────────────
+
 
 class EchoParser:
     """Parser that returns a RunResult with raw stdout as result_text."""
@@ -33,6 +30,7 @@ class EchoParser:
 
 
 # ── StubRepoManager — no real git needed for matrix shape tests ─────────────
+
 
 class StubRepoManager:
     """Stub repo manager that fakes worktree operations for matrix tests.
@@ -70,7 +68,8 @@ def _make_task(name: str, repo: str = "test-repo") -> Task:
         name=name,
         source="test",
         repo=repo,
-        type=TaskType.comprehension, category=Category.locate,
+        type=TaskType.comprehension,
+        category=Category.locate,
         language=Language.python,
         difficulty=Difficulty.easy,
         version=1,
@@ -105,6 +104,7 @@ def _make_runner() -> SubprocessRunner:
 
 # ── Tests ───────────────────────────────────────────────────────────────────
 
+
 class TestMatrixCardinality:
     """The matrix shape: tasks x modes x reps = total records."""
 
@@ -119,7 +119,10 @@ class TestMatrixCardinality:
             modes=["baseline"],
             repetitions=1,
         )
-        runner_factory = lambda mode, model: _make_runner()
+
+        def runner_factory(mode, model):
+            return _make_runner()
+
         repo_mgr = StubRepoManager(tmp_path)
         results_path = tmp_path / "results.jsonl"
 
@@ -145,7 +148,10 @@ class TestMatrixCardinality:
             modes=["baseline"],
             repetitions=2,
         )
-        runner_factory = lambda mode, model: _make_runner()
+
+        def runner_factory(mode, model):
+            return _make_runner()
+
         repo_mgr = StubRepoManager(tmp_path)
         results_path = tmp_path / "results.jsonl"
 
@@ -171,7 +177,10 @@ class TestMatrixCardinality:
             modes=["baseline", "mcp-tool"],
             repetitions=1,
         )
-        runner_factory = lambda mode, model: _make_runner()
+
+        def runner_factory(mode, model):
+            return _make_runner()
+
         repo_mgr = StubRepoManager(tmp_path)
         results_path = tmp_path / "results.jsonl"
 
@@ -190,7 +199,6 @@ class TestMatrixCardinality:
         assert mode_names == ["baseline", "mcp-tool"]
 
 
-
 class TestConcurrentExecution:
     """max_workers > 1 dispatches work items across threads."""
 
@@ -205,7 +213,10 @@ class TestConcurrentExecution:
             modes=["baseline"],
             repetitions=1,
         )
-        runner_factory = lambda mode, model: _make_runner()
+
+        def runner_factory(mode, model):
+            return _make_runner()
+
         repo_mgr = StubRepoManager(tmp_path)
         results_path = tmp_path / "results.jsonl"
 
@@ -234,7 +245,10 @@ class TestConcurrentExecution:
             modes=["baseline"],
             repetitions=1,
         )
-        runner_factory = lambda mode, model: _make_runner()
+
+        def runner_factory(mode, model):
+            return _make_runner()
+
         repo_mgr = StubRepoManager(tmp_path)
         results_path = tmp_path / "results.jsonl"
 
@@ -251,6 +265,8 @@ class TestConcurrentExecution:
         assert len(records) == 2
         task_names = sorted(r["task"] for r in records)
         assert task_names == ["task_a", "task_b"]
+
+
 class TestMatrixFailureIsolation:
     """One run failing must not kill the remaining runs."""
 
@@ -288,9 +304,8 @@ class TestMatrixFailureIsolation:
                     duration_ms=200,
                 )
 
-        runner_factory = lambda mode, model: FailingRunner(
-            "test-runner", fail_on="bad_task"
-        )
+        def runner_factory(mode, model):
+            return FailingRunner("test-runner", fail_on="bad_task")
 
         records = run_matrix(
             scenario=scenario,
@@ -314,6 +329,7 @@ class TestMatrixFailureIsolation:
 
 # ── Task 50: run_matrix error paths ───────────────────────────────────────
 
+
 class TestMatrixErrorPaths:
     """Discriminate tests: unknown tasks, missing pricing, build command args."""
 
@@ -325,7 +341,10 @@ class TestMatrixErrorPaths:
             modes=["baseline"],
             repetitions=1,
         )
-        runner_factory = lambda mode, model: _make_runner()
+
+        def runner_factory(mode, model):
+            return _make_runner()
+
         repo_mgr = StubRepoManager(tmp_path)
         results_path = tmp_path / "results.jsonl"
 
@@ -351,7 +370,10 @@ class TestMatrixErrorPaths:
             modes=["baseline"],
             repetitions=1,
         )
-        runner_factory = lambda mode, model: _make_runner()
+
+        def runner_factory(mode, model):
+            return _make_runner()
+
         repo_mgr = StubRepoManager(tmp_path)
         results_path = tmp_path / "results.jsonl"
 
@@ -390,7 +412,10 @@ class TestMatrixErrorPaths:
             modes=["baseline"],
             repetitions=1,
         )
-        runner_factory = lambda mode, model: _make_runner()
+
+        def runner_factory(mode, model):
+            return _make_runner()
+
         repo_mgr = StubRepoManager(tmp_path)
         results_path = tmp_path / "results.jsonl"
 

@@ -79,9 +79,7 @@ def run_single(
     #      false null (shakedown SD-I).
     _tool_errors = check_tool_availability(mode, runner_cli=getattr(runner, "cli", None))
     if _tool_errors:
-        raise RuntimeError(
-            "tool availability preflight failed: " + "; ".join(_tool_errors)
-        )
+        raise RuntimeError("tool availability preflight failed: " + "; ".join(_tool_errors))
 
     # 2. Create worktree at the pinned commit. A task may pin its OWN commit
     #    (task.commit), overriding the repos.yaml default — so one repo can serve
@@ -103,6 +101,7 @@ def run_single(
             harness = provision_arm(mode, worktree=Path(worktree), arm_name=mode_name)
         else:
             from copeca.orchestration.state import ArmHarness
+
             harness = ArmHarness()
 
         # 4. Build committed mutation history (debug tasks only) — must run
@@ -143,7 +142,7 @@ def run_single(
                     text=True,
                     timeout=120,
                 )
-                test_command_passed = (tc_result.returncode == 0)
+                test_command_passed = tc_result.returncode == 0
                 test_command_record = {
                     "command": task.ground_truth.test_command,
                     "passed": test_command_passed,
@@ -201,7 +200,7 @@ def run_single(
                     _divergence_warning = (
                         f"Modeled cost ({computed_cost:.4f}) is a token-derived "
                         f"estimate; it differs from the billed vendor cost "
-                        f"({vendor_cost_usd:.4f}) by {divergence*100:.1f}%. Token "
+                        f"({vendor_cost_usd:.4f}) by {divergence * 100:.1f}%. Token "
                         f"counts cannot capture cache TTL / tier / discounts — the "
                         f"billed cost is authoritative."
                     )
@@ -234,9 +233,7 @@ def run_single(
         _servers = _mcp.get("mcpServers", {}) if isinstance(_mcp, dict) else {}
         if _servers:
             _names = [tc.name for tc in parsed.tool_calls]
-            tool_adopted = any(
-                n.startswith(f"mcp__{srv}__") for n in _names for srv in _servers
-            )
+            tool_adopted = any(n.startswith(f"mcp__{srv}__") for n in _names for srv in _servers)
 
         # 7. Build JSONL record
         record: dict[str, Any] = {
@@ -263,9 +260,7 @@ def run_single(
             "total_cost_usd": total_cost_usd,
             "cost_source": cost_source,
             "duration_ms": parsed.duration_ms,
-            "context_tokens": (
-                parsed.total_input_tokens + parsed.total_cache_creation_tokens
-            ),
+            "context_tokens": (parsed.total_input_tokens + parsed.total_cache_creation_tokens),
             "output_tokens": parsed.total_output_tokens,
             "input_tokens": parsed.total_input_tokens,
             "cache_creation_tokens": parsed.total_cache_creation_tokens,
@@ -292,7 +287,6 @@ def run_single(
             record["metadata"]["vendor_cost_divergence_warning"] = _divergence_warning
 
         return record
-
 
     finally:
         # 9. Reset the worktree — unless the caller asked to keep it for
@@ -323,9 +317,7 @@ def _compute_adversarial_flags(
         talkative_failure: bool | None = None
     else:
         output_tokens = parsed.total_output_tokens
-        talkative_failure = (
-            output_tokens > thresholds.talkative_tokens and not correct
-        )
+        talkative_failure = output_tokens > thresholds.talkative_tokens and not correct
 
     # tool_storm: excessive tool calls.
     # null only if num_tool_calls is unavailable; the RunResult always has it,
@@ -341,11 +333,7 @@ def _compute_adversarial_flags(
         budget_exhausted = total_cost_usd >= budget_usd and result_empty
 
     return {
-        "timeout": (
-            parsed.duration_ms >= timeout_seconds * 1000
-            if timeout_seconds > 0
-            else None
-        ),
+        "timeout": (parsed.duration_ms >= timeout_seconds * 1000 if timeout_seconds > 0 else None),
         "budget_exhausted": budget_exhausted,
         "error": parsed.error is not None,
         "token_snowball": _check_token_snowball(parsed, thresholds.snowball_factor),
@@ -417,9 +405,7 @@ def run_matrix(
     for task_name in scenario.tasks:
         task = task_lookup.get(task_name)
         if task is None:
-            logger.warning(
-                "Skipping task '%s' — not found in loaded tasks", task_name
-            )
+            logger.warning("Skipping task '%s' — not found in loaded tasks", task_name)
             continue
 
         repo_info = repos_dict.get(task.repo)
@@ -429,20 +415,23 @@ def run_matrix(
         for mode_name in modes:
             for rep in range(scenario.repetitions):
                 for model in scenario.models:
-                    work_items.append({
-                        "task": task,
-                        "task_name": task_name,
-                        "mode_name": mode_name,
-                        "model": model,
-                        "rep": rep,
-                        "repo_uri": repo_uri,
-                        "repo_commit": repo_commit,
-                        "mode_obj": (mode_defs or {}).get(mode_name),
-                    })
+                    work_items.append(
+                        {
+                            "task": task,
+                            "task_name": task_name,
+                            "mode_name": mode_name,
+                            "model": model,
+                            "rep": rep,
+                            "repo_uri": repo_uri,
+                            "repo_commit": repo_commit,
+                            "mode_obj": (mode_defs or {}).get(mode_name),
+                        }
+                    )
 
     logger.info(
         "Matrix: %d work items, max_workers=%d",
-        len(work_items), max_workers,
+        len(work_items),
+        max_workers,
     )
 
     records: list[dict[str, Any]] = []
@@ -452,8 +441,15 @@ def run_matrix(
 
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         future_to_item = {
-            executor.submit(_run_one_work_item, item, runner_factory, repo_mgr,
-                            scenario, pricing, keep_worktrees): item
+            executor.submit(
+                _run_one_work_item,
+                item,
+                runner_factory,
+                repo_mgr,
+                scenario,
+                pricing,
+                keep_worktrees,
+            ): item
             for item in work_items
         }
 
@@ -465,8 +461,11 @@ def run_matrix(
             except Exception as exc:
                 logger.error(
                     "Run failed: task=%s mode=%s model=%s rep=%d: %s",
-                    item["task_name"], item["mode_name"],
-                    item["model"], item["rep"], exc,
+                    item["task_name"],
+                    item["mode_name"],
+                    item["model"],
+                    item["rep"],
+                    exc,
                 )
                 error_record: dict[str, Any] = {
                     "task": item["task"].name,
@@ -504,7 +503,10 @@ def _run_one_work_item(
 
     logger.info(
         "Running: task=%s mode=%s model=%s rep=%d",
-        item["task_name"], item["mode_name"], item["model"], item["rep"],
+        item["task_name"],
+        item["mode_name"],
+        item["model"],
+        item["rep"],
     )
 
     mode_obj: Mode | None = item.get("mode_obj")

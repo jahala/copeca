@@ -64,9 +64,7 @@ class TestMcpViaConfigOverrides:
     """When mcp_via_config_overrides=True, build_command translates the JSON file
     into -c mcp_servers.* pairs rather than passing --mcp-config."""
 
-    def test_single_server_emits_command_and_args_overrides(
-        self, tmp_path: Path
-    ) -> None:
+    def test_single_server_emits_command_and_args_overrides(self, tmp_path: Path) -> None:
         """One server → two -c tokens: one for command, one for args."""
         mcp_json = tmp_path / "mcp.json"
         mcp_json.write_text(
@@ -92,13 +90,13 @@ class TestMcpViaConfigOverrides:
         # Must have -c for command
         assert "-c" in cmd, "Expected -c overrides in command"
         pairs = _extract_c_pairs(cmd)
-        assert any(
-            k == "mcp_servers.tilth.command" for k, _ in pairs
-        ), f"Expected mcp_servers.tilth.command override; got pairs={pairs}"
+        assert any(k == "mcp_servers.tilth.command" for k, _ in pairs), (
+            f"Expected mcp_servers.tilth.command override; got pairs={pairs}"
+        )
         # Must have -c for args
-        assert any(
-            k == "mcp_servers.tilth.args" for k, _ in pairs
-        ), f"Expected mcp_servers.tilth.args override; got pairs={pairs}"
+        assert any(k == "mcp_servers.tilth.args" for k, _ in pairs), (
+            f"Expected mcp_servers.tilth.args override; got pairs={pairs}"
+        )
 
         # Must NOT have --mcp-config anywhere
         assert "--mcp-config" not in cmd, (
@@ -109,9 +107,7 @@ class TestMcpViaConfigOverrides:
         """The command value must be formatted as: "mcp_servers.<n>.command=\"<cmd>\""""
         mcp_json = tmp_path / "mcp.json"
         mcp_json.write_text(
-            json.dumps(
-                {"mcpServers": {"mytool": {"command": "/usr/bin/mytool", "args": []}}}
-            )
+            json.dumps({"mcpServers": {"mytool": {"command": "/usr/bin/mytool", "args": []}}})
         )
 
         cmd = _codex_like_runner().build_command(
@@ -123,7 +119,7 @@ class TestMcpViaConfigOverrides:
         assert len(cmd_pairs) == 1, f"Expected exactly one command override; got {pairs}"
         _, val = cmd_pairs[0]
         # Must be the full "mcp_servers.mytool.command=\"/usr/bin/mytool\"" token
-        assert val == '/usr/bin/mytool', (
+        assert val == "/usr/bin/mytool", (
             f"command value must be the bare path without quoting noise; got {val!r}"
         )
 
@@ -185,9 +181,7 @@ class TestMcpViaConfigOverrides:
 
     def test_no_mcp_config_produces_no_overrides(self) -> None:
         """mcp_config=None → no -c overrides at all."""
-        cmd = _codex_like_runner().build_command(
-            model="gpt-5.5", prompt="p", mcp_config=None
-        )
+        cmd = _codex_like_runner().build_command(model="gpt-5.5", prompt="p", mcp_config=None)
 
         pairs = _extract_c_pairs(cmd)
         mcp_pairs = [(k, v) for k, v in pairs if "mcp_servers" in k]
@@ -198,24 +192,18 @@ class TestMcpViaConfigOverrides:
     def test_prompt_still_last_with_overrides(self, tmp_path: Path) -> None:
         """The positional prompt must still be the last token even with -c overrides."""
         mcp_json = tmp_path / "mcp.json"
-        mcp_json.write_text(
-            json.dumps({"mcpServers": {"s": {"command": "/bin/s", "args": []}}})
-        )
+        mcp_json.write_text(json.dumps({"mcpServers": {"s": {"command": "/bin/s", "args": []}}}))
 
         cmd = _codex_like_runner().build_command(
             model="gpt-5.5", prompt="do the thing", mcp_config=str(mcp_json)
         )
 
-        assert cmd[-1] == "do the thing", (
-            f"Prompt must be last token; got cmd={cmd}"
-        )
+        assert cmd[-1] == "do the thing", f"Prompt must be last token; got cmd={cmd}"
 
     def test_default_args_still_present_with_overrides(self, tmp_path: Path) -> None:
         """default_args (exec, --json) must still appear alongside -c overrides."""
         mcp_json = tmp_path / "mcp.json"
-        mcp_json.write_text(
-            json.dumps({"mcpServers": {"s": {"command": "/bin/s", "args": []}}})
-        )
+        mcp_json.write_text(json.dumps({"mcpServers": {"s": {"command": "/bin/s", "args": []}}}))
 
         cmd = _codex_like_runner().build_command(
             model="gpt-5.5", prompt="p", mcp_config=str(mcp_json)
@@ -234,9 +222,7 @@ class TestClaudeUnaffected:
     def test_claude_emits_mcp_config_flag(self, tmp_path: Path) -> None:
         """Claude still uses --mcp-config <path>, not -c overrides."""
         mcp_json = tmp_path / "mcp.json"
-        mcp_json.write_text(
-            json.dumps({"mcpServers": {"s": {"command": "/bin/s", "args": []}}})
-        )
+        mcp_json.write_text(json.dumps({"mcpServers": {"s": {"command": "/bin/s", "args": []}}}))
         path = str(mcp_json)
 
         cmd = _claude_like_runner().build_command(
@@ -249,9 +235,7 @@ class TestClaudeUnaffected:
         # No -c overrides
         pairs = _extract_c_pairs(cmd)
         mcp_pairs = [(k, v) for k, v in pairs if "mcp_servers" in k]
-        assert mcp_pairs == [], (
-            f"claude must NOT emit -c mcp_servers.* pairs; got {mcp_pairs}"
-        )
+        assert mcp_pairs == [], f"claude must NOT emit -c mcp_servers.* pairs; got {mcp_pairs}"
 
     def test_claude_mcp_config_absent_when_none(self) -> None:
         """Claude with mcp_config=None: no --mcp-config in command."""
@@ -267,9 +251,7 @@ class TestClaudeUnaffected:
 class TestCodexYamlMcpOverrides:
     """The packaged codex.yaml runner must use -c overrides for MCP."""
 
-    def test_codex_runner_emits_c_overrides_not_mcp_config_flag(
-        self, tmp_path: Path
-    ) -> None:
+    def test_codex_runner_emits_c_overrides_not_mcp_config_flag(self, tmp_path: Path) -> None:
         """Real codex runner: given an mcp_config JSON, emits -c pairs, no --mcp-config."""
         from copeca.cli import build_runner
         from copeca.config.resources import data_path
@@ -297,9 +279,7 @@ class TestCodexYamlMcpOverrides:
             mcp_config=str(mcp_json),
         )
 
-        assert "--mcp-config" not in cmd, (
-            "codex must NOT emit --mcp-config (it has no such flag)"
-        )
+        assert "--mcp-config" not in cmd, "codex must NOT emit --mcp-config (it has no such flag)"
         pairs = _extract_c_pairs(cmd)
         assert any(k == "mcp_servers.tilth.command" for k, _ in pairs), (
             f"codex must emit -c mcp_servers.tilth.command; got pairs={pairs}"
@@ -317,23 +297,17 @@ class TestCodexYamlMcpOverrides:
         runner = build_runner("claude", timeout=300, runner_dirs=runner_dirs)
 
         mcp_json = tmp_path / "mcp.json"
-        mcp_json.write_text(
-            json.dumps({"mcpServers": {"s": {"command": "/bin/s", "args": []}}})
-        )
+        mcp_json.write_text(json.dumps({"mcpServers": {"s": {"command": "/bin/s", "args": []}}}))
         path = str(mcp_json)
 
-        cmd = runner.build_command(
-            model="claude-sonnet-4-6", prompt="task", mcp_config=path
-        )
+        cmd = runner.build_command(model="claude-sonnet-4-6", prompt="task", mcp_config=path)
 
         assert "--mcp-config" in cmd
         idx = cmd.index("--mcp-config")
         assert cmd[idx + 1] == path
         pairs = _extract_c_pairs(cmd)
         mcp_pairs = [(k, v) for k, v in pairs if "mcp_servers" in k]
-        assert mcp_pairs == [], (
-            "claude runner must NOT emit -c mcp_servers.* pairs"
-        )
+        assert mcp_pairs == [], "claude runner must NOT emit -c mcp_servers.* pairs"
 
 
 # ── Helper ───────────────────────────────────────────────────────────────────

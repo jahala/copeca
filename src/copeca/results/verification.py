@@ -156,9 +156,7 @@ def verify_artifact(path: Path) -> tuple[bool, str]:
 
         # Compute content_hash from sorted per-file hashes
         sorted_hashes = [file_hashes[k] for k in sorted(file_hashes)]
-        computed_content_hash = hashlib.sha256(
-            "".join(sorted_hashes).encode("utf-8")
-        ).hexdigest()
+        computed_content_hash = hashlib.sha256("".join(sorted_hashes).encode("utf-8")).hexdigest()
 
         if computed_content_hash != expected_content_hash:
             # Determine which file(s) are mismatched
@@ -271,9 +269,7 @@ def verify_signed_artifact(
             signed=False,
             valid=False,
             corruption_ok=corruption_ok,
-            message=(
-                f"Unsigned artifact (corruption detection only): {corruption_msg}"
-            ),
+            message=(f"Unsigned artifact (corruption detection only): {corruption_msg}"),
         )
 
     if public_key is None:
@@ -392,12 +388,8 @@ def verify_batch(
 
     expected_ids = _expected_identities(scenario)
     # Use frozensets of items for O(1) membership test
-    expected_set = {
-        (d["task"], d["mode"], d["model"], d["repetition"]) for d in expected_ids
-    }
-    found_set = {
-        (d["task"], d["mode"], d["model"], d["repetition"]) for d in found_ids
-    }
+    expected_set = {(d["task"], d["mode"], d["model"], d["repetition"]) for d in expected_ids}
+    found_set = {(d["task"], d["mode"], d["model"], d["repetition"]) for d in found_ids}
 
     missing_keys = expected_set - found_set
     unexpected_keys = found_set - expected_set

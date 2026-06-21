@@ -40,18 +40,27 @@ class TestToolAgnostic:
 
     def test_repo_name_is_allowed_as_subject(self):
         # ripgrep/gin/express/fastapi are SUBJECTS, never flagged
-        assert check_tool_agnostic(
-            "t", "In the ripgrep codebase, find the Matcher trait and its implementors.", ""
-        ) == []
+        assert (
+            check_tool_agnostic(
+                "t", "In the ripgrep codebase, find the Matcher trait and its implementors.", ""
+            )
+            == []
+        )
 
     def test_search_as_domain_subject_not_flagged(self):
         # 'search' is ripgrep's whole point — flagging it would be a false positive
-        assert check_tool_agnostic(
-            "t", "Trace ripgrep's search worker as it coordinates across threads.", ""
-        ) == []
-        assert check_tool_agnostic(
-            "t", "Trace the search execution flow from main() to the first match.", ""
-        ) == []
+        assert (
+            check_tool_agnostic(
+                "t", "Trace ripgrep's search worker as it coordinates across threads.", ""
+            )
+            == []
+        )
+        assert (
+            check_tool_agnostic(
+                "t", "Trace the search execution flow from main() to the first match.", ""
+            )
+            == []
+        )
 
 
 class TestPackagedTasksAgnostic:

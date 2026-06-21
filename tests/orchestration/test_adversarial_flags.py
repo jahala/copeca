@@ -13,12 +13,9 @@ Also covers:
   - scenario.budget_usd is threaded into run_single via _run_one_work_item
 """
 
-import pytest
-
 from copeca.config.models import AdversarialThresholds, Scenario
-from copeca.orchestration.run import _check_token_snowball, _compute_adversarial_flags
+from copeca.orchestration.run import _compute_adversarial_flags
 from copeca.runners.parsers.base import RunResult, ToolCall, Turn
-
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -71,33 +68,39 @@ class TestTokenSnowball:
         """max turn output > num_turns × avg_first_3 × 2.0 → True."""
         # 4 turns; avg_first_3 = 100; threshold = 4 × 100 × 2.0 = 800
         # last turn = 900 → fires
-        parsed = _parsed(turns=[
-            Turn(output_tokens=100),
-            Turn(output_tokens=100),
-            Turn(output_tokens=100),
-            Turn(output_tokens=900),
-        ])
+        parsed = _parsed(
+            turns=[
+                Turn(output_tokens=100),
+                Turn(output_tokens=100),
+                Turn(output_tokens=100),
+                Turn(output_tokens=900),
+            ]
+        )
         assert _flags(parsed)["token_snowball"] is True
 
     def test_does_not_fire_at_boundary(self) -> None:
         """max turn == threshold (=, not >) → False."""
         # 4 turns; avg_first_3 = 100; threshold = 800; last = 800 (not >)
-        parsed = _parsed(turns=[
-            Turn(output_tokens=100),
-            Turn(output_tokens=100),
-            Turn(output_tokens=100),
-            Turn(output_tokens=800),
-        ])
+        parsed = _parsed(
+            turns=[
+                Turn(output_tokens=100),
+                Turn(output_tokens=100),
+                Turn(output_tokens=100),
+                Turn(output_tokens=800),
+            ]
+        )
         assert _flags(parsed)["token_snowball"] is False
 
     def test_flat_turns_return_false(self) -> None:
         """Uniform output tokens across turns → False."""
-        parsed = _parsed(turns=[
-            Turn(output_tokens=200),
-            Turn(output_tokens=200),
-            Turn(output_tokens=200),
-            Turn(output_tokens=200),
-        ])
+        parsed = _parsed(
+            turns=[
+                Turn(output_tokens=200),
+                Turn(output_tokens=200),
+                Turn(output_tokens=200),
+                Turn(output_tokens=200),
+            ]
+        )
         assert _flags(parsed)["token_snowball"] is False
 
     def test_fewer_than_three_turns_returns_none(self) -> None:
@@ -111,12 +114,14 @@ class TestTokenSnowball:
 
     def test_zero_avg_first_three_returns_none(self) -> None:
         """avg(first 3) == 0 → null (division guard)."""
-        parsed = _parsed(turns=[
-            Turn(output_tokens=0),
-            Turn(output_tokens=0),
-            Turn(output_tokens=0),
-            Turn(output_tokens=999),
-        ])
+        parsed = _parsed(
+            turns=[
+                Turn(output_tokens=0),
+                Turn(output_tokens=0),
+                Turn(output_tokens=0),
+                Turn(output_tokens=999),
+            ]
+        )
         assert _flags(parsed)["token_snowball"] is None
 
     def test_configurable_factor_changes_outcome(self) -> None:
@@ -124,14 +129,22 @@ class TestTokenSnowball:
         # 4 turns; avg_first_3 = 100; last = 500
         # factor=2.0 → threshold=800 → 500 < 800 → False
         # factor=0.5 → threshold=200 → 500 > 200 → True
-        parsed = _parsed(turns=[
-            Turn(output_tokens=100),
-            Turn(output_tokens=100),
-            Turn(output_tokens=100),
-            Turn(output_tokens=500),
-        ])
-        assert _flags(parsed, thresholds=AdversarialThresholds(snowball_factor=2.0))["token_snowball"] is False
-        assert _flags(parsed, thresholds=AdversarialThresholds(snowball_factor=0.5))["token_snowball"] is True
+        parsed = _parsed(
+            turns=[
+                Turn(output_tokens=100),
+                Turn(output_tokens=100),
+                Turn(output_tokens=100),
+                Turn(output_tokens=500),
+            ]
+        )
+        assert (
+            _flags(parsed, thresholds=AdversarialThresholds(snowball_factor=2.0))["token_snowball"]
+            is False
+        )
+        assert (
+            _flags(parsed, thresholds=AdversarialThresholds(snowball_factor=0.5))["token_snowball"]
+            is True
+        )
 
     def test_uses_num_turns_not_three_in_formula(self) -> None:
         """Formula scales by num_turns, not a hardcoded 3.
@@ -143,13 +156,15 @@ class TestTokenSnowball:
         With the old '×3' formula:  3 × 100 × 2.0 = 600 → 950 > 600 → True
         This test confirms the new formula is in use.
         """
-        parsed = _parsed(turns=[
-            Turn(output_tokens=100),
-            Turn(output_tokens=100),
-            Turn(output_tokens=100),
-            Turn(output_tokens=100),
-            Turn(output_tokens=950),
-        ])
+        parsed = _parsed(
+            turns=[
+                Turn(output_tokens=100),
+                Turn(output_tokens=100),
+                Turn(output_tokens=100),
+                Turn(output_tokens=100),
+                Turn(output_tokens=950),
+            ]
+        )
         assert _flags(parsed)["token_snowball"] is False
 
 
@@ -190,17 +205,23 @@ class TestTalkativeFailure:
         # default 1000 → doesn't fire
         assert _flags(parsed, correct=False)["talkative_failure"] is False
         # threshold=400 → 500 > 400 and wrong → fires
-        assert _flags(
-            parsed, correct=False,
-            thresholds=AdversarialThresholds(talkative_tokens=400),
-        )["talkative_failure"] is True
+        assert (
+            _flags(
+                parsed,
+                correct=False,
+                thresholds=AdversarialThresholds(talkative_tokens=400),
+            )["talkative_failure"]
+            is True
+        )
 
     def test_uses_total_output_tokens_across_turns(self) -> None:
         """output_tokens is the sum across all turns."""
-        parsed = _parsed(turns=[
-            Turn(output_tokens=600),
-            Turn(output_tokens=600),  # total = 1200 > 1000
-        ])
+        parsed = _parsed(
+            turns=[
+                Turn(output_tokens=600),
+                Turn(output_tokens=600),  # total = 1200 > 1000
+            ]
+        )
         assert _flags(parsed, correct=False)["talkative_failure"] is True
 
 
@@ -235,10 +256,13 @@ class TestToolStorm:
         # default 50 → doesn't fire
         assert _flags(parsed)["tool_storm"] is False
         # threshold=20 → 25 > 20 → fires
-        assert _flags(
-            parsed,
-            thresholds=AdversarialThresholds(tool_storm_calls=20),
-        )["tool_storm"] is True
+        assert (
+            _flags(
+                parsed,
+                thresholds=AdversarialThresholds(tool_storm_calls=20),
+            )["tool_storm"]
+            is True
+        )
 
 
 # ── budget_exhausted ───────────────────────────────────────────────────────────
@@ -335,6 +359,7 @@ class TestBudgetInRunSingle:
         TestBudgetExhausted above via _compute_adversarial_flags directly.
         """
         import inspect
+
         from copeca.orchestration.run import run_single
 
         sig = inspect.signature(run_single)

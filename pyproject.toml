@@ -27,6 +27,12 @@ dependencies = [
     "cryptography>=42.0",
 ]
 
+[project.urls]
+Homepage = "https://jahala.github.io/copeca/"
+Repository = "https://github.com/jahala/copeca"
+Issues = "https://github.com/jahala/copeca/issues"
+Funding = "https://buymeacoffee.com/jahala"
+
 [project.optional-dependencies]
 dev = [
     "pytest>=7.0",
@@ -49,6 +55,16 @@ line-length = 100
 target-version = "py311"
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W", "UP", "B", "SIM"]
+ignore = [
+    # B008: typer.Argument/Option() as function defaults is the canonical Typer idiom.
+    "B008",
+    # SIM102: nested-if collapses validator guard structure; keep separate for readability.
+    "SIM102",
+    # SIM108: ternary replaces a legible if/else in parser result dispatch; keep readable.
+    "SIM108",
+    # UP042: str+Enum gives string-serialisable enums without breaking JSON round-trips.
+    "UP042",
+]
 
 [tool.mypy]
 strict = true

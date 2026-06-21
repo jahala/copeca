@@ -21,9 +21,7 @@ def _tilth_mode() -> Mode:
 
 class TestToolAvailability:
     def test_missing_mcp_command_is_flagged(self):
-        errors = check_tool_availability(
-            _tilth_mode(), runner_cli="claude", which=lambda c: None
-        )
+        errors = check_tool_availability(_tilth_mode(), runner_cli="claude", which=lambda c: None)
         assert any("tilth" in e for e in errors), errors
         assert any("claude" in e for e in errors), errors
 
@@ -40,9 +38,7 @@ class TestToolAvailability:
 
     def test_baseline_mode_has_nothing_to_check(self):
         mode = Mode(name="baseline", description="x", tools=["Read"])
-        errors = check_tool_availability(
-            mode, runner_cli="claude", which=lambda c: f"/bin/{c}"
-        )
+        errors = check_tool_availability(mode, runner_cli="claude", which=lambda c: f"/bin/{c}")
         assert errors == []
 
     def test_none_mode_only_checks_runner(self):

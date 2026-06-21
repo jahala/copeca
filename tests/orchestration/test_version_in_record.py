@@ -12,7 +12,6 @@ from copeca.config.models import (
     ComprehensionGroundTruth,
     Difficulty,
     Language,
-    Mode,
     Task,
     TaskType,
 )
@@ -27,8 +26,7 @@ class _StubRunner:
     def build_command(self, model: str, prompt: str, **kwargs: object) -> list[str]:
         return ["echo", "ok"]
 
-    def run(self, command: list[str], cwd: str | None = None,
-            env: dict | None = None) -> RunResult:
+    def run(self, command: list[str], cwd: str | None = None, env: dict | None = None) -> RunResult:
         self.captured_env = dict(env) if env is not None else {}
         return RunResult(result_text="ok", total_cost_usd=0.0, duration_ms=0)
 
@@ -56,7 +54,8 @@ def _task() -> Task:
         name="version_test_task",
         source="test",
         repo="test-repo",
-        type=TaskType.comprehension, category=Category.locate,
+        type=TaskType.comprehension,
+        category=Category.locate,
         language=Language.python,
         difficulty=Difficulty.easy,
         version=1,
@@ -66,9 +65,7 @@ def _task() -> Task:
 
 
 class TestVersionInRecord:
-    def test_run_record_copeca_version_matches_installed_package(
-        self, tmp_path: Path
-    ) -> None:
+    def test_run_record_copeca_version_matches_installed_package(self, tmp_path: Path) -> None:
         """record['metadata']['copeca_version'] must equal importlib.metadata.version('copeca').
 
         A hardcoded '0.1.0' would fail if the package version ever changes, and —

@@ -99,7 +99,8 @@ class TestCostPerCorrect:
         assert result == pytest.approx(0.15)
 
     def test_cost_per_correct_zero_correct_returns_none(self):
-        """When no records are correct, return None (undefined — cost per correct is meaningless)."""
+        """When no records are correct, return None (undefined — cost per correct is
+        meaningless)."""
         records = [
             {"total_cost_usd": 0.10, "correct": False},
             {"total_cost_usd": 0.20, "correct": False},

@@ -42,25 +42,21 @@ def check_pricing_staleness(pricing: dict[str, Any]) -> list[str]:
 
         updated_str = entry.get("updated")
         if updated_str is None:
-            warnings.append(
-                f"Pricing for '{model_name}' is missing 'updated' field"
-            )
+            warnings.append(f"Pricing for '{model_name}' is missing 'updated' field")
             continue
 
         try:
             updated = date.fromisoformat(updated_str)
         except (ValueError, TypeError):
             warnings.append(
-                f"Pricing for '{model_name}' has unparseable 'updated' date: "
-                f"{updated_str!r}"
+                f"Pricing for '{model_name}' has unparseable 'updated' date: {updated_str!r}"
             )
             continue
 
         age = today - updated
         if age > threshold:
             warnings.append(
-                f"Pricing for '{model_name}' is {age.days} days old "
-                f"(updated {updated_str})"
+                f"Pricing for '{model_name}' is {age.days} days old (updated {updated_str})"
             )
 
     return warnings
@@ -157,19 +153,13 @@ def check_tool_availability(
         cmd = spec.get("command") if isinstance(spec, dict) else None
         if cmd and which(cmd) is None:
             errors.append(
-                f"mode '{mode.name}': MCP server '{name}' command '{cmd}' "
-                f"not found on PATH"
+                f"mode '{mode.name}': MCP server '{name}' command '{cmd}' not found on PATH"
             )
 
     if mode.wrapper and which(mode.wrapper[0]) is None:
-        errors.append(
-            f"mode '{mode.name}': wrapper command '{mode.wrapper[0]}' "
-            f"not found on PATH"
-        )
+        errors.append(f"mode '{mode.name}': wrapper command '{mode.wrapper[0]}' not found on PATH")
 
     return errors
-
-
 
 
 def validate_scenario(
@@ -202,22 +192,16 @@ def validate_scenario(
     # 1. Task existence
     for task_name in scenario.tasks:
         if task_name not in available_tasks:
-            issues.append(
-                f"Task '{task_name}' not found in available tasks"
-            )
+            issues.append(f"Task '{task_name}' not found in available tasks")
 
     # 2. Mode existence
     for mode_name in scenario.modes:
         if mode_name not in available_modes:
-            issues.append(
-                f"Mode '{mode_name}' not found in available modes"
-            )
+            issues.append(f"Mode '{mode_name}' not found in available modes")
 
     # 3. Budget (Pydantic enforces ge=0.0, but budget=0 is nonsensical)
     if scenario.budget_usd <= 0:
-        issues.append(
-            f"Budget must be greater than 0 (got {scenario.budget_usd})"
-        )
+        issues.append(f"Budget must be greater than 0 (got {scenario.budget_usd})")
 
     # 4. Low repetitions — advisory warning
     if scenario.repetitions < 5:

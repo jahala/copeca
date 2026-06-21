@@ -1,7 +1,5 @@
 """Test multi-strategy correctness validator — required_strings, all_of, forbidden, test_command."""
 
-import pytest
-
 from copeca.config.models import ComprehensionGroundTruth, EditGroundTruth
 from copeca.tasks.validator import check_correctness
 
@@ -127,18 +125,14 @@ class TestComprehensionCorrect:
 class TestEditCorrect:
     def test_test_command_passed_returns_true(self):
         gt = EditGroundTruth(test_command=["cargo test"])
-        correct, detail = check_correctness(
-            gt, "some output", test_command_passed=True
-        )
+        correct, detail = check_correctness(gt, "some output", test_command_passed=True)
         assert correct is True
         assert detail.test_command_passed is True
         assert detail.reason == "Test command passed"
 
     def test_test_command_failed_returns_false(self):
         gt = EditGroundTruth(test_command=["cargo test"])
-        correct, detail = check_correctness(
-            gt, "compile error", test_command_passed=False
-        )
+        correct, detail = check_correctness(gt, "compile error", test_command_passed=False)
         assert correct is False
         assert detail.test_command_passed is False
         assert detail.reason == "Test command failed"
@@ -149,9 +143,7 @@ class TestEditCorrect:
             required_strings=["expected_output"],
             test_command=["cargo test"],
         )
-        correct, detail = check_correctness(
-            gt, "wrong output", test_command_passed=True
-        )
+        correct, detail = check_correctness(gt, "wrong output", test_command_passed=True)
         # test_command passed → correct is True, even though required_strings failed
         assert correct is True
         assert detail.required_strings_passed is False  # diagnostic

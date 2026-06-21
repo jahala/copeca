@@ -36,9 +36,7 @@ class TestCodexRunnerCommand:
         assert cmd[-2] == "--"
 
     def test_prepends_system_prompt(self):
-        cmd = _codex().build_command(
-            model="gpt-5.5", prompt="USER", system_prompt="SYS"
-        )
+        cmd = _codex().build_command(model="gpt-5.5", prompt="USER", system_prompt="SYS")
         assert "--system-prompt" not in cmd  # codex has no such flag
         assert cmd[-1] == "SYS\n\nUSER"
 

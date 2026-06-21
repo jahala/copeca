@@ -59,9 +59,7 @@ def compare_runs(before: list[dict[str, Any]], after: list[dict[str, Any]]) -> s
         if before_task and after_task:
             if cpc_before is None or cpc_after is None:
                 # At least one side has 0 correct — delta is undefined
-                lines.append(
-                    f"| {task} | {_fmt_cpc(cpc_before)} | {_fmt_cpc(cpc_after)} | N/A |"
-                )
+                lines.append(f"| {task} | {_fmt_cpc(cpc_before)} | {_fmt_cpc(cpc_after)} | N/A |")
             else:
                 if cpc_before > 0:
                     delta_pct = ((cpc_after - cpc_before) / cpc_before) * 100

@@ -16,7 +16,6 @@ import pytest
 from copeca.config.models import Mutation, MutationStep
 from copeca.repos.manager import GitWorktreeManager
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -57,7 +56,7 @@ def bare_repo(tmp_path: Path) -> Path:
     _git(["config", "user.email", "test@test.com"], src)
     _git(["config", "user.name", "Test"], src)
 
-    (src / "main.rs").write_text("fn main() { println!(\"hello\"); }\n")
+    (src / "main.rs").write_text('fn main() { println!("hello"); }\n')
     (src / "lib.rs").write_text("pub fn add(a: i64, b: i64) -> i64 { a + b }\n")
     _git(["add", "."], src)
     _git(["commit", "-m", "initial"], src)
@@ -81,6 +80,7 @@ def mgr(tmp_path: Path, bare_repo: Path) -> GitWorktreeManager:
     bare_dir.mkdir()
     # Hard-link the bare repo into the expected location
     import shutil
+
     shutil.copytree(str(bare_repo), str(bare_dir / "testrepo"))
     return GitWorktreeManager(repos_dir)
 
@@ -126,7 +126,9 @@ class TestBuildMutationHistory:
         new_commits = _commit_count_since(worktree, base_sha)
         assert new_commits == 2, f"Expected 2 new commits, got {new_commits}"
 
-    def test_worktree_state_reflects_last_step(self, mgr: GitWorktreeManager, tmp_path: Path) -> None:
+    def test_worktree_state_reflects_last_step(
+        self, mgr: GitWorktreeManager, tmp_path: Path
+    ) -> None:
         """After build_mutation_history the working tree matches the last step's mutations."""
         worktree = mgr.create_worktree("testrepo", worktree_id="wt-state")
 
@@ -153,7 +155,8 @@ class TestBuildMutationHistory:
         assert log == "introduce off-by-one"
 
     def test_reset_restores_cleanly(self, mgr: GitWorktreeManager, tmp_path: Path) -> None:
-        """reset() after build_mutation_history brings the worktree back to the last committed state.
+        """reset() after build_mutation_history brings the worktree back to the last
+        committed state.
 
         Note: reset() runs git reset --hard HEAD + git clean -fd, which resets to the
         tip of the mutation_sequence (the last committed step). The worktree's pinned

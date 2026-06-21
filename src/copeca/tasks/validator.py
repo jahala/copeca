@@ -50,9 +50,7 @@ def check_correctness(
 
     # required_strings (applies to both task types)
     if ground_truth.required_strings:
-        detail.required_strings_passed = _check_strings(
-            result_text, ground_truth.required_strings
-        )
+        detail.required_strings_passed = _check_strings(result_text, ground_truth.required_strings)
     else:
         # No required strings → trivially pass
         detail.required_strings_passed = True

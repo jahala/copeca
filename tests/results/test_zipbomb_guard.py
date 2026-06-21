@@ -16,8 +16,6 @@ import struct
 import zipfile
 from pathlib import Path
 
-import pytest
-
 from copeca.results.verification import MAX_MEMBER_BYTES, verify_artifact
 
 
@@ -27,7 +25,8 @@ def _patch_zip_file_size(data: bytes, member_name: str, new_file_size: int) -> b
 
     Zip format references:
     - Local file header (LFH): signature PK\\x03\\x04, file_size at offset +22 (4 bytes LE)
-    - Central directory file header (CDFH): signature PK\\x01\\x02, file_size at offset +24 (4 bytes LE)
+    - Central directory file header (CDFH): signature PK\\x01\\x02,
+      file_size at offset +24 (4 bytes LE)
     """
     encoded = member_name.encode()
     result = bytearray(data)
@@ -39,7 +38,6 @@ def _patch_zip_file_size(data: bytes, member_name: str, new_file_size: int) -> b
         if pos == -1:
             break
         fname_len = struct.unpack_from("<H", data, pos + 26)[0]
-        extra_len = struct.unpack_from("<H", data, pos + 28)[0]
         fname = data[pos + 30 : pos + 30 + fname_len]
         if fname == encoded:
             struct.pack_into("<I", result, pos + 22, new_file_size)
@@ -99,9 +97,9 @@ class TestZipBombGuard:
             "verify_artifact must reject a zip member whose file_size header "
             f"exceeds MAX_MEMBER_BYTES ({MAX_MEMBER_BYTES}). Got valid=True."
         )
-        assert "size" in message.lower() or "bomb" in message.lower() or "exceeds" in message.lower(), (
-            f"Rejection message should mention size/bomb/exceeds; got: {message!r}"
-        )
+        assert (
+            "size" in message.lower() or "bomb" in message.lower() or "exceeds" in message.lower()
+        ), f"Rejection message should mention size/bomb/exceeds; got: {message!r}"
 
     def test_normal_member_is_accepted(self, tmp_path: Path) -> None:
         """A zip with a member well within the size cap must still pass the guard."""

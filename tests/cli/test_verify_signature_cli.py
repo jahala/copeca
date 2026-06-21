@@ -84,14 +84,17 @@ class TestVerifyPubkey:
         base_manifest["content_hash"] = hashlib.sha256(
             "".join(sorted_hashes).encode("utf-8")
         ).hexdigest()
-        members["manifest.json"] = json.dumps(
-            base_manifest, indent=2, sort_keys=True
-        ).encode("utf-8")
+        members["manifest.json"] = json.dumps(base_manifest, indent=2, sort_keys=True).encode(
+            "utf-8"
+        )
 
         forged = out / "forged.copeca.zip"
-        with zipfile.ZipFile(artifact, "r") as zin, zipfile.ZipFile(  # noqa: SIM117
-            forged, "w"
-        ) as zout:
+        with (
+            zipfile.ZipFile(artifact, "r") as zin,
+            zipfile.ZipFile(  # noqa: SIM117
+                forged, "w"
+            ) as zout,
+        ):
             for item in zin.infolist():
                 zout.writestr(item, members[item.filename])
 
@@ -120,9 +123,7 @@ class TestVerifyPubkey:
 
         result = copeca("verify", str(artifact), "--pubkey", str(pub_path))
 
-        assert result.returncode != 0, (
-            f"Wrong pubkey must fail.\n{result.stdout}\n{result.stderr}"
-        )
+        assert result.returncode != 0, f"Wrong pubkey must fail.\n{result.stdout}\n{result.stderr}"
 
     def test_unsigned_artifact_with_pubkey_reports_unsigned_not_tamperproof(
         self, tmp_path: Path
@@ -147,9 +148,7 @@ class TestVerifyPubkey:
         assert "unsigned" in combined or "no signature" in combined
         assert "tamper-proof" not in combined
 
-    def test_unsigned_artifact_without_pubkey_still_corruption_checks(
-        self, tmp_path: Path
-    ) -> None:
+    def test_unsigned_artifact_without_pubkey_still_corruption_checks(self, tmp_path: Path) -> None:
         """No --pubkey: the original corruption-only verify path is unchanged (exit 0)."""
         worktree = tmp_path / "wt"
         worktree.mkdir()
@@ -208,9 +207,7 @@ class TestRunSignKey:
         task_path = tmp_path / "task.yaml"
         task_path.write_text("name: noop\n")
 
-        result = copeca(
-            "run", "--task", str(task_path), "--artifacts", "--sign-key", str(bad_key)
-        )
+        result = copeca("run", "--task", str(task_path), "--artifacts", "--sign-key", str(bad_key))
 
         assert result.returncode == 2, (
             f"Invalid signing key must exit 2.\n{result.stdout}\n{result.stderr}"

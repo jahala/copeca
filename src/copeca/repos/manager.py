@@ -59,9 +59,7 @@ class GitWorktreeManager:
             RuntimeError: If git is not found on PATH.
         """
         if shutil.which("git") is None:
-            raise RuntimeError(
-                "git is not available on PATH — required for repo management"
-            )
+            raise RuntimeError("git is not available on PATH — required for repo management")
 
     def create_worktree(
         self,
@@ -106,9 +104,7 @@ class GitWorktreeManager:
 
             if not (bare_path / "HEAD").exists():
                 if uri is None:
-                    raise RuntimeError(
-                        f"No bare clone for {repo_key!r} and no uri provided"
-                    )
+                    raise RuntimeError(f"No bare clone for {repo_key!r} and no uri provided")
                 self._clone_bare(uri, bare_path)
 
             self._worktree_pool.mkdir(parents=True, exist_ok=True)
@@ -122,9 +118,7 @@ class GitWorktreeManager:
 
         return worktree_path
 
-    def setup(
-        self, worktree: Path, setup_command: list[str] | None = None
-    ) -> None:
+    def setup(self, worktree: Path, setup_command: list[str] | None = None) -> None:
         """Run repo setup commands inside the worktree.
 
         Args:
@@ -148,9 +142,7 @@ class GitWorktreeManager:
                 check=True,
             )
         except subprocess.CalledProcessError as exc:
-            raise RuntimeError(
-                f"Setup command failed: {exc.stderr.strip()}"
-            ) from exc
+            raise RuntimeError(f"Setup command failed: {exc.stderr.strip()}") from exc
 
     def reset(self, worktree: Path) -> None:
         """Reset the worktree to a clean state.
@@ -176,9 +168,7 @@ class GitWorktreeManager:
                 check=True,
             )
         except subprocess.CalledProcessError as exc:
-            raise RuntimeError(
-                f"git reset --hard failed: {exc.stderr.strip()}"
-            ) from exc
+            raise RuntimeError(f"git reset --hard failed: {exc.stderr.strip()}") from exc
 
         try:
             subprocess.run(
@@ -189,14 +179,12 @@ class GitWorktreeManager:
                 check=True,
             )
         except subprocess.CalledProcessError as exc:
-            raise RuntimeError(
-                f"git clean -fd failed: {exc.stderr.strip()}"
-            ) from exc
+            raise RuntimeError(f"git clean -fd failed: {exc.stderr.strip()}") from exc
 
     def build_mutation_history(
         self,
         worktree: Path,
-        steps: "list[MutationStep]",
+        steps: list[MutationStep],
     ) -> None:
         """Apply each step's mutations and commit them into the worktree.
 
@@ -214,13 +202,13 @@ class GitWorktreeManager:
         """
         from copeca.tasks.mutations import apply_mutations
 
-        _GIT_ENV = {
+        _git_env = {
             "GIT_AUTHOR_NAME": "copeca-fixture",
             "GIT_AUTHOR_EMAIL": "fixture@copeca.dev",
             "GIT_COMMITTER_NAME": "copeca-fixture",
             "GIT_COMMITTER_EMAIL": "fixture@copeca.dev",
         }
-        env = {**os.environ, **_GIT_ENV}
+        env = {**os.environ, **_git_env}
 
         for step in steps:
             apply_mutations(step.mutations, base_path=worktree)
@@ -267,14 +255,10 @@ class GitWorktreeManager:
                 check=True,
             )
         except subprocess.CalledProcessError as exc:
-            raise RuntimeError(
-                f"Bare clone of {uri!r} failed: {exc.stderr.strip()}"
-            ) from exc
+            raise RuntimeError(f"Bare clone of {uri!r} failed: {exc.stderr.strip()}") from exc
 
     @staticmethod
-    def _add_worktree(
-        bare_path: Path, worktree_path: Path, commit: str | None
-    ) -> None:
+    def _add_worktree(bare_path: Path, worktree_path: Path, commit: str | None) -> None:
         """Add a worktree from a bare clone at the given commit."""
         cmd = [
             "git",
@@ -297,9 +281,7 @@ class GitWorktreeManager:
                 check=True,
             )
         except subprocess.CalledProcessError as exc:
-            raise RuntimeError(
-                f"git worktree add failed: {exc.stderr.strip()}"
-            ) from exc
+            raise RuntimeError(f"git worktree add failed: {exc.stderr.strip()}") from exc
 
     @staticmethod
     def _prune_worktree(worktree_path: Path, bare_path: Path) -> None:
@@ -344,7 +326,9 @@ def _rmtree_workaround(path: Path) -> None:
     """Remove a directory tree, handling git's read-only files."""
 
     def _on_error(
-        func: object, p: str, exc_info: object  # noqa: ARG001
+        func: object,
+        p: str,
+        exc_info: object,  # noqa: ARG001
     ) -> None:
         os.chmod(p, 0o700)
         if path.exists():

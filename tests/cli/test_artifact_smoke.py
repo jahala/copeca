@@ -35,9 +35,12 @@ class TestArtifactSmoke:
 
         # Phase 3: Modify one byte in result.json inside the zip
         tampered_path = output_dir / "tampered.copeca.zip"
-        with zipfile.ZipFile(zip_path, "r") as zin, zipfile.ZipFile(  # noqa: SIM117
-            tampered_path, "w"
-        ) as zout:
+        with (
+            zipfile.ZipFile(zip_path, "r") as zin,
+            zipfile.ZipFile(  # noqa: SIM117
+                tampered_path, "w"
+            ) as zout,
+        ):
             for item in zin.infolist():
                 data = zin.read(item.filename)
                 if item.filename == "result.json":
@@ -66,9 +69,12 @@ class TestArtifactSmoke:
 
         # Tamper manifest.json content_hash
         tampered_path = output_dir / "manifest_tampered.copeca.zip"
-        with zipfile.ZipFile(zip_path, "r") as zin, zipfile.ZipFile(  # noqa: SIM117
-            tampered_path, "w"
-        ) as zout:
+        with (
+            zipfile.ZipFile(zip_path, "r") as zin,
+            zipfile.ZipFile(  # noqa: SIM117
+                tampered_path, "w"
+            ) as zout,
+        ):
             for item in zin.infolist():
                 data = zin.read(item.filename)
                 if item.filename == "manifest.json":

@@ -18,12 +18,8 @@ def test_repo(tmp_path: Path) -> Path:
     repo_dir = tmp_path / "test-repo"
     repo_dir.mkdir()
     subprocess.run(["git", "init", "-b", "main"], cwd=repo_dir, check=True)
-    subprocess.run(
-        ["git", "config", "user.email", "test@copeca.dev"], cwd=repo_dir, check=True
-    )
-    subprocess.run(
-        ["git", "config", "user.name", "Copeca Test"], cwd=repo_dir, check=True
-    )
+    subprocess.run(["git", "config", "user.email", "test@copeca.dev"], cwd=repo_dir, check=True)
+    subprocess.run(["git", "config", "user.name", "Copeca Test"], cwd=repo_dir, check=True)
     (repo_dir / "README.md").write_text("# Test Repo\n")
     # Add .gitignore so we can test that clean -fd preserves ignored dirs
     (repo_dir / ".gitignore").write_text("node_modules/\ntarget/\n")
@@ -38,9 +34,7 @@ class TestGitWorktreeManager:
         """First use clones a bare repo under _bare_dir."""
         mgr = GitWorktreeManager(repos_dir=tmp_path / "repos")
         mgr.verify_toolchain("test-repo")
-        worktree = mgr.create_worktree(
-            "test-repo", commit=None, uri=str(test_repo)
-        )
+        worktree = mgr.create_worktree("test-repo", commit=None, uri=str(test_repo))
 
         bare_dir = mgr._bare_dir
         assert bare_dir.exists()
@@ -48,14 +42,10 @@ class TestGitWorktreeManager:
 
         _rmtree_workaround(worktree)
 
-    def test_create_worktree_checks_out_content(
-        self, tmp_path: Path, test_repo: Path
-    ) -> None:
+    def test_create_worktree_checks_out_content(self, tmp_path: Path, test_repo: Path) -> None:
         """Worktree has README.md with expected content."""
         mgr = GitWorktreeManager(repos_dir=tmp_path / "repos")
-        worktree = mgr.create_worktree(
-            "test-repo", commit=None, uri=str(test_repo)
-        )
+        worktree = mgr.create_worktree("test-repo", commit=None, uri=str(test_repo))
 
         readme = worktree / "README.md"
         assert readme.exists()
@@ -63,14 +53,10 @@ class TestGitWorktreeManager:
 
         _rmtree_workaround(worktree)
 
-    def test_create_worktree_at_tag(
-        self, tmp_path: Path, test_repo: Path
-    ) -> None:
+    def test_create_worktree_at_tag(self, tmp_path: Path, test_repo: Path) -> None:
         """commit='v1.0' checks out the tagged commit."""
         mgr = GitWorktreeManager(repos_dir=tmp_path / "repos")
-        worktree = mgr.create_worktree(
-            "test-repo", commit="v1.0", uri=str(test_repo)
-        )
+        worktree = mgr.create_worktree("test-repo", commit="v1.0", uri=str(test_repo))
 
         readme = worktree / "README.md"
         assert readme.exists()
@@ -96,23 +82,17 @@ class TestGitWorktreeManager:
 
         _rmtree_workaround(worktree)
 
-    def test_reset_removes_uncommitted_changes(
-        self, tmp_path: Path, test_repo: Path
-    ) -> None:
+    def test_reset_removes_uncommitted_changes(self, tmp_path: Path, test_repo: Path) -> None:
         """Dirty the worktree, reset, verify clean."""
         mgr = GitWorktreeManager(repos_dir=tmp_path / "repos")
-        worktree = mgr.create_worktree(
-            "test-repo", commit=None, uri=str(test_repo)
-        )
+        worktree = mgr.create_worktree("test-repo", commit=None, uri=str(test_repo))
 
         # Dirty tracked file
         readme = worktree / "README.md"
         readme.write_text("# Dirty\n")
 
         # Stage a change
-        subprocess.run(
-            ["git", "add", "README.md"], cwd=worktree, check=True
-        )
+        subprocess.run(["git", "add", "README.md"], cwd=worktree, check=True)
 
         mgr.reset(worktree)
 
@@ -131,14 +111,10 @@ class TestGitWorktreeManager:
 
         _rmtree_workaround(worktree)
 
-    def test_reset_preserves_untracked_dirs(
-        self, tmp_path: Path, test_repo: Path
-    ) -> None:
+    def test_reset_preserves_untracked_dirs(self, tmp_path: Path, test_repo: Path) -> None:
         """reset with clean -fd preserves node_modules/ and target/ dirs."""
         mgr = GitWorktreeManager(repos_dir=tmp_path / "repos")
-        worktree = mgr.create_worktree(
-            "test-repo", commit=None, uri=str(test_repo)
-        )
+        worktree = mgr.create_worktree("test-repo", commit=None, uri=str(test_repo))
 
         # Create untracked directories that match .gitignore patterns
         node_modules = worktree / "node_modules"
@@ -159,14 +135,10 @@ class TestGitWorktreeManager:
 
         _rmtree_workaround(worktree)
 
-    def test_setup_runs_command(
-        self, tmp_path: Path, test_repo: Path
-    ) -> None:
+    def test_setup_runs_command(self, tmp_path: Path, test_repo: Path) -> None:
         """setup with ['touch', 'setup-ran'] creates the file."""
         mgr = GitWorktreeManager(repos_dir=tmp_path / "repos")
-        worktree = mgr.create_worktree(
-            "test-repo", commit=None, uri=str(test_repo)
-        )
+        worktree = mgr.create_worktree("test-repo", commit=None, uri=str(test_repo))
 
         mgr.setup(worktree, setup_command=["touch", "setup-ran"])
 
@@ -175,23 +147,17 @@ class TestGitWorktreeManager:
 
         _rmtree_workaround(worktree)
 
-    def test_setup_no_command_is_noop(
-        self, tmp_path: Path, test_repo: Path
-    ) -> None:
+    def test_setup_no_command_is_noop(self, tmp_path: Path, test_repo: Path) -> None:
         """setup with no command is a no-op."""
         mgr = GitWorktreeManager(repos_dir=tmp_path / "repos")
-        worktree = mgr.create_worktree(
-            "test-repo", commit=None, uri=str(test_repo)
-        )
+        worktree = mgr.create_worktree("test-repo", commit=None, uri=str(test_repo))
 
         # Should not raise
         mgr.setup(worktree)
 
         _rmtree_workaround(worktree)
 
-    def test_verify_toolchain_raises_if_no_git(
-        self, tmp_path: Path, test_repo: Path
-    ) -> None:
+    def test_verify_toolchain_raises_if_no_git(self, tmp_path: Path, test_repo: Path) -> None:
         """Mock PATH to exclude git, verify RuntimeError."""
         mgr = GitWorktreeManager(repos_dir=tmp_path / "repos")
 
@@ -209,9 +175,7 @@ class TestGitWorktreeManager:
 class TestWorktreeConcurrency:
     """Concurrent create_worktree calls for the same repo must yield distinct paths."""
 
-    def test_concurrent_same_repo_distinct_paths(
-        self, tmp_path: Path, test_repo: Path
-    ) -> None:
+    def test_concurrent_same_repo_distinct_paths(self, tmp_path: Path, test_repo: Path) -> None:
         """N threads calling create_worktree for the same repo get N distinct paths.
 
         Pins the TOCTOU bug: without per-item worktree IDs, all threads would
@@ -240,10 +204,7 @@ class TestWorktreeConcurrency:
                     results[idx] = exc
 
         ids = [f"mode-a_model-x_rep{i}" for i in range(n_threads)]
-        threads = [
-            threading.Thread(target=worker, args=(i, ids[i]))
-            for i in range(n_threads)
-        ]
+        threads = [threading.Thread(target=worker, args=(i, ids[i])) for i in range(n_threads)]
         for t in threads:
             t.start()
         for t in threads:
@@ -257,9 +218,7 @@ class TestWorktreeConcurrency:
         assert len(paths) == n_threads
 
         # All paths must be distinct — no two workers share a worktree.
-        assert len(set(paths)) == n_threads, (
-            f"Worktree path collision detected: {paths}"
-        )
+        assert len(set(paths)) == n_threads, f"Worktree path collision detected: {paths}"
 
         # Each path must actually exist on disk.
         for p in paths:
@@ -269,9 +228,7 @@ class TestWorktreeConcurrency:
         for p in paths:
             _rmtree_workaround(p)
 
-    def test_worktree_path_keyed_per_work_item(
-        self, tmp_path: Path, test_repo: Path
-    ) -> None:
+    def test_worktree_path_keyed_per_work_item(self, tmp_path: Path, test_repo: Path) -> None:
         """Worktree path embeds the worktree_id discriminator, not just the repo key.
 
         Two sequential calls with different IDs must produce different paths;
@@ -290,12 +247,8 @@ class TestWorktreeConcurrency:
         )
 
         assert wt_a != wt_b, "Different worktree_ids must produce different paths"
-        assert "mode-a_rep0" in str(wt_a), (
-            f"worktree_id discriminator must appear in path: {wt_a}"
-        )
-        assert "mode-b_rep0" in str(wt_b), (
-            f"worktree_id discriminator must appear in path: {wt_b}"
-        )
+        assert "mode-a_rep0" in str(wt_a), f"worktree_id discriminator must appear in path: {wt_a}"
+        assert "mode-b_rep0" in str(wt_b), f"worktree_id discriminator must appear in path: {wt_b}"
 
         _rmtree_workaround(wt_a)
         _rmtree_workaround(wt_b)

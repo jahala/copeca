@@ -13,8 +13,6 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import pytest
-
 from copeca.config.models import (
     Category,
     ComprehensionGroundTruth,
@@ -26,7 +24,6 @@ from copeca.config.models import (
 )
 from copeca.orchestration.run import run_single
 from copeca.runners.parsers.base import RunResult
-
 
 # ── Spy runner — declares a config_dir_env attribute ─────────────────────────
 
@@ -120,9 +117,7 @@ def _task(name: str = "t") -> Task:
 class TestConfigDirDelivery:
     """config_dir_env mechanism: runner declares the var name, run_single injects it."""
 
-    def test_config_dir_injected_when_runner_declares_env_var(
-        self, tmp_path: Path
-    ) -> None:
+    def test_config_dir_injected_when_runner_declares_env_var(self, tmp_path: Path) -> None:
         """When mode.agent_config is set AND runner has config_dir_env, that var
         must appear in the env passed to runner.run(), pointing at the per-arm
         config dir that provision_arm created.
@@ -187,9 +182,7 @@ class TestConfigDirDelivery:
             "TEST_CFG_DIR must be absent when mode has no agent_config"
         )
 
-    def test_config_dir_absent_when_runner_has_no_config_dir_env(
-        self, tmp_path: Path
-    ) -> None:
+    def test_config_dir_absent_when_runner_has_no_config_dir_env(self, tmp_path: Path) -> None:
         """When the runner has no config_dir_env attribute, nothing is injected —
         even if mode.agent_config is set.
         """
@@ -218,8 +211,7 @@ class TestConfigDirDelivery:
         # No TEST_CFG_DIR and no CLAUDE_CONFIG_DIR — runner didn't declare one
         cfg_keys = [k for k in runner.captured_env if "CFG" in k or "CONFIG" in k]
         assert cfg_keys == [], (
-            f"No config-dir env var expected when runner has no config_dir_env; "
-            f"got: {cfg_keys}"
+            f"No config-dir env var expected when runner has no config_dir_env; got: {cfg_keys}"
         )
 
     def test_mode_none_baseline_no_config_dir_injected(self, tmp_path: Path) -> None:

@@ -63,7 +63,9 @@ class TestBuildRunnerConfigDriven:
             "--model",
             "--dangerously-skip-permissions",
         ):
-            assert claude_flag not in cmd, f"Claude flag {claude_flag!r} leaked into fakecli command"
+            assert claude_flag not in cmd, (
+                f"Claude flag {claude_flag!r} leaked into fakecli command"
+            )
 
     def test_timeout_comes_from_argument(self, fakecli_dir: Path) -> None:
         runner = build_runner("fakecli", timeout=42, runner_dirs=[fakecli_dir])
@@ -97,9 +99,7 @@ class TestBuildRunnerClaude:
     """Building the packaged claude runner yields Claude's verified interface."""
 
     def test_claude_command_uses_verified_flags(self) -> None:
-        runner = build_runner(
-            "claude", timeout=300, runner_dirs=[data_path("defaults", "runners")]
-        )
+        runner = build_runner("claude", timeout=300, runner_dirs=[data_path("defaults", "runners")])
         cmd = runner.build_command(model="claude-sonnet-4-6", prompt="hi")
 
         assert cmd[0] == "claude"
@@ -113,7 +113,5 @@ class TestBuildRunnerClaude:
         assert cmd[-1] == "hi"
 
     def test_config_dir_env_wired(self) -> None:
-        runner = build_runner(
-            "claude", timeout=300, runner_dirs=[data_path("defaults", "runners")]
-        )
+        runner = build_runner("claude", timeout=300, runner_dirs=[data_path("defaults", "runners")])
         assert runner.config_dir_env == "CLAUDE_CONFIG_DIR"

@@ -21,8 +21,6 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
-import pytest
-
 
 def copeca(*args: str) -> subprocess.CompletedProcess[str]:
     """Run copeca CLI via the installed entry point."""
@@ -88,8 +86,9 @@ class TestRunScenario:
         _write_task_yaml(tasks_dir, "task_a")
         scenario = _write_scenario_yaml(tmp_path, "test_scenario")
 
-        result = copeca("run", "--task", str(scenario),
-                        "--runner", "claude", "--model", "test-model")
+        result = copeca(
+            "run", "--task", str(scenario), "--runner", "claude", "--model", "test-model"
+        )
 
         combined = result.stdout + result.stderr
         # The key assertion: scenario detection happened
@@ -117,8 +116,7 @@ models: [m]
 repetitions: 1
 """
         )
-        result = copeca("run", "--task", str(s),
-                        "--runner", "claude", "--model", "m")
+        result = copeca("run", "--task", str(s), "--runner", "claude", "--model", "m")
 
         combined = result.stdout + result.stderr
         assert "Detected scenario file" in combined, (
@@ -150,12 +148,14 @@ ground_truth:
   required_strings: ["OK"]
 """
         )
-        result = copeca("run", "--task", str(task_yaml),
-                        "--runner", "claude", "--model", "test-model")
+        result = copeca(
+            "run", "--task", str(task_yaml), "--runner", "claude", "--model", "test-model"
+        )
 
         combined = result.stdout + result.stderr
         assert "Detected scenario file" not in combined, (
-            f"Task incorrectly detected as scenario.\nstdout={result.stdout}\nstderr={result.stderr}"
+            f"Task incorrectly detected as scenario.\n"
+            f"stdout={result.stdout}\nstderr={result.stderr}"
         )
 
     def test_scenario_with_empty_tasks_still_detected(self, tmp_path: Path) -> None:
@@ -174,8 +174,7 @@ models: [m]
 repetitions: 1
 """
         )
-        result = copeca("run", "--task", str(s),
-                        "--runner", "claude", "--model", "m")
+        result = copeca("run", "--task", str(s), "--runner", "claude", "--model", "m")
 
         combined = result.stdout + result.stderr
         # Detection should still fire — the 'tasks' key is present
@@ -198,8 +197,7 @@ models: [m]
 repetitions: 1
 """
         )
-        result = copeca("run", "--task", str(s),
-                        "--runner", "claude", "--model", "m")
+        result = copeca("run", "--task", str(s), "--runner", "claude", "--model", "m")
 
         combined = result.stdout + result.stderr
         assert "Detected scenario file" in combined, (
@@ -229,8 +227,9 @@ ground_truth:
   required_strings: ["OK"]
 """
         )
-        result = copeca("run", "--task", str(task_yaml),
-                        "--runner", "claude", "--model", "test-model")
+        result = copeca(
+            "run", "--task", str(task_yaml), "--runner", "claude", "--model", "test-model"
+        )
 
         combined = result.stdout + result.stderr
         # Should NOT be detected as scenario — 'tasks' is nested
@@ -263,14 +262,12 @@ models: [m]
 repetitions: 1
 """
         )
-        result = copeca("run", "--task", str(s),
-                        "--runner", "claude", "--model", "m")
+        result = copeca("run", "--task", str(s), "--runner", "claude", "--model", "m")
 
         combined = result.stdout + result.stderr
         assert result.returncode == 1, (
             f"Unknown mode must exit 1.\nstdout={result.stdout}\nstderr={result.stderr}"
         )
         assert "no-such-mode-xyz" in combined, (
-            f"Error must name the missing mode.\n"
-            f"stdout={result.stdout}\nstderr={result.stderr}"
+            f"Error must name the missing mode.\nstdout={result.stdout}\nstderr={result.stderr}"
         )

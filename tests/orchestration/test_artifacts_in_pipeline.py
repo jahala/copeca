@@ -39,12 +39,8 @@ def test_repo(tmp_path: Path) -> Path:
     repo_dir = tmp_path / "test-repo"
     repo_dir.mkdir()
     subprocess.run(["git", "init", "-b", "main"], cwd=repo_dir, check=True)
-    subprocess.run(
-        ["git", "config", "user.email", "test@copeca.dev"], cwd=repo_dir, check=True
-    )
-    subprocess.run(
-        ["git", "config", "user.name", "Copeca Test"], cwd=repo_dir, check=True
-    )
+    subprocess.run(["git", "config", "user.email", "test@copeca.dev"], cwd=repo_dir, check=True)
+    subprocess.run(["git", "config", "user.name", "Copeca Test"], cwd=repo_dir, check=True)
     (repo_dir / "README.md").write_text("# Test Repo\n")
     subprocess.run(["git", "add", "."], cwd=repo_dir, check=True)
     subprocess.run(["git", "commit", "-m", "initial"], cwd=repo_dir, check=True)
@@ -54,7 +50,7 @@ def test_repo(tmp_path: Path) -> Path:
 class TestArtifactsInPipeline:
     def test_artifact_created_by_caller_not_orchestrator(self, tmp_path, test_repo):
         """Architecture: orchestrator returns record; CLI creates artifact.
-        
+
         Per architecture.md §2: orchestration imports ports only.
         build_artifact is in the results adapter layer; the CLI
         (boundary layer) calls it after receiving the record.
@@ -176,10 +172,14 @@ class TestScenarioArtifacts:
 
     def _records(self):
         return [
-            {"task": "scn_task", "mode": "baseline", "model": "m",
-             "correct": True, "repetition": 0},
-            {"task": "scn_task", "mode": "tilth", "model": "m",
-             "correct": False, "repetition": 0},
+            {
+                "task": "scn_task",
+                "mode": "baseline",
+                "model": "m",
+                "correct": True,
+                "repetition": 0,
+            },
+            {"task": "scn_task", "mode": "tilth", "model": "m", "correct": False, "repetition": 0},
         ]
 
     def _task(self):
@@ -197,11 +197,7 @@ class TestScenarioArtifacts:
         )
 
     def _repos(self, test_repo):
-        return {
-            "test-repo": Repo(
-                url=str(test_repo), commit="0" * 40, language=Language.python
-            )
-        }
+        return {"test-repo": Repo(url=str(test_repo), commit="0" * 40, language=Language.python)}
 
     def test_builds_one_artifact_per_record_grouped_by_repo(self, tmp_path, test_repo):
         from copeca.cli import _build_artifacts_for_records

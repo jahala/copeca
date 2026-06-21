@@ -183,7 +183,12 @@ class TestVerifyBatchWithScenario:
             record = {"task": "t1", "mode": "baseline", "model": "test-model", "repetition": rep}
             _make_zip(record, worktree, output_dir)
         for i in range(2):
-            record = {"task": f"extra_{i}", "mode": "baseline", "model": "test-model", "repetition": 0}
+            record = {
+                "task": f"extra_{i}",
+                "mode": "baseline",
+                "model": "test-model",
+                "repetition": 0,
+            }
             _make_zip(record, worktree, output_dir)
 
         scenario = Scenario(

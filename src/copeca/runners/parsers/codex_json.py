@@ -75,12 +75,14 @@ def parse_codex_json(raw: str) -> RunResult:
             # input_tokens includes cached (OpenAI convention) — split so the fresh
             # portion is billed at the input rate, the cached portion at cache-read.
             fresh_input = max(total_input - cached, 0)
-            turns.append(Turn(
-                input_tokens=fresh_input,
-                output_tokens=usage.get("output_tokens", 0),
-                cache_creation_tokens=0,  # codex exposes no cache-write count
-                cache_read_tokens=cached,
-            ))
+            turns.append(
+                Turn(
+                    input_tokens=fresh_input,
+                    output_tokens=usage.get("output_tokens", 0),
+                    cache_creation_tokens=0,  # codex exposes no cache-write count
+                    cache_read_tokens=cached,
+                )
+            )
 
         elif etype == "item.completed":
             item = event.get("item", {})
@@ -94,29 +96,37 @@ def parse_codex_json(raw: str) -> RunResult:
                         result_text += "\n"
                     result_text += text
             elif itype == "command_execution":
-                tool_calls.append(ToolCall(
-                    name="Bash",
-                    input={"command": item.get("command", "")},
-                    turn=len(turns),
-                ))
+                tool_calls.append(
+                    ToolCall(
+                        name="Bash",
+                        input={"command": item.get("command", "")},
+                        turn=len(turns),
+                    )
+                )
             elif itype == "mcp_tool_call":
-                tool_calls.append(ToolCall(
-                    name=item.get("tool", "unknown"),
-                    input=item.get("arguments", {}) or {},
-                    turn=len(turns),
-                ))
+                tool_calls.append(
+                    ToolCall(
+                        name=item.get("tool", "unknown"),
+                        input=item.get("arguments", {}) or {},
+                        turn=len(turns),
+                    )
+                )
             elif itype == "file_edit":
-                tool_calls.append(ToolCall(
-                    name="Edit",
-                    input={"file_path": item.get("file_path", "")},
-                    turn=len(turns),
-                ))
+                tool_calls.append(
+                    ToolCall(
+                        name="Edit",
+                        input={"file_path": item.get("file_path", "")},
+                        turn=len(turns),
+                    )
+                )
             elif itype == "file_write":
-                tool_calls.append(ToolCall(
-                    name="Write",
-                    input={"file_path": item.get("file_path", "")},
-                    turn=len(turns),
-                ))
+                tool_calls.append(
+                    ToolCall(
+                        name="Write",
+                        input={"file_path": item.get("file_path", "")},
+                        turn=len(turns),
+                    )
+                )
 
         elif etype in ("error", "turn.failed"):
             # error event: top-level "message"; turn.failed: nested error.message.

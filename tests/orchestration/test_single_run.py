@@ -40,12 +40,8 @@ def test_repo(tmp_path: Path) -> Path:
     repo_dir = tmp_path / "test-repo"
     repo_dir.mkdir()
     subprocess.run(["git", "init", "-b", "main"], cwd=repo_dir, check=True)
-    subprocess.run(
-        ["git", "config", "user.email", "test@copeca.dev"], cwd=repo_dir, check=True
-    )
-    subprocess.run(
-        ["git", "config", "user.name", "Copeca Test"], cwd=repo_dir, check=True
-    )
+    subprocess.run(["git", "config", "user.email", "test@copeca.dev"], cwd=repo_dir, check=True)
+    subprocess.run(["git", "config", "user.name", "Copeca Test"], cwd=repo_dir, check=True)
     (repo_dir / "README.md").write_text("# Test Repo\n")
     subprocess.run(["git", "add", "."], cwd=repo_dir, check=True)
     subprocess.run(["git", "commit", "-m", "initial"], cwd=repo_dir, check=True)
@@ -58,7 +54,8 @@ class TestRunSingle:
             name="test_task",
             source="test",
             repo="test-repo",
-            type=TaskType.comprehension, category=Category.locate,
+            type=TaskType.comprehension,
+            category=Category.locate,
             language=Language.python,
             difficulty=Difficulty.easy,
             version=1,
@@ -94,7 +91,8 @@ class TestRunSingle:
             name="test_edit",
             source="test",
             repo="test-repo",
-            type=TaskType.edit, category=Category.fix,
+            type=TaskType.edit,
+            category=Category.fix,
             language=Language.rust,
             difficulty=Difficulty.medium,
             version=1,
@@ -131,7 +129,8 @@ class TestRunSingle:
             name="test_task3",
             source="test",
             repo="test-repo",
-            type=TaskType.comprehension, category=Category.locate,
+            type=TaskType.comprehension,
+            category=Category.locate,
             language=Language.python,
             difficulty=Difficulty.easy,
             version=1,
@@ -172,7 +171,8 @@ class TestRunSingle:
             name="test_ctx",
             source="test",
             repo="test-repo",
-            type=TaskType.comprehension, category=Category.locate,
+            type=TaskType.comprehension,
+            category=Category.locate,
             language=Language.python,
             difficulty=Difficulty.easy,
             version=1,
@@ -206,7 +206,8 @@ class TestRunSingle:
             name="test_pin",
             source="test",
             repo="test-repo",
-            type=TaskType.comprehension, category=Category.locate,
+            type=TaskType.comprehension,
+            category=Category.locate,
             language=Language.python,
             difficulty=Difficulty.easy,
             version=1,
@@ -244,7 +245,8 @@ class TestEditTaskTestCommand:
             name="test_edit_pass",
             source="test",
             repo="test-repo",
-            type=TaskType.edit, category=Category.fix,
+            type=TaskType.edit,
+            category=Category.fix,
             language=Language.python,
             difficulty=Difficulty.easy,
             version=1,
@@ -284,7 +286,8 @@ class TestEditTaskTestCommand:
             name="test_edit_fail",
             source="test",
             repo="test-repo",
-            type=TaskType.edit, category=Category.fix,
+            type=TaskType.edit,
+            category=Category.fix,
             language=Language.python,
             difficulty=Difficulty.easy,
             version=1,
@@ -322,7 +325,8 @@ class TestEditTaskTestCommand:
             name="test_edit_timeout",
             source="test",
             repo="test-repo",
-            type=TaskType.edit, category=Category.fix,
+            type=TaskType.edit,
+            category=Category.fix,
             language=Language.python,
             difficulty=Difficulty.easy,
             version=1,
@@ -360,7 +364,8 @@ class TestEditTaskTestCommand:
             name="test_binary_not_found",
             source="test",
             repo="test-repo",
-            type=TaskType.edit, category=Category.fix,
+            type=TaskType.edit,
+            category=Category.fix,
             language=Language.python,
             difficulty=Difficulty.easy,
             version=1,
@@ -398,41 +403,50 @@ class TestTokenSnowball:
 
     def test_token_snowball_flat_returns_false(self) -> None:
         """Three turns with no output token growth -> returns False."""
-        parsed = RunResult(turns=[
-            Turn(output_tokens=100),
-            Turn(output_tokens=100),
-            Turn(output_tokens=100),
-        ])
+        parsed = RunResult(
+            turns=[
+                Turn(output_tokens=100),
+                Turn(output_tokens=100),
+                Turn(output_tokens=100),
+            ]
+        )
         result = _check_token_snowball(parsed)
         assert result is False
 
     def test_token_snowball_growth_returns_true(self) -> None:
         """Last turn output > 3x average of first three -> returns True."""
-        parsed = RunResult(turns=[
-            Turn(output_tokens=100),
-            Turn(output_tokens=100),
-            Turn(output_tokens=100),
-            Turn(output_tokens=1000),
-        ])
+        parsed = RunResult(
+            turns=[
+                Turn(output_tokens=100),
+                Turn(output_tokens=100),
+                Turn(output_tokens=100),
+                Turn(output_tokens=1000),
+            ]
+        )
         result = _check_token_snowball(parsed)
         assert result is True
 
     def test_token_snowball_insufficient_turns_returns_none(self) -> None:
         """Fewer than 3 turns -> returns None (insufficient data)."""
-        parsed = RunResult(turns=[
-            Turn(output_tokens=100),
-        ])
+        parsed = RunResult(
+            turns=[
+                Turn(output_tokens=100),
+            ]
+        )
         result = _check_token_snowball(parsed)
         assert result is None
 
     def test_token_snowball_zero_avg_returns_none(self) -> None:
         """Average of first three turns is zero -> returns None (division safety)."""
-        parsed = RunResult(turns=[
-            Turn(output_tokens=0),
-            Turn(output_tokens=0),
-            Turn(output_tokens=0),
-        ])
+        parsed = RunResult(
+            turns=[
+                Turn(output_tokens=0),
+                Turn(output_tokens=0),
+                Turn(output_tokens=0),
+            ]
+        )
         result = _check_token_snowball(parsed)
+        assert result is None
 
 
 class TestErrorRecovery:
@@ -444,7 +458,8 @@ class TestErrorRecovery:
             name="err_test",
             source="test",
             repo="test-repo",
-            type=TaskType.comprehension, category=Category.locate,
+            type=TaskType.comprehension,
+            category=Category.locate,
             language=Language.python,
             difficulty=Difficulty.easy,
             version=1,
@@ -477,12 +492,13 @@ class TestErrorRecovery:
         mgr = FailingRepoMgr()
         with pytest.raises(RuntimeError, match="clone"):
             run_single(
-                task=task, mode_name="baseline", model="m",
-                runner=runner, repo_mgr=mgr,
+                task=task,
+                mode_name="baseline",
+                model="m",
+                runner=runner,
+                repo_mgr=mgr,
             )
-        assert not mgr.reset_called, (
-            "reset should not be called if create_worktree failed"
-        )
+        assert not mgr.reset_called, "reset should not be called if create_worktree failed"
 
     def test_setup_failure_still_calls_reset(self, tmp_path: Path) -> None:
         """When setup raises after worktree created, reset MUST be called."""
@@ -490,7 +506,8 @@ class TestErrorRecovery:
             name="err_test",
             source="test",
             repo="test-repo",
-            type=TaskType.comprehension, category=Category.locate,
+            type=TaskType.comprehension,
+            category=Category.locate,
             language=Language.python,
             difficulty=Difficulty.easy,
             version=1,
@@ -523,12 +540,13 @@ class TestErrorRecovery:
         mgr = SetupFailingMgr()
         with pytest.raises(RuntimeError, match="setup"):
             run_single(
-                task=task, mode_name="baseline", model="m",
-                runner=runner, repo_mgr=mgr,
+                task=task,
+                mode_name="baseline",
+                model="m",
+                runner=runner,
+                repo_mgr=mgr,
             )
-        assert mgr.reset_called, (
-            "reset MUST be called after setup failure (finally block)"
-        )
+        assert mgr.reset_called, "reset MUST be called after setup failure (finally block)"
 
     def test_runner_failure_propagates_and_reset_called(self, tmp_path: Path) -> None:
         """Runner.run() failure propagates exception; reset is still called."""
@@ -536,7 +554,8 @@ class TestErrorRecovery:
             name="err_test",
             source="test",
             repo="test-repo",
-            type=TaskType.comprehension, category=Category.locate,
+            type=TaskType.comprehension,
+            category=Category.locate,
             language=Language.python,
             difficulty=Difficulty.easy,
             version=1,
@@ -561,6 +580,7 @@ class TestErrorRecovery:
 
             def create_worktree(self, *a: object, **kw: object) -> Path:
                 import tempfile
+
                 return Path(tempfile.mkdtemp())
 
             def setup(self, wt: Path) -> None:
@@ -572,9 +592,10 @@ class TestErrorRecovery:
         mgr = StubMgr()
         with pytest.raises(RuntimeError, match="crash"):
             run_single(
-                task=task, mode_name="baseline", model="m",
-                runner=FailingRunner(), repo_mgr=mgr,
+                task=task,
+                mode_name="baseline",
+                model="m",
+                runner=FailingRunner(),
+                repo_mgr=mgr,
             )
-        assert mgr.reset_called, (
-            "reset MUST be called even when runner.run() raises"
-        )
+        assert mgr.reset_called, "reset MUST be called even when runner.run() raises"

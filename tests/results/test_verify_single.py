@@ -42,9 +42,12 @@ class TestVerifySingle:
 
         # Tamper: modify result.json inside the zip
         tampered_path = output_dir / "tampered.copeca.zip"
-        with zipfile.ZipFile(zip_path, "r") as zin, zipfile.ZipFile(  # noqa: SIM117
-            tampered_path, "w"
-        ) as zout:
+        with (
+            zipfile.ZipFile(zip_path, "r") as zin,
+            zipfile.ZipFile(  # noqa: SIM117
+                tampered_path, "w"
+            ) as zout,
+        ):
             for item in zin.infolist():
                 data = zin.read(item.filename)
                 if item.filename == "result.json":
@@ -68,9 +71,12 @@ class TestVerifySingle:
 
         # Tamper: change content_hash in manifest.json
         tampered_path = output_dir / "corrupt.copeca.zip"
-        with zipfile.ZipFile(zip_path, "r") as zin, zipfile.ZipFile(  # noqa: SIM117
-            tampered_path, "w"
-        ) as zout:
+        with (
+            zipfile.ZipFile(zip_path, "r") as zin,
+            zipfile.ZipFile(  # noqa: SIM117
+                tampered_path, "w"
+            ) as zout,
+        ):
             for item in zin.infolist():
                 data = zin.read(item.filename)
                 if item.filename == "manifest.json":
@@ -109,9 +115,7 @@ class TestVerifySingle:
 
         # Re-create zip with content_hash removed from manifest
         tampered_path = output_dir / "no_chash.copeca.zip"
-        with zipfile.ZipFile(zip_path, "r") as zin, zipfile.ZipFile(
-            tampered_path, "w"
-        ) as zout:
+        with zipfile.ZipFile(zip_path, "r") as zin, zipfile.ZipFile(tampered_path, "w") as zout:
             for item in zin.infolist():
                 data = zin.read(item.filename)
                 if item.filename == "manifest.json":
@@ -137,15 +141,14 @@ class TestVerifySingle:
 
         # Re-create zip with an extra file entry in manifest that does not exist
         tampered_path = output_dir / "phantom.copeca.zip"
-        with zipfile.ZipFile(zip_path, "r") as zin, zipfile.ZipFile(
-            tampered_path, "w"
-        ) as zout:
+        with zipfile.ZipFile(zip_path, "r") as zin, zipfile.ZipFile(tampered_path, "w") as zout:
             for item in zin.infolist():
                 data = zin.read(item.filename)
                 if item.filename == "manifest.json":
                     manifest = json.loads(data)
                     manifest["files"]["missing_file.txt"] = "a" * 64
-                    # Must recompute content_hash since files changed — corrupt it so we hit the per-file check
+                    # Must recompute content_hash since files changed — corrupt it
+                    # so we hit the per-file check
                     data = json.dumps(manifest).encode("utf-8")
                 zout.writestr(item, data)
 
@@ -157,7 +160,7 @@ class TestVerifySingle:
     def test_verify_empty_zip(self, tmp_path):
         """A completely empty zip file → verify returns False (no manifest)."""
         empty_zip = tmp_path / "empty.copeca.zip"
-        with zipfile.ZipFile(empty_zip, "w") as zf:
+        with zipfile.ZipFile(empty_zip, "w"):
             pass  # Create a zip with no entries
 
         valid, message = verify_artifact(empty_zip)

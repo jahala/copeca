@@ -80,7 +80,8 @@ def load_task(path: Path, repos: dict[str, Repo] | None = None) -> Task:
     if repos is not None and task.repo not in repos:
         raise SchemaValidationError(
             path,
-            f"repo '{task.repo}' not found in repos.yaml. Available repos: {', '.join(sorted(repos.keys()))}",
+            f"repo '{task.repo}' not found in repos.yaml. "
+            f"Available repos: {', '.join(sorted(repos.keys()))}",
         )
 
     return task
@@ -193,9 +194,7 @@ def load_mode(name: str, modes_dirs: list[Path] | None = None) -> Mode:
                 raise LoadError(candidate, f"YAML parse error: {e}") from e
 
             if not isinstance(doc, dict):
-                raise LoadError(
-                    candidate, f"Expected a YAML mapping, got {type(doc).__name__}"
-                )
+                raise LoadError(candidate, f"Expected a YAML mapping, got {type(doc).__name__}")
 
             return Mode.model_validate(doc)
 
@@ -203,9 +202,7 @@ def load_mode(name: str, modes_dirs: list[Path] | None = None) -> Mode:
     raise FileNotFoundError(f"Mode '{name}' not found. Searched: {searched}")
 
 
-def load_modes(
-    names: list[str], modes_dirs: list[Path] | None = None
-) -> dict[str, Mode]:
+def load_modes(names: list[str], modes_dirs: list[Path] | None = None) -> dict[str, Mode]:
     """Load multiple modes by name into a name -> Mode dict.
 
     Args:
@@ -259,9 +256,7 @@ def load_runner(name: str, runner_dirs: list[Path] | None = None) -> RunnerConfi
                 raise LoadError(candidate, f"YAML parse error: {e}") from e
 
             if not isinstance(doc, dict):
-                raise LoadError(
-                    candidate, f"Expected a YAML mapping, got {type(doc).__name__}"
-                )
+                raise LoadError(candidate, f"Expected a YAML mapping, got {type(doc).__name__}")
 
             interface = doc.get("runner") or {}
             if not isinstance(interface, dict):

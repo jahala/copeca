@@ -66,6 +66,7 @@ class TestAllModesExist:
     def test_all_five_modes_exist(self) -> None:
         expected = {"baseline", "hook", "proxy", "wrapper", "indexed"}
         actual = {p.stem for p in MODES_DIR.glob("*.yaml")}
+        assert expected.issubset(actual), f"Missing modes: {expected - actual}"
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
@@ -74,6 +75,7 @@ class TestAllModesExist:
 def load_yaml_mode(filename: str) -> Mode:
     """Load a mode YAML from defaults/modes/ and return a Mode model."""
     import yaml as _yaml
+
     path = MODES_DIR / filename
     doc = _yaml.safe_load(path.read_text())
     return Mode.model_validate(doc)

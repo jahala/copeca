@@ -22,9 +22,7 @@ _ADVERSARIAL_FLAG_NAMES = [
 ]
 
 
-def _compute_per_task_deltas(
-    records: list[dict[str, Any]], modes: list[str]
-) -> list[float]:
+def _compute_per_task_deltas(records: list[dict[str, Any]], modes: list[str]) -> list[float]:
     """Compute per-task cost-per-correct deltas between two modes.
 
     For each task, compute cost_per_correct for mode[0] and mode[1],
@@ -59,26 +57,17 @@ def _compute_per_task_deltas(
 
 def _has_flags(records: list[dict[str, Any]]) -> bool:
     """Check if any record carries adversarial_flags."""
-    for r in records:
-        if "adversarial_flags" in r and r["adversarial_flags"] is not None:
-            return True
-    return False
+    return any("adversarial_flags" in r and r["adversarial_flags"] is not None for r in records)
 
 
 def _has_turn_data(records: list[dict[str, Any]]) -> bool:
     """Check if any record carries per-turn token data."""
-    for r in records:
-        if r.get("per_turn_output_tokens") or r.get("per_turn_context_tokens"):
-            return True
-    return False
+    return any(r.get("per_turn_output_tokens") or r.get("per_turn_context_tokens") for r in records)
 
 
 def _has_tools(records: list[dict[str, Any]]) -> bool:
     """Check if any record carries a non-empty tool_sequence."""
-    return any(
-        r.get("tool_sequence") and len(r["tool_sequence"]) > 0
-        for r in records
-    )
+    return any(r.get("tool_sequence") and len(r["tool_sequence"]) > 0 for r in records)
 
 
 def _has_language(records: list[dict[str, Any]]) -> bool:
@@ -119,8 +108,7 @@ def _tool_adoption_section(
         mode_records = by_mode[mode]
         total = len(mode_records)
         with_tools = sum(
-            1 for r in mode_records
-            if r.get("tool_sequence") and len(r["tool_sequence"]) > 0
+            1 for r in mode_records if r.get("tool_sequence") and len(r["tool_sequence"]) > 0
         )
         pct = (with_tools / total * 100) if total > 0 else 0.0
         lines.append(f"| {mode} | {with_tools} | {total} | {pct:.1f}% |")
@@ -242,15 +230,12 @@ def generate_report(records: list[dict[str, Any]]) -> str:
         lines.append("### Failed Runs")
         lines.append("")
         lines.append(
-            f"{len(failed_records)} run(s) failed and are excluded from the "
-            "metrics below."
+            f"{len(failed_records)} run(s) failed and are excluded from the metrics below."
         )
         for r in failed_records:
             raw = r.get("error") or "unknown error"
             err = str(raw).splitlines()[0][:120]
-            lines.append(
-                f"- **{r.get('mode', '?')}** / {r.get('task', '?')}: {err}"
-            )
+            lines.append(f"- **{r.get('mode', '?')}** / {r.get('task', '?')}: {err}")
         lines.append("")
 
     # Discover modes
@@ -291,15 +276,11 @@ def generate_report(records: list[dict[str, Any]]) -> str:
         if cpc1 is None:
             # Experimental got 0 correct — delta is undefined, not a bargain
             n_correct, n_total = correct_by_mode[m1]
-            lines.append(
-                f"**Delta:** n/a — {m1} got {n_correct}/{n_total} correct"
-            )
+            lines.append(f"**Delta:** n/a — {m1} got {n_correct}/{n_total} correct")
         elif cpc0 is None:
             # Baseline got 0 correct — experimental is strictly better, but no ratio
             n_correct, n_total = correct_by_mode[m0]
-            lines.append(
-                f"**Delta:** n/a — {m0} (baseline) got {n_correct}/{n_total} correct"
-            )
+            lines.append(f"**Delta:** n/a — {m0} (baseline) got {n_correct}/{n_total} correct")
         else:
             if cpc0 > 0:
                 delta_pct = ((cpc1 - cpc0) / cpc0) * 100
@@ -422,10 +403,7 @@ def generate_report(records: list[dict[str, Any]]) -> str:
 
         total_with_flags = len(all_flags)
         for flag_name in _ADVERSARIAL_FLAG_NAMES:
-            true_count = sum(
-                1 for f in all_flags
-                if f.get(flag_name) is True
-            )
+            true_count = sum(1 for f in all_flags if f.get(flag_name) is True)
             rate_pct = (true_count / total_with_flags * 100) if total_with_flags > 0 else 0.0
             lines.append(f"| {flag_name} | {rate_pct:.1f}% |")
 
@@ -461,25 +439,19 @@ def generate_report(records: list[dict[str, Any]]) -> str:
 
     # ── 8. Per-Language Breakdown (if records carry language) ───────────────
     lines.extend(
-        _per_category_section(
-            records, by_mode, modes, "language", "Per-Language Breakdown"
-        )
+        _per_category_section(records, by_mode, modes, "language", "Per-Language Breakdown")
     )
 
     # ── 9. Per-Difficulty Breakdown (if records carry difficulty) ───────────
     lines.extend(
-        _per_category_section(
-            records, by_mode, modes, "difficulty", "Per-Difficulty Breakdown"
-        )
+        _per_category_section(records, by_mode, modes, "difficulty", "Per-Difficulty Breakdown")
     )
 
     # ── 10. Per-Capability Breakdown (if records carry category) ────────────
     # The payoff: cost-per-correct sliced by what the task demands (locate/trace/
     # fix/debug), so the delta reveals WHERE a tool helps, not just how much overall.
     lines.extend(
-        _per_category_section(
-            records, by_mode, modes, "category", "Per-Capability Breakdown"
-        )
+        _per_category_section(records, by_mode, modes, "category", "Per-Capability Breakdown")
     )
 
     return "\n".join(lines)

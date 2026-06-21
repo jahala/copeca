@@ -9,10 +9,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import pytest
-
 from copeca.config.models import Mode
-from copeca.orchestration.state import ArmHarness, provision_arm
+from copeca.orchestration.state import provision_arm
 
 
 def _mode(**kwargs: object) -> Mode:
@@ -39,16 +37,14 @@ class TestMcpMaterialization:
         worktree = tmp_path / "repo"
         worktree.mkdir()
 
-        harness = provision_arm(mode, worktree, arm_name="arm")
+        provision_arm(mode, worktree, arm_name="arm")
 
         # The file must exist under the per-arm directory
         mcp_file = worktree / ".copeca-arms" / "arm" / "mcp.json"
         assert mcp_file.exists(), f"mcp.json must be written at {mcp_file}"
 
         parsed = json.loads(mcp_file.read_text())
-        assert parsed == mcp_dict, (
-            "Written JSON must round-trip to the original dict"
-        )
+        assert parsed == mcp_dict, "Written JSON must round-trip to the original dict"
 
     def test_harness_mcp_config_path_set(self, tmp_path: Path) -> None:
         """provision_arm sets harness.mcp_config_path to the written file's path."""

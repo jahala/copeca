@@ -20,6 +20,7 @@ from copeca.runners.subprocess import SubprocessRunner
 
 # ── EchoParser — deterministic parser returning stdout as result_text ──────────
 
+
 class EchoParser:
     """Parser that returns a RunResult with raw stdout as result_text."""
 
@@ -32,6 +33,7 @@ class EchoParser:
 
 
 # ── StubRepoManager — no real git clone needed ─────────────────────────────────
+
 
 class StubRepoManager:
     """Stub repo manager that fakes worktree operations.
@@ -65,6 +67,7 @@ class StubRepoManager:
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
+
 def _make_task(name: str, repo: str = "test-repo") -> Task:
     """Build a minimal comprehension task."""
     return Task(
@@ -94,18 +97,15 @@ def _make_runner() -> SubprocessRunner:
 
 # ── Fixtures ───────────────────────────────────────────────────────────────────
 
+
 @pytest.fixture
 def test_repo(tmp_path: Path) -> Path:
     """Create a local git repo for pipeline integration tests."""
     repo_dir = tmp_path / "test-repo"
     repo_dir.mkdir()
     subprocess.run(["git", "init", "-b", "main"], cwd=repo_dir, check=True)
-    subprocess.run(
-        ["git", "config", "user.email", "test@copeca.dev"], cwd=repo_dir, check=True
-    )
-    subprocess.run(
-        ["git", "config", "user.name", "Copeca Test"], cwd=repo_dir, check=True
-    )
+    subprocess.run(["git", "config", "user.email", "test@copeca.dev"], cwd=repo_dir, check=True)
+    subprocess.run(["git", "config", "user.name", "Copeca Test"], cwd=repo_dir, check=True)
     (repo_dir / "README.md").write_text("# Test Repo\n")
     subprocess.run(["git", "add", "."], cwd=repo_dir, check=True)
     subprocess.run(["git", "commit", "-m", "initial"], cwd=repo_dir, check=True)
@@ -113,6 +113,7 @@ def test_repo(tmp_path: Path) -> Path:
 
 
 # ── Tests ──────────────────────────────────────────────────────────────────────
+
 
 class TestFullPipeline:
     """End-to-end integration tests for the complete copeca pipeline."""
@@ -124,14 +125,16 @@ class TestFullPipeline:
             "test_2": _make_task("test_2"),
         }
 
-        scenario = Scenario.model_validate({
-            "name": "integration_test",
-            "tasks": ["test_1", "test_2"],
-            "modes": ["baseline"],
-            "models": ["test-model"],
-            "repetitions": 1,
-            "budget_usd": 2.0,
-        })
+        scenario = Scenario.model_validate(
+            {
+                "name": "integration_test",
+                "tasks": ["test_1", "test_2"],
+                "modes": ["baseline"],
+                "models": ["test-model"],
+                "repetitions": 1,
+                "budget_usd": 2.0,
+            }
+        )
 
         def _runner_factory(mode, model):
             return _make_runner()
@@ -214,7 +217,8 @@ class TestFullPipeline:
             name="fields_test",
             source="test",
             repo="test-repo",
-            type=TaskType.comprehension, category=Category.locate,
+            type=TaskType.comprehension,
+            category=Category.locate,
             language=Language.python,
             difficulty=Difficulty.easy,
             version=1,
@@ -351,9 +355,9 @@ class TestVendorPrimaryCost:
             pricing=self.PRICING,
         )
         assert result["cost_source"] == "vendor"
-        assert result["total_cost_usd"] == 0.05          # billed cost, NOT modeled
+        assert result["total_cost_usd"] == 0.05  # billed cost, NOT modeled
         assert result["vendor_cost_usd"] == 0.05
-        assert result["computed_cost_usd"] == 0.0        # modeled estimate kept
+        assert result["computed_cost_usd"] == 0.0  # modeled estimate kept
 
     def test_modeled_cost_is_fallback_when_no_vendor_cost(self, tmp_path, test_repo):
         from copeca.runners.parsers.base import RunResult, Turn
@@ -363,7 +367,7 @@ class TestVendorPrimaryCost:
                 return RunResult(
                     turns=[Turn(input_tokens=1000, output_tokens=500)],
                     result_text="Matcher find_at",
-                    total_cost_usd=0.0,   # runner reports NO cost
+                    total_cost_usd=0.0,  # runner reports NO cost
                     duration_ms=100,
                 )
 
@@ -400,6 +404,7 @@ class TestToolAdoptionAndPreflight:
     @staticmethod
     def _tilth_mode():
         from copeca.config.models import Mode
+
         # command 'echo' is on PATH so the preflight passes; the adoption check
         # looks for the server NAME 'tilth' in the tool_sequence.
         return Mode(
@@ -421,13 +426,21 @@ class TestToolAdoptionAndPreflight:
                 )
 
         runner = SubprocessRunner(
-            name="echo", cli="echo", default_args=[],
-            arg_map={"prompt_separator": ""}, parser=_P(),
+            name="echo",
+            cli="echo",
+            default_args=[],
+            arg_map={"prompt_separator": ""},
+            parser=_P(),
         )
         result = run_single(
-            task=_make_task("adopt_yes"), mode_name="tilth", model="m",
-            runner=runner, repo_mgr=StubRepoManager(tmp_path / "wt"),
-            repo_uri=str(test_repo), repo_commit=None, mode=self._tilth_mode(),
+            task=_make_task("adopt_yes"),
+            mode_name="tilth",
+            model="m",
+            runner=runner,
+            repo_mgr=StubRepoManager(tmp_path / "wt"),
+            repo_uri=str(test_repo),
+            repo_commit=None,
+            mode=self._tilth_mode(),
         )
         assert result["tool_adopted"] is True
 
@@ -444,21 +457,33 @@ class TestToolAdoptionAndPreflight:
                 )
 
         runner = SubprocessRunner(
-            name="echo", cli="echo", default_args=[],
-            arg_map={"prompt_separator": ""}, parser=_P(),
+            name="echo",
+            cli="echo",
+            default_args=[],
+            arg_map={"prompt_separator": ""},
+            parser=_P(),
         )
         result = run_single(
-            task=_make_task("adopt_no"), mode_name="tilth", model="m",
-            runner=runner, repo_mgr=StubRepoManager(tmp_path / "wt"),
-            repo_uri=str(test_repo), repo_commit=None, mode=self._tilth_mode(),
+            task=_make_task("adopt_no"),
+            mode_name="tilth",
+            model="m",
+            runner=runner,
+            repo_mgr=StubRepoManager(tmp_path / "wt"),
+            repo_uri=str(test_repo),
+            repo_commit=None,
+            mode=self._tilth_mode(),
         )
         assert result["tool_adopted"] is False
 
     def test_tool_adopted_none_for_baseline(self, tmp_path, test_repo):
         result = run_single(
-            task=_make_task("adopt_base"), mode_name="baseline", model="m",
-            runner=_make_runner(), repo_mgr=StubRepoManager(tmp_path / "wt"),
-            repo_uri=str(test_repo), repo_commit=None,  # mode=None
+            task=_make_task("adopt_base"),
+            mode_name="baseline",
+            model="m",
+            runner=_make_runner(),
+            repo_mgr=StubRepoManager(tmp_path / "wt"),
+            repo_uri=str(test_repo),
+            repo_commit=None,  # mode=None
         )
         assert result["tool_adopted"] is None
 
@@ -466,14 +491,22 @@ class TestToolAdoptionAndPreflight:
         from copeca.config.models import Mode
 
         bad_mode = Mode(
-            name="ghost", description="x",
-            mcp_config={"mcpServers": {"ghost": {"command": "definitely-not-installed-xyz123", "args": []}}},
+            name="ghost",
+            description="x",
+            mcp_config={
+                "mcpServers": {"ghost": {"command": "definitely-not-installed-xyz123", "args": []}}
+            },
         )
         with pytest.raises(RuntimeError, match="preflight"):
             run_single(
-                task=_make_task("preflight"), mode_name="ghost", model="m",
-                runner=_make_runner(), repo_mgr=StubRepoManager(tmp_path / "wt"),
-                repo_uri=str(test_repo), repo_commit=None, mode=bad_mode,
+                task=_make_task("preflight"),
+                mode_name="ghost",
+                model="m",
+                runner=_make_runner(),
+                repo_mgr=StubRepoManager(tmp_path / "wt"),
+                repo_uri=str(test_repo),
+                repo_commit=None,
+                mode=bad_mode,
             )
 
 
@@ -489,9 +522,7 @@ class TestToolRestriction:
         from copeca.config.resources import data_path
 
         runner = build_runner("claude", timeout=300, runner_dirs=[data_path("defaults", "runners")])
-        cmd = runner.build_command(
-            model="claude-sonnet-4-6", prompt="hi", tools=["Read", "Edit"]
-        )
+        cmd = runner.build_command(model="claude-sonnet-4-6", prompt="hi", tools=["Read", "Edit"])
         assert "--tools" in cmd
         assert "Read,Edit" in cmd
 
@@ -503,19 +534,25 @@ class TestToolRestriction:
         class _Cap(SubprocessRunner):
             def run(self, command, cwd=None, env=None):
                 captured["cmd"] = command
-                return RunResult(
-                    result_text="Matcher find_at", total_cost_usd=0.05, duration_ms=10
-                )
+                return RunResult(result_text="Matcher find_at", total_cost_usd=0.05, duration_ms=10)
 
         runner = _Cap(
-            name="cap", cli="echo", default_args=[],
-            arg_map={"tools": "--tools", "prompt_separator": ""}, parser=None,
+            name="cap",
+            cli="echo",
+            default_args=[],
+            arg_map={"tools": "--tools", "prompt_separator": ""},
+            parser=None,
         )
         mode = Mode(name="restricted", description="x", tools=["Read", "Edit"])
         run_single(
-            task=_make_task("toolrestrict"), mode_name="restricted", model="m",
-            runner=runner, repo_mgr=StubRepoManager(tmp_path / "wt"),
-            repo_uri=str(test_repo), repo_commit=None, mode=mode,
+            task=_make_task("toolrestrict"),
+            mode_name="restricted",
+            model="m",
+            runner=runner,
+            repo_mgr=StubRepoManager(tmp_path / "wt"),
+            repo_uri=str(test_repo),
+            repo_commit=None,
+            mode=mode,
         )
         assert "--tools" in captured["cmd"]
         assert "Read,Edit" in captured["cmd"]

@@ -29,15 +29,25 @@ _FORBIDDEN: list[tuple[re.Pattern[str], str]] = [
     (re.compile(r"\bctags\b", re.I), "names a specific tool (ctags)"),
     (re.compile(r"\b(language server|lsp)\b", re.I), "names a specific tool (LSP)"),
     # Single-shot-aggregator priming — rewards a tool that returns one bundled answer.
-    (re.compile(r"structured answer", re.I), "primes a single-shot aggregator ('structured answer')"),
-    (re.compile(r"consolidated view", re.I), "primes a single-shot aggregator ('consolidated view')"),
+    (
+        re.compile(r"structured answer", re.I),
+        "primes a single-shot aggregator ('structured answer')",
+    ),
+    (
+        re.compile(r"consolidated view", re.I),
+        "primes a single-shot aggregator ('consolidated view')",
+    ),
     (re.compile(r"piecemeal", re.I), "disparages multi-step retrieval ('piecemeal')"),
     (re.compile(r"in (?:a )?single call|in one call", re.I), "primes a single-call tool"),
-    (re.compile(r"(?:several|multiple|partial) (?:searches|calls|answers)", re.I),
-     "frames retrieval as a count of searches/calls"),
+    (
+        re.compile(r"(?:several|multiple|partial) (?:searches|calls|answers)", re.I),
+        "frames retrieval as a count of searches/calls",
+    ),
     # Explicit method prescription (how to retrieve, not what to retrieve).
-    (re.compile(r"grep for|run a search|do a search|search the codebase", re.I),
-     "prescribes a search method"),
+    (
+        re.compile(r"grep for|run a search|do a search|search the codebase", re.I),
+        "prescribes a search method",
+    ),
     (re.compile(r"use (?:your |the )?[\w-]+ tool", re.I), "prescribes using a specific tool"),
 ]
 

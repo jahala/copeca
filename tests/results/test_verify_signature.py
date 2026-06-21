@@ -100,15 +100,15 @@ class TestForgedArtifactIsRejected:
             original = {name: zf.read(name) for name in zf.namelist()}
             base_manifest = json.loads(original["manifest.json"])
 
-        forged_result = json.dumps(
-            {**record, "correct": True}, indent=2, sort_keys=True
-        ).encode("utf-8")
+        forged_result = json.dumps({**record, "correct": True}, indent=2, sort_keys=True).encode(
+            "utf-8"
+        )
         new_files = dict(original)
         new_files["result.json"] = forged_result
         new_manifest = _recompute_manifest_for_files(new_files, base_manifest)
-        new_files["manifest.json"] = json.dumps(
-            new_manifest, indent=2, sort_keys=True
-        ).encode("utf-8")
+        new_files["manifest.json"] = json.dumps(new_manifest, indent=2, sort_keys=True).encode(
+            "utf-8"
+        )
 
         forged_path = output_dir / "FORGED.copeca.zip"
         _rewrite_zip(zip_path, forged_path, new_files)
@@ -136,9 +136,12 @@ class TestForgedArtifactIsRejected:
         zip_path = build_artifact(record, worktree, output_dir, sign_key=private_key)
 
         stripped = output_dir / "stripped.copeca.zip"
-        with zipfile.ZipFile(zip_path, "r") as zin, zipfile.ZipFile(  # noqa: SIM117
-            stripped, "w"
-        ) as zout:
+        with (
+            zipfile.ZipFile(zip_path, "r") as zin,
+            zipfile.ZipFile(  # noqa: SIM117
+                stripped, "w"
+            ) as zout,
+        ):
             for item in zin.infolist():
                 if item.filename == MANIFEST_SIG_NAME:
                     continue
