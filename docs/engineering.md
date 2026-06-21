@@ -206,8 +206,7 @@ Reviewer checks (CI enforces where possible):
 
 ## 11. tend feedback loop
 
-Copeca's own features are tracked in tend (see `docs/tend-feedback.md` for field
-notes). The workflow:
+Copeca's own features are tracked in tend. The workflow:
 
 1. Features are brainstormed as tend polyglots with slots + checks anchored to
    persona jobs.
@@ -223,7 +222,7 @@ been verified. A PR that implements a step should update the step's status.
 
 | Agreement | Lives in | Enforced by |
 |---|---|---|
-| What we're building + why | `docs/ideas/agent-bench-plan.md` | Review checklist item 2 |
+| What we're building + why | `README.md` + `docs/methodology.md` | Review |
 | How we build (this handbook) | `docs/engineering.md` | Review |
 | Task schema | `src/copeca/data/schemas/task.schema.json` | `copeca validate` |
 | Runner config | `src/copeca/data/defaults/runners/*.yaml` | validated by `RunnerConfig` (Pydantic) at load via `load_runner` |
@@ -231,9 +230,7 @@ been verified. A PR that implements a step should update the step's status.
 | Cost model | `src/copeca/data/defaults/runners/*.yaml` | Staleness warnings |
 | Lint/format/types | `pyproject.toml` (ruff, mypy) | CI |
 | Test policy | §6 here | CI + review |
-| Decisions + rationale | `docs/ideas/agent-bench-plan.md` §10, §13 | Review checklist item 2 |
+| Decisions + rationale | `docs/methodology.md`, `docs/known-limitations.md` | Review |
 | Agent briefing | `.claude/CLAUDE.md` | Read at session start |
 | Tend feature map | `docs/tend/` | `tend validate` |
-| Tend field notes | `docs/tend-feedback.md` | Updated as we build |
-| Phases | `docs/ideas/copeca-execution-plan.md` | Phase acceptance criteria |
 | License | `LICENSE` (MIT) | CI (license-check) |

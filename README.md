@@ -1,5 +1,11 @@
 # copeca &middot; cost per correct answer
 
+[![Live site](https://img.shields.io/badge/live_site-1F8A7B?logo=githubpages&logoColor=white)](https://jahala.github.io/copeca/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Build](https://img.shields.io/github/actions/workflow/status/jahala/copeca/ci.yml?branch=master)](https://github.com/jahala/copeca/actions)
+
+🌱 **[What is copeca? →](https://jahala.github.io/copeca/)** &nbsp;·&nbsp; the visual overview
+
 A neutral, reproducible, verifiable benchmark for CLI-based coding agents.  
 Copeca measures **cost per correct answer** — the expected dollar cost before
 getting a right answer — to A/B-compare MCP servers, context compressors,
@@ -28,7 +34,7 @@ benchmark occupies that lane.
 git clone https://github.com/jahala/copeca && cd copeca
 pip install -e .
 copeca init ./my-benchmark
-copeca run scenarios/my-scenario.yaml
+copeca run --task scenarios/my-scenario.yaml --runner claude
 copeca analyze results/bench.jsonl
 ```
 
@@ -47,13 +53,16 @@ budget_usd: 1.00
 ```
 
 The report leads with the cost-per-correct delta between your tool and the
-baseline, with 95% bootstrapped confidence intervals, per-task breakdowns,
-and adversarial flags that catch token snowballing and expensive failures.
+baseline, with 95% bootstrapped confidence intervals, per-task and
+**per-capability** breakdowns (locate / trace / fix / debug — *where* the tool
+helps, not just an overall number), and adversarial flags that catch token
+snowballing and expensive failures.
 
-**Current corpus size: 16 tasks.** The roadmap targets ~85 tasks across 6
-independent source families. Until the corpus grows, statistical power is
-limited — small N means wide confidence intervals. See
-[docs/known-limitations.md](docs/known-limitations.md) for details.
+**Current corpus: 52 tasks** across four real repos (ripgrep, gin, express,
+fastapi — Rust, Go, JavaScript, Python), each tagged by capability so the report
+shows where a tool helps. Broader coverage is on the roadmap; small N still means
+wide confidence intervals — see
+[docs/known-limitations.md](docs/known-limitations.md).
 
 ---
 
@@ -119,13 +128,15 @@ locale, and provider credentials); all ambient hooks, `CLAUDE_*` vars, and
 ## Task corpus
 
 Tasks are YAML data — no embedded code, no Docker per task. They target real
-open-source repos at pinned commits. The current seed corpus is **16 tasks**
-spanning six source families but heavily weighted toward `SWE-QA (Apache-2.0)`
-(11 of 16) and only four repos; broader, balanced coverage (~85 tasks) is
-planned. Each task carries a
-`source:` field with provenance attribution. Every edit task is verified by
-`copeca check-task`: the test must pass on clean code and fail on mutated
-code, proving the mutation actually bites.
+open-source repos pinned at exact commits (per task, so one repo can serve
+several code states). The corpus is **52 tasks** across ripgrep, gin, express,
+and fastapi — drawn from six public source families plus a set migrated from the
+tilth benchmark (MIT); each carries a `source:` field with provenance and a
+`category` (locate / trace / fix / debug). Tasks are **tool-agnostic** — they name
+the information required, never the method, so no tool is privileged; `copeca
+validate` lints for it. Every edit task is verified by `copeca check-task`: the
+test must pass on clean code and fail on mutated code, proving the mutation
+actually bites. See [docs/task-taxonomy.md](docs/task-taxonomy.md).
 
 **Contamination defense:** `copeca validate` checks every task's `source:`
 field against a blocklist of known-contaminated source benchmarks (SWE-bench
@@ -159,10 +170,11 @@ the headline. Duration and completion are derived from the output too.
 {"type": "result", "total_cost_usd": 0.0734, "duration_ms": 45230}
 ```
 
-The `stream_json` parser (Claude Code's JSON event stream) ships today. A CLI
-with a different output format needs a matching parser; those aren't built yet,
-and a runner YAML naming an unbuilt parser fails loudly rather than silently
-miscounting.
+Two runners ship today: **Claude Code** (`stream_json` parser) and **OpenAI
+Codex** (`codex_json` parser) — each added as a YAML plus a parser, with no
+changes to copeca's core. A CLI with a different output format needs a matching
+parser, and a runner YAML naming an unbuilt parser fails loudly rather than
+silently miscounting.
 
 ---
 
@@ -185,9 +197,9 @@ cd copeca
 pip install .
 ```
 
-Requires Python ≥ 3.11. The Claude Code runner ships ready to use; the runner
-interface is config-driven so other CLIs are added by writing a YAML (and, if
-their output format differs, a parser). See
+Requires Python ≥ 3.11. The Claude Code and Codex runners ship ready to use; the
+runner interface is config-driven, so other CLIs are added by writing a YAML (and,
+if their output format differs, a parser). See
 [docs/runner-configuration.md](docs/runner-configuration.md).
 
 ---
@@ -200,6 +212,10 @@ their output format differs, a parser). See
 - [Known limitations](docs/known-limitations.md) — string matching, bootstrap CIs, modeled cost
 
 ---
+
+## Support
+
+[!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://buymeacoffee.com/jahala)
 
 ## License
 
@@ -214,8 +230,10 @@ no-license sources are explicitly excluded.
 
 ## Related
 
-Copeca is part of the [plotplot](https://github.com/plotplot-ai) garden of
-tools for building with AI. Siblings: [tilth](https://github.com/jahala/tilth)
-(AST-aware code intelligence for agents), [petals](https://github.com/jahala/petals)
-(brand intelligence for agents), [tend](https://github.com/jahala/tend)
-(feature mapping across sessions).
+Copeca is part of the [plotplot](https://github.com/plotplot-ai) garden of small,
+sharp tools for building with AI. Siblings:
+[tilth](https://github.com/jahala/tilth) (AST-aware code intelligence),
+[umbel](https://github.com/jahala/umbel) (drive many agent CLIs from one session),
+[pleach](https://github.com/jahala/pleach) (conduct agent work in isolated worktrees),
+[petals](https://github.com/jahala/petals) (brand intelligence),
+[tend](https://github.com/jahala/tend) (feature mapping across sessions).
