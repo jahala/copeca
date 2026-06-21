@@ -1,0 +1,19 @@
+name: rg_lineiter_usage
+description: "Trace LineIter from its definition in the searcher crate to its construction call sites; tests following a type from definition to instantiation across files."
+source: "tilth-benchmark (MIT)"
+repo: ripgrep
+commit: 0a88cccd5188074de96f54a4b6b44a63971ac157
+type: comprehension
+category: trace
+language: rust
+difficulty: medium
+version: 1
+prompt: |
+  Find the LineIter struct in ripgrep's searcher crate. Show its
+  definition, then find where LineIter is constructed (look for
+  LineIter::new or LineIter { calls). Show 2-3 key call sites.
+ground_truth:
+  required_strings:
+    - LineIter
+    - lines.rs
+    - new

@@ -1,0 +1,36 @@
+name: express_edit_send_type
+description: "Restore the html default in Express's res.send() string branch so string responses are typed as text/html rather than json; tests string-literal repair in a default Content-Type assignment."
+source: "tilth-benchmark (MIT)"
+repo: express
+commit: 1140301f6a0ed5a05bc1ef38d48294f75a49580c
+type: edit
+category: fix
+language: javascript
+difficulty: medium
+version: 1
+prompt: |
+  In Express's lib/response.js, the res.send() method is setting
+  the wrong default Content-Type for string responses. When you call
+  res.send('<p>hello</p>'), the response should have Content-Type
+  text/html, but it's being sent as a different type. The issue is
+  in the string branch of res.send() where it sets the default type.
+  Find and fix it.
+ground_truth:
+  required_strings: []
+  test_command:
+    - npx
+    - mocha
+    - --require
+    - test/support/env
+    - --reporter
+    - spec
+    - --check-leaks
+    - --grep
+    - should send as html
+    - test/res.send.js
+mutations:
+  - file: lib/response.js
+    action: replace
+    find: "this.type('html');"
+    replace: "this.type('json');"
+    occurrence: 1

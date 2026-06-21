@@ -1,0 +1,31 @@
+name: rg_edit_line_count
+description: "Correct an arithmetic error in ripgrep's newline counter that adds 1 to every line count; tests single-expression integer repair in low-level byte-scanning code."
+source: "tilth-benchmark (MIT)"
+repo: ripgrep
+commit: 0a88cccd5188074de96f54a4b6b44a63971ac157
+type: edit
+category: fix
+language: rust
+difficulty: medium
+version: 1
+prompt: |
+  There is a bug in ripgrep's line counting logic in
+  crates/searcher/src/lines.rs. The count() function, which counts
+  the number of line terminators in a byte slice, is consistently
+  returning one more than the actual number of newlines. This causes
+  line numbers in search output to be off by one. Find the arithmetic
+  error in count() and fix it.
+ground_truth:
+  required_strings: []
+  test_command:
+    - cargo
+    - test
+    - -p
+    - grep-searcher
+    - line_count
+mutations:
+  - file: crates/searcher/src/lines.rs
+    action: replace
+    find: "memchr::memchr_iter(line_term, bytes).count() as u64"
+    replace: "memchr::memchr_iter(line_term, bytes).count() as u64 + 1"
+    occurrence: 1

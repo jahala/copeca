@@ -1,0 +1,33 @@
+name: fastapi_edit_response_filter
+description: "Remove a spurious negation in FastAPI's response serialization path so declared response models actually filter the output; tests condition-negation repair where inverted logic leaks private fields."
+source: "tilth-benchmark (MIT)"
+repo: fastapi
+commit: 6fa573ce0bc16fe445f93db413d20146dd9ff35d
+type: edit
+category: fix
+language: python
+difficulty: medium
+version: 1
+prompt: |
+  In FastAPI's routing.py, the response model filtering is inverted.
+  When an endpoint declares a response_model, the response should be
+  serialized through that model to strip internal fields (like
+  hashed_password). Instead, the serialization only runs when there
+  is NO response model, and raw unfiltered data leaks through when
+  a model IS declared. The bug is a negated condition in
+  get_request_handler's response path. Find and fix it.
+ground_truth:
+  required_strings: []
+  test_command:
+    - /usr/local/bin/python3.10
+    - -m
+    - pytest
+    - tests/test_response_model_data_filter.py::test_filter_second_level_model
+    - -x
+    - -q
+mutations:
+  - file: fastapi/routing.py
+    action: replace
+    find: "    if field:"
+    replace: "    if not field:"
+    occurrence: 1

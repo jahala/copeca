@@ -1,0 +1,20 @@
+name: gin_servehttp_flow
+description: "Trace Engine.ServeHTTP in gin through Context acquisition, route matching, and handler dispatch; tests following a concrete HTTP entry point across the request-handling call chain."
+source: "tilth-benchmark (MIT)"
+repo: gin
+commit: d7776de7d444935ea4385999711bd6331a98fecb
+type: comprehension
+category: trace
+language: go
+difficulty: medium
+version: 1
+prompt: |
+  Find Engine.ServeHTTP in gin and show its implementation. Then
+  trace what functions it calls — how does it get a Context, find
+  the matching route handlers, and start executing them?
+ground_truth:
+  required_strings:
+    - ServeHTTP
+    - gin.go
+    - handleHTTPRequest
+    - pool

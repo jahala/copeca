@@ -1,0 +1,31 @@
+name: gin_edit_middleware_skip
+description: "Restore the single-step increment in Gin's handler chain iterator so every handler in the chain executes in order; tests increment-value repair where a doubled step silently skips alternating handlers."
+source: "tilth-benchmark (MIT)"
+repo: gin
+commit: d7776de7d444935ea4385999711bd6331a98fecb
+type: edit
+category: fix
+language: go
+difficulty: medium
+version: 1
+prompt: |
+  In Gin's context.go, the middleware chain is broken — every other
+  handler in the chain is being silently skipped. A route with
+  middlewares A, C and handler D should execute as A→C→D→B (where B
+  is A's post-Next code), but instead only alternating handlers run.
+  Find the bug in the Next() method that causes handlers to be skipped
+  and fix it.
+ground_truth:
+  required_strings: []
+  test_command:
+    - go
+    - test
+    - -run
+    - TestMiddlewareGeneralCase
+    - -v
+mutations:
+  - file: context.go
+    action: replace
+    find: "c.index++"
+    replace: "c.index += 2"
+    occurrence: 1

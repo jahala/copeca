@@ -1,0 +1,21 @@
+name: fastapi_dependency_resolution
+description: "Trace FastAPI's dependency resolution from an endpoint with Depends() through the parameter-analysis and dependency-execution functions; tests end-to-end control-flow tracing across the dependency injection system."
+source: "tilth-benchmark (MIT)"
+repo: fastapi
+commit: 6fa573ce0bc16fe445f93db413d20146dd9ff35d
+type: comprehension
+category: trace
+language: python
+difficulty: medium
+version: 1
+prompt: |
+  Trace how FastAPI resolves dependencies at request time. Starting from when
+  a request hits an endpoint with Depends(), show the code path through
+  dependency resolution. What function analyzes the callable's parameters, and
+  what function actually executes the dependency chain?
+ground_truth:
+  required_strings:
+    - get_dependant
+    - solve_dependencies
+    - Dependant
+    - analyze_param

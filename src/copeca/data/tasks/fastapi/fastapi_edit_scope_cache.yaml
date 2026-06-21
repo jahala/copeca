@@ -1,0 +1,34 @@
+name: fastapi_edit_scope_cache
+description: "Invert the scope-inclusion predicate in FastAPI's Security dependency cache key so scoped and unscoped dependencies produce distinct keys; tests condition-negation repair in a cache-key construction expression."
+source: "tilth-benchmark (MIT)"
+repo: fastapi
+commit: 6fa573ce0bc16fe445f93db413d20146dd9ff35d
+type: edit
+category: fix
+language: python
+difficulty: medium
+version: 1
+prompt: |
+  In FastAPI's dependency models (fastapi/dependencies/models.py),
+  Security dependencies with different OAuth scopes are incorrectly
+  sharing cache keys. Security(dep, scopes=['read']) and
+  Security(dep, scopes=['write']) should produce different cache keys
+  so they're resolved separately, but they're being treated as the
+  same dependency. The bug is in the cache_key property of the
+  Dependant class — the scope inclusion logic is inverted. Find and
+  fix it.
+ground_truth:
+  required_strings: []
+  test_command:
+    - /usr/local/bin/python3.10
+    - -m
+    - pytest
+    - tests/test_dependency_cache.py::test_security_cache
+    - -x
+    - -q
+mutations:
+  - file: fastapi/dependencies/models.py
+    action: replace
+    find: "tuple(sorted(set(self.oauth_scopes or []))) if self._uses_scopes else ()"
+    replace: "tuple(sorted(set(self.oauth_scopes or []))) if not self._uses_scopes else ()"
+    occurrence: 1

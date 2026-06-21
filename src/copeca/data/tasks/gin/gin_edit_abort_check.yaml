@@ -1,0 +1,30 @@
+name: gin_edit_abort_check
+description: "Tighten the boundary comparison in Gin's IsAborted so it returns true as soon as the index reaches the abort sentinel; tests off-by-one repair in a comparison operator where > should be >=."
+source: "tilth-benchmark (MIT)"
+repo: gin
+commit: d7776de7d444935ea4385999711bd6331a98fecb
+type: edit
+category: fix
+language: go
+difficulty: medium
+version: 1
+prompt: |
+  In Gin's context.go, the IsAborted() method is broken — after
+  calling Abort(), IsAborted() still returns false. This means
+  middleware that checks IsAborted() after calling Abort() will
+  incorrectly continue processing the request. The issue is a
+  boundary comparison error in IsAborted(). Find and fix it.
+ground_truth:
+  required_strings: []
+  test_command:
+    - go
+    - test
+    - -run
+    - ^TestContextIsAborted$
+    - -v
+mutations:
+  - file: context.go
+    action: replace
+    find: "c.index >= abortIndex"
+    replace: "c.index > abortIndex"
+    occurrence: 1

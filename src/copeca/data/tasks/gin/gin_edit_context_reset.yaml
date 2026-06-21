@@ -1,0 +1,31 @@
+name: gin_edit_context_reset
+description: "Restore the -1 sentinel in Gin's context reset so pooled contexts start with no handler advanced; tests initial-value repair where a zero starting index causes the first handler to be skipped on reuse."
+source: "tilth-benchmark (MIT)"
+repo: gin
+commit: d7776de7d444935ea4385999711bd6331a98fecb
+type: edit
+category: fix
+language: go
+difficulty: medium
+version: 1
+prompt: |
+  In Gin's context.go, the Context pool is producing incorrect
+  behaviour after the first request. When a Context is returned to
+  the sync.Pool and reused, the handler chain index is not properly
+  reset — the first handler is being skipped on reused contexts.
+  The issue is in the reset() method where the index is initialized
+  to the wrong starting value. Find and fix it.
+ground_truth:
+  required_strings: []
+  test_command:
+    - go
+    - test
+    - -run
+    - ^TestContextReset$
+    - -v
+mutations:
+  - file: context.go
+    action: replace
+    find: "c.index = -1"
+    replace: "c.index = 0"
+    occurrence: 1

@@ -1,0 +1,21 @@
+name: gin_new_constructor
+description: "Map gin's New() engine constructor — return type, key initialized fields, internal helper calls, and caller count across the codebase; tests synthesizing definition body, internal callees, and cross-file caller spread."
+source: "tilth-benchmark (MIT)"
+repo: gin
+commit: d7776de7d444935ea4385999711bd6331a98fecb
+type: comprehension
+category: trace
+language: go
+difficulty: medium
+version: 1
+prompt: |
+  Give me a comprehensive picture of gin's top-level `New()`
+  constructor: what type it returns, the key fields it initializes
+  on that type (defaults), the internal helper functions it calls,
+  and approximately how many places in the codebase invoke it.
+ground_truth:
+  required_strings:
+    - Engine
+    - RouterGroup
+    - allocateContext
+    - Default

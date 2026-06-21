@@ -1,0 +1,21 @@
+name: express_app_init
+description: "Trace Express application creation from the express() call through createApplication and app.init to the router instantiation and default settings; tests initialization-sequence comprehension across entry point files."
+source: "tilth-benchmark (MIT)"
+repo: express
+commit: 1140301f6a0ed5a05bc1ef38d48294f75a49580c
+type: comprehension
+category: trace
+language: javascript
+difficulty: medium
+version: 1
+prompt: |
+  How does Express create and initialize an application? Show what happens when
+  you call express(). Find the createApplication function and trace through
+  app.init. What default settings are configured? Where is the router created?
+ground_truth:
+  required_strings:
+    - createApplication
+    - express.js
+    - application.js
+    - trust proxy
+    - etag

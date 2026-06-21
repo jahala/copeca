@@ -1,0 +1,20 @@
+name: gin_context_next_peers
+description: "Map gin's Context.Next method — implementation, internal calls, call sites, and related methods on the Context struct; tests reading a method in context of its sibling API surface."
+source: "tilth-benchmark (MIT)"
+repo: gin
+commit: d7776de7d444935ea4385999711bd6331a98fecb
+type: comprehension
+category: trace
+language: go
+difficulty: medium
+version: 1
+prompt: |
+  Show me Gin's `Context.Next` method: its implementation, the
+  calls it makes inside, where it's invoked from, and the related
+  methods on the same Context struct (Abort, Set, Get, etc.).
+ground_truth:
+  required_strings:
+    - Next
+    - index
+    - handlers
+    - Abort

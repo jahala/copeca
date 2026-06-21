@@ -1,0 +1,18 @@
+name: rg_walker_parallel
+description: "Map the parallel directory walker in the ignore crate — WalkParallel struct, ParallelVisitor trait, and thread-distribution mechanism; tests comprehension of a concurrency design spanning multiple types."
+source: "tilth-benchmark (MIT)"
+repo: ripgrep
+commit: 0a88cccd5188074de96f54a4b6b44a63971ac157
+type: comprehension
+category: trace
+language: rust
+difficulty: medium
+version: 1
+prompt: |
+  In the ignore crate, find the parallel directory walker. Show the WalkParallel
+  struct, the ParallelVisitor trait, and explain how work is distributed across threads.
+ground_truth:
+  required_strings:
+    - WalkParallel
+    - ParallelVisitor
+    - ParallelVisitorBuilder
