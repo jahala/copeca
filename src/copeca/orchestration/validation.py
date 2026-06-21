@@ -4,6 +4,8 @@ Architecture: orchestration layer. Pure functions — no I/O, no subprocess.
 All data is passed in; warnings are returned as strings.
 """
 
+import shutil
+from collections.abc import Callable
 from datetime import date, timedelta
 from typing import Any
 
@@ -114,6 +116,58 @@ def check_mode_runner_compat(mode: Any, runner: Any) -> list[str]:
             )
 
     return warnings
+
+
+def check_tool_availability(
+    mode: Any,
+    runner_cli: str | None = None,
+    which: Callable[[str], str | None] = shutil.which,
+) -> list[str]:
+    """Pre-run check that a mode's declared tools are actually launchable.
+
+    A mode can declare a tool the host doesn't have installed (an MCP server
+    command, a wrapper command). If the agent launches anyway, the tool silently
+    fails to attach and the experimental arm runs as a tool-less baseline — a
+    FALSE NULL. Run this BEFORE spending so the caller can abort instead of
+    paying for an invalid comparison.
+
+    `which` is injected (defaults to shutil.which) so the logic stays a pure
+    function over its inputs and is testable without touching the real PATH.
+
+    Args:
+        mode: The Mode model for this arm (or None for a clean baseline).
+        runner_cli: The runner's CLI binary name to verify on PATH.
+        which: PATH-resolver returning a path or None. Injected for testing.
+
+    Returns:
+        List of error strings (empty = everything declared is launchable). A
+        non-empty list means the experimental arm cannot run as declared.
+    """
+    errors: list[str] = []
+
+    if runner_cli and which(runner_cli) is None:
+        errors.append(f"runner CLI '{runner_cli}' not found on PATH")
+
+    if mode is None:
+        return errors
+
+    mcp = mode.mcp_config or {}
+    servers = mcp.get("mcpServers", {}) if isinstance(mcp, dict) else {}
+    for name, spec in servers.items():
+        cmd = spec.get("command") if isinstance(spec, dict) else None
+        if cmd and which(cmd) is None:
+            errors.append(
+                f"mode '{mode.name}': MCP server '{name}' command '{cmd}' "
+                f"not found on PATH"
+            )
+
+    if mode.wrapper and which(mode.wrapper[0]) is None:
+        errors.append(
+            f"mode '{mode.name}': wrapper command '{mode.wrapper[0]}' "
+            f"not found on PATH"
+        )
+
+    return errors
 
 
 

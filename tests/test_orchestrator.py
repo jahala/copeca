@@ -386,3 +386,89 @@ class TestVendorPrimaryCost:
         assert result["cost_source"] == "modeled"
         assert result["total_cost_usd"] == pytest.approx(0.0105)
         assert result["vendor_cost_usd"] == 0.0
+
+
+class TestToolAdoptionAndPreflight:
+    """SD-I: record whether a tool-declaring arm actually invoked its MCP tool
+    (a declared-but-unused tool means the A/B may be a false null), and fail the
+    run BEFORE spending if a declared tool isn't installed.
+    """
+
+    @staticmethod
+    def _tilth_mode():
+        from copeca.config.models import Mode
+        # command 'echo' is on PATH so the preflight passes; the adoption check
+        # looks for the server NAME 'tilth' in the tool_sequence.
+        return Mode(
+            name="tilth",
+            description="x",
+            mcp_config={"mcpServers": {"tilth": {"command": "echo", "args": []}}},
+        )
+
+    def test_tool_adopted_true_when_mcp_tool_used(self, tmp_path, test_repo):
+        from copeca.runners.parsers.base import RunResult, ToolCall
+
+        class _P:
+            def parse(self, stdout, supported_events=None):
+                return RunResult(
+                    result_text="Matcher find_at",
+                    tool_calls=[ToolCall(name="mcp__tilth__tilth_search")],
+                    total_cost_usd=0.05,
+                    duration_ms=100,
+                )
+
+        runner = SubprocessRunner(
+            name="echo", cli="echo", default_args=[],
+            arg_map={"prompt_separator": ""}, parser=_P(),
+        )
+        result = run_single(
+            task=_make_task("adopt_yes"), mode_name="tilth", model="m",
+            runner=runner, repo_mgr=StubRepoManager(tmp_path / "wt"),
+            repo_uri=str(test_repo), repo_commit=None, mode=self._tilth_mode(),
+        )
+        assert result["tool_adopted"] is True
+
+    def test_tool_adopted_false_when_declared_tool_unused(self, tmp_path, test_repo):
+        from copeca.runners.parsers.base import RunResult, ToolCall
+
+        class _P:
+            def parse(self, stdout, supported_events=None):
+                return RunResult(
+                    result_text="Matcher find_at",
+                    tool_calls=[ToolCall(name="Read")],  # no mcp__tilth__ call
+                    total_cost_usd=0.05,
+                    duration_ms=100,
+                )
+
+        runner = SubprocessRunner(
+            name="echo", cli="echo", default_args=[],
+            arg_map={"prompt_separator": ""}, parser=_P(),
+        )
+        result = run_single(
+            task=_make_task("adopt_no"), mode_name="tilth", model="m",
+            runner=runner, repo_mgr=StubRepoManager(tmp_path / "wt"),
+            repo_uri=str(test_repo), repo_commit=None, mode=self._tilth_mode(),
+        )
+        assert result["tool_adopted"] is False
+
+    def test_tool_adopted_none_for_baseline(self, tmp_path, test_repo):
+        result = run_single(
+            task=_make_task("adopt_base"), mode_name="baseline", model="m",
+            runner=_make_runner(), repo_mgr=StubRepoManager(tmp_path / "wt"),
+            repo_uri=str(test_repo), repo_commit=None,  # mode=None
+        )
+        assert result["tool_adopted"] is None
+
+    def test_preflight_aborts_when_declared_tool_missing(self, tmp_path, test_repo):
+        from copeca.config.models import Mode
+
+        bad_mode = Mode(
+            name="ghost", description="x",
+            mcp_config={"mcpServers": {"ghost": {"command": "definitely-not-installed-xyz123", "args": []}}},
+        )
+        with pytest.raises(RuntimeError, match="preflight"):
+            run_single(
+                task=_make_task("preflight"), mode_name="ghost", model="m",
+                runner=_make_runner(), repo_mgr=StubRepoManager(tmp_path / "wt"),
+                repo_uri=str(test_repo), repo_commit=None, mode=bad_mode,
+            )

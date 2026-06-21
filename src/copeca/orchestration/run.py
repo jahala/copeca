@@ -14,6 +14,7 @@ from typing import Any
 
 from copeca.config.models import AdversarialThresholds, EditGroundTruth, Mode, Scenario, Task
 from copeca.orchestration.state import provision_arm
+from copeca.orchestration.validation import check_tool_availability
 from copeca.runners.base import BaseRunner
 from copeca.runners.cost import compute_cost
 from copeca.tasks.mutations import apply_mutations
@@ -71,6 +72,16 @@ def run_single(
     """
     # 1. Verify toolchain
     repo_mgr.verify_toolchain(task.repo)
+
+    # 1.5. Tool-availability preflight — fail BEFORE spending if a declared tool
+    #      (MCP server command, wrapper, or the runner CLI) isn't installed.
+    #      Otherwise the agent runs tool-less and the A/B silently reports a
+    #      false null (shakedown SD-I).
+    _tool_errors = check_tool_availability(mode, runner_cli=getattr(runner, "cli", None))
+    if _tool_errors:
+        raise RuntimeError(
+            "tool availability preflight failed: " + "; ".join(_tool_errors)
+        )
 
     # 2. Create worktree at pinned commit — scoped to this work item so
     #    concurrent workers for the same repo never share a path.
@@ -205,6 +216,19 @@ def run_single(
             thresholds=_thresholds,
         )
 
+        # 6.7 Tool-adoption: did a mode that declares an MCP tool actually invoke
+        #     it? A declared-but-unused tool means the A/B may be a false null —
+        #     record the flag so it is never silently treated as a clean result
+        #     (shakedown SD-I). None for modes that declare no MCP tool.
+        tool_adopted: bool | None = None
+        _mcp = (mode.mcp_config or {}) if mode is not None else {}
+        _servers = _mcp.get("mcpServers", {}) if isinstance(_mcp, dict) else {}
+        if _servers:
+            _names = [tc.name for tc in parsed.tool_calls]
+            tool_adopted = any(
+                n.startswith(f"mcp__{srv}__") for n in _names for srv in _servers
+            )
+
         # 7. Build JSONL record
         record: dict[str, Any] = {
             "task": task.name,
@@ -223,6 +247,7 @@ def run_single(
             },
             "num_turns": parsed.num_turns,
             "num_tool_calls": parsed.num_tool_calls,
+            "tool_adopted": tool_adopted,
             "total_cost_usd": total_cost_usd,
             "cost_source": cost_source,
             "duration_ms": parsed.duration_ms,
