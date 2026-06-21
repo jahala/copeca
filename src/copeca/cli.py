@@ -19,6 +19,38 @@ from copeca.results.writer import append_jsonl
 from copeca.runners.parsers import get_parser
 from copeca.runners.subprocess import SubprocessRunner
 
+# Autodiscovered at call time (cwd-relative), matching the repos.yaml pattern.
+_BLOCKLIST_RELATIVE = Path("scripts") / "contamination_blocklist.txt"
+
+
+# ── Contamination provenance helpers (pure logic + thin I/O) ──────────────
+
+
+def _find_blocked_source_tasks(
+    tasks: list[Any],
+    blocked_sources: set[str],
+) -> list[tuple[str, str]]:
+    """Return (task_name, reason) pairs for tasks whose source is blocked.
+
+    Pure function — no I/O.
+
+    Args:
+        tasks: Loaded Task model objects (must have .name and .source attrs).
+        blocked_sources: Set of benchmark names to reject.
+
+    Returns:
+        List of (task_name, reason) for every blocked task; empty if clean.
+    """
+    from copeca.contamination import check_source_provenance
+
+    findings: list[tuple[str, str]] = []
+    for task in tasks:
+        source = getattr(task, "source", "") or ""
+        flagged, reason = check_source_provenance(source, blocked_sources)
+        if flagged:
+            findings.append((task.name, reason))
+    return findings
+
 
 # ── Cost-safeguard helpers (pure logic + thin I/O) ─────────────────────────
 
@@ -129,6 +161,24 @@ def validate(
     except LoadError as e:
         typer.echo(f"Error loading tasks: {e}", err=True)
         raise typer.Exit(code=1)
+
+    # ── Provenance / contamination check ────────────────────────────────────
+    # Load blocked source benchmarks from the scripts blocklist and flag any
+    # task whose `source:` field names a blocked benchmark.  This is the
+    # shipped contamination defense: a static provenance check that rejects
+    # tasks from known-contaminated source benchmarks at validation time.
+    if _BLOCKLIST_RELATIVE.exists():
+        from copeca.contamination import load_blocked_sources
+
+        blocked_sources = load_blocked_sources(_BLOCKLIST_RELATIVE)
+        blocked_findings = _find_blocked_source_tasks(tasks, blocked_sources)
+        if blocked_findings:
+            for task_name, reason in blocked_findings:
+                typer.echo(
+                    f"Contamination: task '{task_name}' blocked — {reason}",
+                    err=True,
+                )
+            raise typer.Exit(code=1)
 
     typer.echo(f"Validated {len(tasks)} task(s) successfully.")
 

@@ -1,0 +1,14 @@
+name: swe_bench_verified_task
+description: "Task from a blocked source benchmark"
+source: "SWE-bench Verified (MIT)"
+repo: ripgrep
+type: comprehension
+language: rust
+difficulty: medium
+version: 1
+prompt: "Find all implementors of the Matcher trait."
+ground_truth:
+  required_strings:
+    - Matcher
+  forbidden_strings:
+    - "I cannot"

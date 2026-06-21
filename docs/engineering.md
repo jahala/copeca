@@ -98,9 +98,13 @@ These are the invariants that make copeca numbers trustworthy:
   The test must pass on clean code and fail on mutated code. A task that passes
   on mutated code has a weak test and is excluded (SWE-bench's #1 failure mode,
   which copeca was designed to prevent).
-- **Contamination self-check before corpus publication.** Every comprehension task
-  is probed with task ID + first 10 words of the prompt. If the model reproduces
-  the gold solution, the task is flagged and excluded from scoring.
+- **Contamination provenance check before corpus publication.** `copeca validate`
+  checks every task's `source:` field against a blocklist of known-contaminated
+  source benchmarks (SWE-bench Verified, RepoBench, ClassEval, DevEval, CoderEval).
+  A task from any blocked source is rejected. This is a static check — no model
+  calls, no network. A planned authoring-time option will additionally probe a live
+  model with the task ID and exclude if it reproduces the gold solution; that
+  feature requires an API key and is not yet shipped.
 - **Cost is computed, never trusted.** `total_cost_usd` in the JSONL record comes
   from `Σ tokens × pricing`. Vendor-reported cost goes into `vendor_cost_usd` —
   a cross-check field, never the primary number. Divergence > 5% triggers

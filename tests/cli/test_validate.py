@@ -12,6 +12,7 @@ VALID_DIR = FIXTURES / "valid_tasks"
 INVALID_DIR = FIXTURES / "invalid"
 FIXTURE_REPOS = FIXTURES / "repos.yaml"
 INVALID_REPO_DIR = FIXTURES / "invalid_repo_only"
+BLOCKED_SOURCE_DIR = FIXTURES / "blocked_source"
 
 
 def copeca(*args):
@@ -78,4 +79,21 @@ class TestValidateCommand:
         combined = result.stderr + result.stdout
         assert "nonexistent-repo-abc123" in combined, (
             f"Expected unknown repo error, got: {combined}"
+        )
+
+    def test_validate_flags_blocked_source_benchmark(self):
+        """validate warns (or fails) when a task's source is a blocked benchmark."""
+        result = copeca("validate", str(BLOCKED_SOURCE_DIR))
+        combined = result.stdout + result.stderr
+        # Must surface the contamination finding — either via a warning or non-zero exit
+        assert result.returncode != 0 or "contamination" in combined.lower() or "blocked" in combined.lower(), (
+            f"Expected contamination warning or non-zero exit for blocked source task, "
+            f"got returncode={result.returncode}, output={combined!r}"
+        )
+
+    def test_validate_clean_dir_passes_provenance_check(self):
+        """validate on a clean dir (no blocked sources) passes provenance check."""
+        result = copeca("validate", str(VALID_DIR))
+        assert result.returncode == 0, (
+            f"Clean dir should pass provenance check: stdout={result.stdout} stderr={result.stderr}"
         )

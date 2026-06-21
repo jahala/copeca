@@ -1,6 +1,24 @@
-# Known-contaminated task ID patterns (from SWE-bench Verified deprecation)
-swe-bench-verified
+# Blocked source benchmarks — tasks whose `source:` field matches any of
+# these names are rejected from the corpus.
+#
+# These benchmarks are known to be contaminated in frontier model training
+# data, were formally deprecated by their own maintainers, or carry
+# non-permissive licensing that conflicts with the corpus policy.
+#
+# Format: one benchmark name per line (matched case-insensitively as a
+# substring of the task's `source:` field). Comments (#) and blank lines
+# are ignored.
+#
+# --- BLOCKED SOURCE BENCHMARKS ---
+# Matched against the task's `source:` field via check_source_provenance().
+SWE-bench Verified
+RepoBench
+ClassEval
+DevEval
+CoderEval
+# --- LEGACY TASK-NAME PATTERNS ---
+# Matched against task names and probe text by check_contamination().
+# Kept for backward compatibility with the original name-based check.
 humaneval_
 mbpp_
-# Known-leaked output substrings (patterns that appear in leaked training data)
-# Empty — add patterns as they are discovered
+swe-bench-verified

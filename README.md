@@ -127,10 +127,14 @@ planned. Each task carries a
 `copeca check-task`: the test must pass on clean code and fail on mutated
 code, proving the mutation actually bites.
 
-**Contamination self-check:** before a task enters the corpus, copeca probes
-the model with the task ID alone — if it reproduces the gold solution from
-memory, the task is excluded. The task types that were formally deprecated
-by their own creators (SWE-bench Verified, Feb 2026) are explicitly blocked.
+**Contamination defense:** `copeca validate` checks every task's `source:`
+field against a blocklist of known-contaminated source benchmarks (SWE-bench
+Verified, RepoBench, ClassEval, DevEval, CoderEval). A task from any of
+these sources is rejected before it can enter the corpus. This is a static
+provenance check — no model calls, no network. A planned authoring-time
+option (requires an API key) will also probe a live model with the task ID
+and exclude it if the model reproduces the gold solution from memory; that
+feature is not shipped yet.
 
 ---
 

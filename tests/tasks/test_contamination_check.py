@@ -6,7 +6,12 @@ from pathlib import Path
 
 import yaml
 
-from scripts.contamination_check import build_probe, check_contamination
+from scripts.contamination_check import (
+    build_probe,
+    check_contamination,
+    check_source_provenance,
+    load_blocked_sources,
+)
 
 from copeca.config.resources import data_path
 
@@ -185,3 +190,88 @@ class TestBlocklistFile:
         assert "mbpp_" in patterns, (
             "mbpp_ must be in blocklist"
         )
+
+
+# ── provenance / source-benchmark check tests ─────────────────────────────────
+
+
+class TestCheckSourceProvenance:
+    """Tests for check_source_provenance — pure function, no I/O."""
+
+    def test_blocked_source_benchmark_is_flagged(self):
+        """A task whose source field names a blocked benchmark is flagged."""
+        blocked = {"SWE-bench Verified", "RepoBench", "ClassEval", "DevEval", "CoderEval"}
+        # Exact match (as it appears in the task YAML)
+        flagged, reason = check_source_provenance("SWE-bench Verified (MIT)", blocked)
+        assert flagged is True
+        assert "SWE-bench Verified" in reason
+
+    def test_clean_source_passes(self):
+        """A task from a non-blocked source passes the provenance check."""
+        blocked = {"SWE-bench Verified", "RepoBench", "ClassEval", "DevEval", "CoderEval"}
+        flagged, reason = check_source_provenance("SWE-QA (Apache-2.0)", blocked)
+        assert flagged is False
+        assert reason == ""
+
+    def test_all_blocked_benchmarks_are_flagged(self):
+        """Each entry in the block-list is individually detected."""
+        blocked = {"SWE-bench Verified", "RepoBench", "ClassEval", "DevEval", "CoderEval"}
+        samples = [
+            "SWE-bench Verified (MIT)",
+            "RepoBench",
+            "ClassEval (CC BY-SA 4.0)",
+            "DevEval (Apache-2.0)",
+            "CoderEval (Apache-2.0)",
+        ]
+        for source in samples:
+            flagged, _ = check_source_provenance(source, blocked)
+            assert flagged is True, f"Expected {source!r} to be flagged"
+
+    def test_empty_blocked_set_never_flags(self):
+        """Empty blocked set — every source passes."""
+        flagged, _ = check_source_provenance("SWE-bench Verified (MIT)", set())
+        assert flagged is False
+
+    def test_matching_is_case_insensitive(self):
+        """Source matching is case-insensitive."""
+        blocked = {"SWE-bench Verified"}
+        flagged, _ = check_source_provenance("swe-bench verified (MIT)", blocked)
+        assert flagged is True
+
+    def test_partial_match_within_source_string(self):
+        """Blocked benchmark name appearing anywhere in source field is flagged."""
+        blocked = {"ClassEval"}
+        # Source field has the benchmark name plus a licence suffix
+        flagged, _ = check_source_provenance("ClassEval (CC BY-SA 4.0)", blocked)
+        assert flagged is True
+
+
+class TestLoadBlockedSources:
+    """Tests for load_blocked_sources — reads contamination_blocklist.txt."""
+
+    def test_returns_expected_blocked_benchmarks(self):
+        """load_blocked_sources reads the blocklist file and returns the five benchmarks."""
+        sources = load_blocked_sources(BLOCKLIST_FILE)
+        expected = {"SWE-bench Verified", "RepoBench", "ClassEval", "DevEval", "CoderEval"}
+        assert expected.issubset(sources), (
+            f"Missing blocked sources: {expected - sources}"
+        )
+
+    def test_real_corpus_tasks_all_pass_provenance_check(self):
+        """All 16 real tasks have non-blocked sources and pass provenance check."""
+        blocked = load_blocked_sources(BLOCKLIST_FILE)
+        all_tasks: list[dict] = []
+        for path in sorted(TASKS_DIR.rglob("*.yaml")):
+            with open(path) as f:
+                all_tasks.append(yaml.safe_load(f))
+
+        assert len(all_tasks) >= 16, (
+            f"Expected at least 16 tasks, found {len(all_tasks)}"
+        )
+
+        for task in all_tasks:
+            source = task.get("source", "")
+            flagged, reason = check_source_provenance(source, blocked)
+            assert flagged is False, (
+                f"Task '{task.get('name')}' source {source!r} was incorrectly blocked: {reason}"
+            )

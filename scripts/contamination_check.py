@@ -1,18 +1,39 @@
-"""Contamination self-check for comprehension tasks.
+"""Contamination defense for the copeca task corpus.
 
-Pure functions — no I/O, no LLM calls. Contamination is detected by
-structural matching against known-contaminated task patterns and
-output substrings.
+Two independent checks, both pure functions (no I/O, no LLM calls):
 
-A task is flagged (returned as contaminated) if:
-1. Its name matches a known-contaminated prefix in the blocklist.
-2. Its probe text (name + first 10 prompt words) contains any blocklist pattern.
-3. Its required_strings contain known-leaked output substrings.
+1. check_source_provenance(source, blocked_sources) — PRIMARY CHECK
+   Rejects tasks whose `source:` field names a known-contaminated benchmark.
+   Implemented in copeca.contamination; re-exported here for script use.
+   Called by `copeca validate` at authoring time.
 
-Architecture: domain-adjacent utility. Takes data in, returns bool out.
+2. check_contamination(task_name, prompt, required_strings, blocklist) — LEGACY CHECK
+   Name/probe/output text matching against pattern blocklist.
+   Retained for backward compatibility; superseded by the provenance check.
+
+A planned (not shipped) option: probe a live model with the task ID and
+exclude if it reproduces the gold solution. That requires an API key and
+model calls — it is NOT part of this module.
+
+Architecture: pure functions, data in / result out. I/O lives in callers.
 """
 
 from __future__ import annotations
+
+# Re-export the source-provenance functions from the installed package so
+# that both `from scripts.contamination_check import ...` (tests, scripts)
+# and `from copeca.contamination import ...` (CLI) resolve to the same code.
+from copeca.contamination import check_source_provenance, load_blocked_sources
+
+__all__ = [
+    "build_probe",
+    "check_contamination",
+    "check_source_provenance",
+    "load_blocked_sources",
+]
+
+
+# ── Legacy name / probe / output text check ───────────────────────────────────
 
 
 def build_probe(task_name: str, prompt: str) -> str:
@@ -40,7 +61,7 @@ def check_contamination(
     required_strings: list[str],
     blocklist: set[str],
 ) -> bool:
-    """Check if a comprehension task shows signs of contamination.
+    """Check if a comprehension task shows signs of contamination via name/probe matching.
 
     Returns True if the task should be EXCLUDED (contaminated).
     Returns False if the task passes the self-check.
@@ -50,6 +71,10 @@ def check_contamination(
     2. Its probe text (name + first 10 prompt words) contains any
        blocklist pattern
     3. The required_strings contain known-leaked output substrings
+
+    NOTE: For source-benchmark provenance checking, use check_source_provenance
+    instead — it checks the task's `source:` field against blocked benchmark
+    names, which is the primary contamination defense since Phase 0 truth-fixes.
 
     Args:
         task_name: The task's unique identifier.
