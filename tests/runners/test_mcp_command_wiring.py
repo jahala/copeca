@@ -149,6 +149,7 @@ class TestMcpCommandWiring:
         from pathlib import Path
 
         from copeca.config.models import (
+            Category,
             ComprehensionGroundTruth,
             Difficulty,
             Language,
@@ -212,7 +213,7 @@ class TestMcpCommandWiring:
             name="t",
             source="test",
             repo="r",
-            type=TaskType.comprehension,
+            type=TaskType.comprehension, category=Category.locate,
             language=Language.python,
             difficulty=Difficulty.easy,
             version=1,

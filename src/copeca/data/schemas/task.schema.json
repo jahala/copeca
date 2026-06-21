@@ -10,6 +10,7 @@
     "source",
     "repo",
     "type",
+    "category",
     "language",
     "difficulty",
     "version",
@@ -41,6 +42,11 @@
       "type": "string",
       "enum": ["comprehension", "edit"],
       "description": "Task type: comprehension (string-checked) or edit (test-command-validated)."
+    },
+    "category": {
+      "type": "string",
+      "enum": ["locate", "trace", "fix", "debug"],
+      "description": "Capability axis (orthogonal to type): locate (report one named thing), trace (map a cross-file relationship), fix (change code until a test passes), debug (diagnose via git history then resolve/explain)."
     },
     "language": {
       "type": "string",

@@ -3,6 +3,7 @@ description: "Fix Express error-handling middleware invocation when next(err) pa
 source: "SWE-bench-Live (MIT)"
 repo: express
 type: edit
+category: fix
 language: javascript
 difficulty: medium
 version: 1

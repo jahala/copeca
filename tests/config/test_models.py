@@ -7,6 +7,7 @@ import pytest
 from pydantic import ValidationError
 
 from copeca.config.models import (
+    Category,
     ComprehensionGroundTruth,
     Difficulty,
     EditGroundTruth,
@@ -29,6 +30,7 @@ class TestTaskConstruction:
             source="SWE-QA (Apache-2.0)",
             repo="ripgrep",
             type=TaskType.comprehension,
+            category=Category.locate,
             language=Language.rust,
             difficulty=Difficulty.hard,
             version=1,
@@ -51,6 +53,7 @@ class TestTaskConstruction:
             source="tilth-benchmark (MIT)",
             repo="ripgrep",
             type=TaskType.edit,
+            category=Category.fix,
             language=Language.rust,
             difficulty=Difficulty.medium,
             version=1,
@@ -81,6 +84,7 @@ class TestTaskConstruction:
                 source="test",
                 repo="test",
                 type=TaskType.comprehension,
+                category=Category.locate,
                 language=Language.python,
                 difficulty=Difficulty.easy,
                 version=1,
@@ -96,6 +100,7 @@ class TestTaskConstruction:
                 source="test",
                 repo="test",
                 type=TaskType.comprehension,
+                category=Category.locate,
                 language=Language.python,
                 difficulty=Difficulty.easy,
                 version=1,
@@ -111,6 +116,7 @@ class TestTaskConstruction:
                 source="",
                 repo="test",
                 type=TaskType.comprehension,
+                category=Category.locate,
                 language=Language.python,
                 difficulty=Difficulty.easy,
                 version=1,

@@ -15,6 +15,7 @@ class TestValidatePerformance:
 source: "SWE-QA (Apache-2.0)"
 repo: ripgrep
 type: comprehension
+category: locate
 language: rust
 difficulty: easy
 version: 1

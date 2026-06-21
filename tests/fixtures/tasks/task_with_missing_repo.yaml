@@ -2,6 +2,7 @@ name: valid_task
 source: "test"
 repo: nonexistent_repo
 type: comprehension
+category: locate
 language: python
 difficulty: easy
 version: 1

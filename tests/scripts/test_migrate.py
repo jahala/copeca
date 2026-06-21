@@ -165,6 +165,7 @@ class TestComprehensionTaskYamlValid:
 
         assert comp_task["name"] == "rg_trait_implementors"
         assert comp_task["type"] == "comprehension"
+        assert comp_task["category"] == "trace"  # find-trait-and-implementors = relational
         assert comp_task["language"] == "rust"
         assert comp_task["difficulty"] == "hard"
         assert comp_task["version"] == 1
@@ -193,6 +194,7 @@ class TestEditTaskYamlValid:
 
         assert edit_task["name"] == "rg_edit_line_count"
         assert edit_task["type"] == "edit"
+        assert edit_task["category"] == "fix"
         assert edit_task["language"] == "rust"
         assert edit_task["difficulty"] == "medium"
         assert edit_task["version"] == 1

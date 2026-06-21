@@ -3,6 +3,7 @@ description: "Fix the route handler that returns wrong HTTP method error due to 
 source: "SWE-QA (Apache-2.0)"
 repo: express
 type: edit
+category: fix
 language: javascript
 difficulty: medium
 version: 1

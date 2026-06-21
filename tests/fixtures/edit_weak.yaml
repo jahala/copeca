@@ -3,6 +3,7 @@ description: "Weak edit task — mutation does not break the test (invalid task)
 source: "copeca-test (MIT)"
 repo: edit-test-repo
 type: edit
+category: fix
 language: python
 difficulty: easy
 version: 1

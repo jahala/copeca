@@ -3,6 +3,7 @@ description: "Fix ripgrep CLI to validate --max-depth flag against negative valu
 source: "Terminal-Bench 2.0 (Apache-2.0)"
 repo: ripgrep
 type: edit
+category: fix
 language: rust
 difficulty: easy
 version: 1

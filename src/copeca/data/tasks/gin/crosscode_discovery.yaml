@@ -3,6 +3,7 @@ description: "Find HTTP request binding logic in the Gin web framework."
 source: "CrossCodeEval (Apache-2.0)"
 repo: gin
 type: comprehension
+category: trace
 language: go
 difficulty: medium
 version: 2

@@ -3,6 +3,7 @@ description: "Find the APIRouter class in FastAPI and describe how route handler
 source: "SWE-QA (Apache-2.0)"
 repo: fastapi
 type: comprehension
+category: trace
 language: python
 difficulty: medium
 version: 1

@@ -3,6 +3,7 @@ description: "Fix the JSON binding validation that skips required fields due to 
 source: "SWE-QA (Apache-2.0)"
 repo: gin
 type: edit
+category: fix
 language: go
 difficulty: medium
 version: 1

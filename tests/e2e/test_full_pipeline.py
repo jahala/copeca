@@ -22,6 +22,7 @@ import pytest
 
 from copeca.analysis.report import generate_report
 from copeca.config.models import (
+    Category,
     ComprehensionGroundTruth,
     Difficulty,
     Language,
@@ -171,7 +172,7 @@ def task() -> Task:
         description="Find the Matcher trait definition",
         source="e2e-test",
         repo="local-test-repo",
-        type=TaskType.comprehension,
+        type=TaskType.comprehension, category=Category.trace,
         language=Language.rust,
         difficulty=Difficulty.easy,
         prompt="Where is the Matcher trait defined and what method does it declare?",

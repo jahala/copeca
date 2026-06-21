@@ -30,6 +30,21 @@ class Difficulty(str, Enum):
     hard = "hard"
 
 
+class Category(str, Enum):
+    """Capability axis — orthogonal to TaskType's grading axis.
+
+    locate — report one self-contained, named thing.
+    trace  — map a relationship spanning files (callers, implementors, control-flow).
+    fix    — change code until a stated test passes.
+    debug  — diagnose a defect via git history, then resolve or explain it.
+    """
+
+    locate = "locate"
+    trace = "trace"
+    fix = "fix"
+    debug = "debug"
+
+
 class MutationAction(Enum):
     replace = "replace"
     delete = "delete"
@@ -107,12 +122,34 @@ class Task(BaseModel):
     source: str = Field(..., min_length=1)
     repo: str = Field(..., min_length=1)
     type: TaskType
+    category: Category
     language: Language
     difficulty: Difficulty
     version: int = Field(default=1, ge=1)
     prompt: str = Field(..., min_length=1)
     ground_truth: GroundTruth
     mutations: list[Mutation] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _category_consistent_with_type(self) -> "Task":
+        """`type` fixes grading; `category` is the capability lens — they must agree.
+
+        comprehension ⟹ locate/trace/debug; edit ⟹ fix/debug. `debug` spans both:
+        explain-a-diff is comprehension+debug, find+fix-a-regression is edit+debug.
+        """
+        comprehension_ok = {Category.locate, Category.trace, Category.debug}
+        edit_ok = {Category.fix, Category.debug}
+        if self.type == TaskType.comprehension and self.category not in comprehension_ok:
+            raise ValueError(
+                f"comprehension task '{self.name}': category '{self.category.value}' "
+                "invalid (allowed: locate, trace, debug)"
+            )
+        if self.type == TaskType.edit and self.category not in edit_ok:
+            raise ValueError(
+                f"edit task '{self.name}': category '{self.category.value}' "
+                "invalid (allowed: fix, debug)"
+            )
+        return self
 
 
 # ── Repo ──────────────────────────────────────────────────────────────────────

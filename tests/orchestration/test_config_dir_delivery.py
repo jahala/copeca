@@ -16,6 +16,7 @@ from pathlib import Path
 import pytest
 
 from copeca.config.models import (
+    Category,
     ComprehensionGroundTruth,
     Difficulty,
     Language,
@@ -104,6 +105,7 @@ def _task(name: str = "t") -> Task:
         source="test",
         repo="test-repo",
         type=TaskType.comprehension,
+        category=Category.locate,
         language=Language.python,
         difficulty=Difficulty.easy,
         version=1,

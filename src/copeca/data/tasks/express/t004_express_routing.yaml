@@ -3,6 +3,7 @@ description: "Find the Router class in Express and trace how app.use() registers
 source: "SWE-QA (Apache-2.0)"
 repo: express
 type: comprehension
+category: trace
 language: javascript
 difficulty: medium
 version: 1

@@ -3,6 +3,7 @@ description: "Fix the response status code bug in the endpoint handler that retu
 source: "SWE-QA (Apache-2.0)"
 repo: fastapi
 type: edit
+category: fix
 language: python
 difficulty: medium
 version: 1

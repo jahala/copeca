@@ -134,6 +134,7 @@ class TestCheckTaskOrchestration:
         repos_dir, task_dir = edit_repo
 
         from copeca.config.models import (
+            Category,
             ComprehensionGroundTruth,
             Difficulty,
             Language,
@@ -147,6 +148,7 @@ class TestCheckTaskOrchestration:
             source="copeca-test (MIT)",
             repo="edit-test-repo",
             type=TaskType.comprehension,
+            category=Category.locate,
             language=Language.python,
             difficulty=Difficulty.easy,
             version=1,
@@ -171,6 +173,7 @@ class TestCheckTaskOrchestration:
         repos_dir, task_dir = edit_repo
 
         from copeca.config.models import (
+            Category,
             Difficulty,
             EditGroundTruth,
             Language,
@@ -184,6 +187,7 @@ class TestCheckTaskOrchestration:
             source="copeca-test (MIT)",
             repo="edit-test-repo",
             type=TaskType.edit,
+            category=Category.fix,
             language=Language.python,
             difficulty=Difficulty.easy,
             version=1,
@@ -208,6 +212,7 @@ class TestCheckTaskOrchestration:
         repos_dir, task_dir = edit_repo
 
         from copeca.config.models import (
+            Category,
             Difficulty,
             EditGroundTruth,
             Language,
@@ -222,6 +227,7 @@ class TestCheckTaskOrchestration:
             source="copeca-test (MIT)",
             repo="edit-test-repo",
             type=TaskType.edit,
+            category=Category.fix,
             language=Language.python,
             difficulty=Difficulty.easy,
             version=1,
@@ -254,6 +260,7 @@ class TestCheckTaskOrchestration:
         repos_dir, task_dir = edit_repo
 
         from copeca.config.models import (
+            Category,
             Difficulty,
             EditGroundTruth,
             Language,
@@ -268,6 +275,7 @@ class TestCheckTaskOrchestration:
             source="copeca-test (MIT)",
             repo="nonexistent-repo",
             type=TaskType.edit,
+            category=Category.fix,
             language=Language.python,
             difficulty=Difficulty.easy,
             version=1,

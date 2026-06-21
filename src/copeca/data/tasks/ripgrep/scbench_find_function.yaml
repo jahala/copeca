@@ -3,6 +3,7 @@ description: "Find the function handling case-insensitive pattern matching in ri
 source: "SCBench (MIT)"
 repo: ripgrep
 type: comprehension
+category: locate
 language: rust
 difficulty: medium
 version: 1

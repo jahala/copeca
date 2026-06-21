@@ -8,6 +8,7 @@ import importlib.metadata
 from pathlib import Path
 
 from copeca.config.models import (
+    Category,
     ComprehensionGroundTruth,
     Difficulty,
     Language,
@@ -55,7 +56,7 @@ def _task() -> Task:
         name="version_test_task",
         source="test",
         repo="test-repo",
-        type=TaskType.comprehension,
+        type=TaskType.comprehension, category=Category.locate,
         language=Language.python,
         difficulty=Difficulty.easy,
         version=1,

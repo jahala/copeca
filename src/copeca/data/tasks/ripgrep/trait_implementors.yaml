@@ -3,6 +3,7 @@ description: "Find all implementors of the Matcher trait across crates"
 source: "SWE-QA (Apache-2.0)"
 repo: ripgrep
 type: comprehension
+category: trace
 language: rust
 difficulty: hard
 version: 1

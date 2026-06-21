@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from copeca.config.models import (
+    Category,
     ComprehensionGroundTruth,
     Difficulty,
     Language,
@@ -63,6 +64,7 @@ class TestArtifactsInPipeline:
             source="test",
             repo="test-repo",
             type=TaskType.comprehension,
+            category=Category.locate,
             language=Language.python,
             difficulty=Difficulty.easy,
             version=1,
@@ -112,6 +114,7 @@ class TestArtifactsInPipeline:
             source="test",
             repo="test-repo",
             type=TaskType.comprehension,
+            category=Category.locate,
             language=Language.python,
             difficulty=Difficulty.easy,
             version=1,
@@ -185,6 +188,7 @@ class TestScenarioArtifacts:
             source="test",
             repo="test-repo",
             type=TaskType.comprehension,
+            category=Category.locate,
             language=Language.python,
             difficulty=Difficulty.easy,
             version=1,

@@ -3,6 +3,7 @@ description: "Fix the regex pattern compilation that panics on invalid UTF-8 byt
 source: "SWE-QA (Apache-2.0)"
 repo: ripgrep
 type: edit
+category: fix
 language: rust
 difficulty: hard
 version: 1

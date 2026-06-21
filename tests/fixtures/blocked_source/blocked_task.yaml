@@ -3,6 +3,7 @@ description: "Task from a blocked source benchmark"
 source: "SWE-bench Verified (MIT)"
 repo: ripgrep
 type: comprehension
+category: locate
 language: rust
 difficulty: medium
 version: 1

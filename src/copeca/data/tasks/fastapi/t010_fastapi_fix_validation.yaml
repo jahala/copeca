@@ -3,6 +3,7 @@ description: "Fix the Pydantic validation that doesn't check for empty string fi
 source: "SWE-QA (Apache-2.0)"
 repo: fastapi
 type: edit
+category: fix
 language: python
 difficulty: easy
 version: 1

@@ -33,6 +33,7 @@ description: Find all implementors of the Matcher trait
 source: SWE-QA (Apache-2.0)
 repo: ripgrep
 type: comprehension
+category: locate
 language: rust
 difficulty: hard
 version: 1
@@ -55,6 +56,7 @@ ground_truth:
 source: SWE-QA (Apache-2.0)
 repo: ripgrep
 type: comprehension
+category: locate
 language: rust
 difficulty: hard
 version: 1
@@ -73,6 +75,7 @@ name: rg_test
 source: ""
 repo: ripgrep
 type: comprehension
+category: locate
 language: rust
 difficulty: hard
 version: 1
@@ -96,6 +99,7 @@ description: Fix off-by-one in line counting
 source: tilth-benchmark (MIT)
 repo: ripgrep
 type: edit
+category: fix
 language: rust
 difficulty: medium
 version: 1
@@ -129,6 +133,7 @@ name: rg_edit_test
 source: SWE-QA (Apache-2.0)
 repo: ripgrep
 type: edit
+category: fix
 language: rust
 difficulty: medium
 version: 1
@@ -153,6 +158,7 @@ name: rg_test
 source: SWE-QA (Apache-2.0)
 repo: ripgrep
 type: comprehension
+category: locate
 language: rust
 difficulty: hard
 version: 1
