@@ -14,6 +14,7 @@ runner:
     - --dangerously-skip-permissions
   arg_map:
     model: --model
+    tools: --tools
     budget: --max-budget-usd
     system_prompt: --system-prompt
     mcp_config: --mcp-config

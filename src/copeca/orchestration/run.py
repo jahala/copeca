@@ -111,6 +111,7 @@ def run_single(
             model=model,
             prompt=task.prompt,
             budget=budget_usd,
+            tools=mode.tools if mode is not None else None,
             mcp_config=harness.mcp_config_path,
         )
         if harness.wrapper:

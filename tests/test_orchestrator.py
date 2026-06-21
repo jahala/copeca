@@ -472,3 +472,47 @@ class TestToolAdoptionAndPreflight:
                 runner=_make_runner(), repo_mgr=StubRepoManager(tmp_path / "wt"),
                 repo_uri=str(test_repo), repo_commit=None, mode=bad_mode,
             )
+
+
+class TestToolRestriction:
+    """SD-K: mode.tools must restrict the agent's built-in toolset via claude's
+    --tools flag (restores the forced-tool A/B isolation the old tilth benchmark
+    had via tilth_forced). build_command already threads `tools`; the wiring gap
+    was claude.yaml's arg_map (no tools entry) and run_single not passing it.
+    """
+
+    def test_claude_runner_emits_tools_flag(self):
+        from copeca.cli import build_runner
+        from copeca.config.resources import data_path
+
+        runner = build_runner("claude", timeout=300, runner_dirs=[data_path("defaults", "runners")])
+        cmd = runner.build_command(
+            model="claude-sonnet-4-6", prompt="hi", tools=["Read", "Edit"]
+        )
+        assert "--tools" in cmd
+        assert "Read,Edit" in cmd
+
+    def test_run_single_threads_mode_tools(self, tmp_path, test_repo):
+        from copeca.config.models import Mode
+
+        captured: dict = {}
+
+        class _Cap(SubprocessRunner):
+            def run(self, command, cwd=None, env=None):
+                captured["cmd"] = command
+                return RunResult(
+                    result_text="Matcher find_at", total_cost_usd=0.05, duration_ms=10
+                )
+
+        runner = _Cap(
+            name="cap", cli="echo", default_args=[],
+            arg_map={"tools": "--tools", "prompt_separator": ""}, parser=None,
+        )
+        mode = Mode(name="restricted", description="x", tools=["Read", "Edit"])
+        run_single(
+            task=_make_task("toolrestrict"), mode_name="restricted", model="m",
+            runner=runner, repo_mgr=StubRepoManager(tmp_path / "wt"),
+            repo_uri=str(test_repo), repo_commit=None, mode=mode,
+        )
+        assert "--tools" in captured["cmd"]
+        assert "Read,Edit" in captured["cmd"]
