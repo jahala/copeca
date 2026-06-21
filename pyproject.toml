@@ -56,3 +56,6 @@ python_version = "3.11"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
+markers = [
+    "e2e: end-to-end hermetic pipeline tests (no network, no API, no real LLM)",
+]
