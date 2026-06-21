@@ -123,6 +123,63 @@ def build_runner(
     )
 
 
+def _build_artifacts_for_records(
+    records: list[dict[str, Any]],
+    task_by_name: dict[str, Any],
+    repos: dict[str, Repo],
+    repo_mgr: Any,
+    output_dir: Path,
+    signing_key: Any,
+    keep_worktrees: bool,
+) -> list[Path]:
+    """Build (and optionally sign) one .copeca artifact per result record.
+
+    Every record is evidence — correct and incorrect alike — so each gets an
+    artifact: cost-per-correct depends on the failures too, and ``verify`` checks
+    the full set against the JSONL. Worktrees are re-created once per repo (the
+    pinned commit is shared across a repo's records) and reset unless
+    ``keep_worktrees``. This is the single artifact path shared by scenario
+    (matrix) and single-task mode — I/O lives here at the boundary, never in
+    orchestration.
+
+    Args:
+        records: Result records to package.
+        task_by_name: Map of task name -> Task, used to resolve each record's repo.
+        repos: Repo registry (name -> Repo) for url/commit lookup.
+        repo_mgr: Worktree manager exposing create_worktree / reset.
+        output_dir: Directory where the .copeca zips are written.
+        signing_key: Optional Ed25519 private key for a detached signature.
+        keep_worktrees: When True, worktrees are left in place for inspection.
+
+    Returns:
+        The artifact paths written.
+    """
+    from copeca.results.artifact import build_artifact
+
+    # Group by repo so each worktree is created once and reused for its records.
+    by_repo: dict[str | None, list[dict[str, Any]]] = {}
+    for record in records:
+        task_obj = task_by_name.get(record.get("task"))
+        repo_key = task_obj.repo if task_obj is not None else None
+        by_repo.setdefault(repo_key, []).append(record)
+
+    paths: list[Path] = []
+    for repo_key, repo_records in by_repo.items():
+        repo_info = repos.get(repo_key) if repo_key is not None else None
+        repo_uri = repo_info.url if repo_info is not None else None
+        repo_commit = repo_info.commit if repo_info is not None else None
+        worktree = repo_mgr.create_worktree(repo_key, commit=repo_commit, uri=repo_uri)
+        try:
+            for record in repo_records:
+                paths.append(
+                    build_artifact(record, worktree, output_dir, sign_key=signing_key)
+                )
+        finally:
+            if not keep_worktrees:
+                repo_mgr.reset(worktree)
+    return paths
+
+
 app = typer.Typer(
     name="copeca",
     help="cost per correct answer — a neutral, reproducible, verifiable benchmark for CLI-based coding agents",
@@ -352,10 +409,18 @@ def run(
             emit_vendor_divergence_warning(extract_vendor_divergence_warning(record))
 
         if artifacts:
-            for record in records:
-                if record.get("correct") and "artifact_path" not in record:
-                    from copeca.results.artifact import build_artifact
-            typer.echo("Artifact creation in matrix mode: use single-task mode with --artifacts")
+            task_by_name = {t.name: t for t in loaded_tasks}
+            paths = _build_artifacts_for_records(
+                records,
+                task_by_name,
+                repos,
+                repo_mgr,
+                results_dir,
+                signing_key,
+                keep_worktrees,
+            )
+            signed_note = " (signed)" if signing_key is not None else ""
+            typer.echo(f"Built {len(paths)} artifact(s){signed_note} in {results_dir}")
 
         if verbose:
             correct_count = sum(1 for r in records if r.get("correct"))
@@ -404,17 +469,18 @@ def run(
         append_jsonl(record, results_path)
         emit_vendor_divergence_warning(extract_vendor_divergence_warning(record))
         if artifacts:
-            from copeca.results.artifact import build_artifact
-            worktree = repo_mgr.create_worktree(task_obj.repo, commit=repo_commit, uri=repo_uri)
-            try:
-                artifact_path = build_artifact(
-                    record, worktree, Path("results"), sign_key=signing_key
-                )
-                signed_note = " (signed)" if signing_key is not None else ""
+            paths = _build_artifacts_for_records(
+                [record],
+                {task_obj.name: task_obj},
+                repos,
+                repo_mgr,
+                Path("results"),
+                signing_key,
+                keep_worktrees,
+            )
+            signed_note = " (signed)" if signing_key is not None else ""
+            for artifact_path in paths:
                 typer.echo(f"Artifact: {artifact_path}{signed_note}")
-            finally:
-                if not keep_worktrees:
-                    repo_mgr.reset(worktree)
 
         if verbose:
             typer.echo(f"correct: {record['correct']}")

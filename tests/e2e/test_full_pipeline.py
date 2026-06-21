@@ -356,3 +356,61 @@ def test_full_pipeline(
     assert "baseline" in report and "exp" in report, (
         "Both mode names must appear in the report"
     )
+
+
+@pytest.mark.e2e
+def test_cli_artifact_path_builds_one_per_matrix_record(
+    tmp_path: Path,
+    repo_mgr: GitWorktreeManager,
+    repos: dict[str, Repo],
+    task: Task,
+    scenario: Scenario,
+    mode_defs: dict[str, Mode],
+) -> None:
+    """SD-M: the scenario-mode --artifacts path builds one real .copeca per record.
+
+    This is the integration proof for the bug fix: a real run_matrix produces real
+    records, then the CLI's shared artifact helper (_build_artifacts_for_records) is
+    called with the EXACT inputs cli.py's scenario block passes — real repos, a real
+    GitWorktreeManager (real git worktrees), task_by_name from the loaded tasks. It
+    must emit one valid .copeca zip per record, not silently no-op as before.
+    """
+    import zipfile
+
+    from copeca.cli import _build_artifacts_for_records
+
+    records = run_matrix(
+        scenario=scenario,
+        tasks=[task],
+        modes=scenario.modes,
+        runner_factory=_make_runner,
+        repo_mgr=repo_mgr,
+        repos=repos,
+        results_path=None,
+        max_workers=1,
+        pricing={MODEL: PRICING},
+        mode_defs=mode_defs,
+    )
+    assert len(records) == 4  # 1 task × 2 modes × 2 reps
+
+    # Mirror cli.py's scenario block exactly.
+    out_dir = tmp_path / "artifacts-out"
+    out_dir.mkdir()
+    task_by_name = {task.name: task}
+    paths = _build_artifacts_for_records(
+        records, task_by_name, repos, repo_mgr, out_dir, None, False
+    )
+
+    # One artifact per record — the whole batch is evidence, not just single-task.
+    assert len(paths) == len(records)
+    zips = sorted(out_dir.glob("*.copeca.zip"))
+    assert len(zips) == len(records)
+    for z in zips:
+        with zipfile.ZipFile(z) as zf:
+            names = zf.namelist()
+            assert "result.json" in names
+            assert "manifest.json" in names
+    # Filenames encode each (mode, rep) so nothing is overwritten.
+    names = {z.name for z in zips}
+    assert any("baseline" in n and "rep00" in n for n in names)
+    assert any("exp" in n and "rep01" in n for n in names)
