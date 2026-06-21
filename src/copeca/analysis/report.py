@@ -91,6 +91,11 @@ def _has_difficulty(records: list[dict[str, Any]]) -> bool:
     return any(r.get("difficulty") is not None for r in records)
 
 
+def _has_category(records: list[dict[str, Any]]) -> bool:
+    """Check if any record carries a category (capability) field."""
+    return any(r.get("category") is not None for r in records)
+
+
 def _tool_adoption_section(
     records: list[dict[str, Any]],
     by_mode: dict[Any, list[dict[str, Any]]],
@@ -147,6 +152,7 @@ def _per_category_section(
     has_category = {
         "language": _has_language,
         "difficulty": _has_difficulty,
+        "category": _has_category,
     }.get(category)
     if has_category is None or not has_category(records):
         return []
@@ -160,6 +166,9 @@ def _per_category_section(
     for mode in modes:
         header += f" {mode} CPC |"
         sep += "------:|"
+    if len(modes) == 2:
+        header += " Delta% |"
+        sep += "-------:|"
     lines.append(header)
     lines.append(sep)
 
@@ -172,10 +181,19 @@ def _per_category_section(
         cat_records = [r for r in records if r.get(category) == cat_val]
         by_mode_cat = group_by(cat_records, key="mode")
         row = f"| {cat_val} |"
+        cpcs: list[float | None] = []
         for mode in modes:
             cpc = cost_per_correct(by_mode_cat.get(mode, []))
+            cpcs.append(cpc)
             cpc_cell = f"${cpc:.4f}" if cpc is not None else "n/a (0 correct)"
             row += f" {cpc_cell} |"
+        # Delta% (2 modes): the per-capability payoff — where the tool helps.
+        if len(modes) == 2:
+            c0, c1 = cpcs
+            if c0 is not None and c1 is not None and c0 > 0:
+                row += f" {((c1 - c0) / c0) * 100:+.1f}% |"
+            else:
+                row += " N/A |"
         lines.append(row)
 
     lines.append("")
@@ -452,6 +470,15 @@ def generate_report(records: list[dict[str, Any]]) -> str:
     lines.extend(
         _per_category_section(
             records, by_mode, modes, "difficulty", "Per-Difficulty Breakdown"
+        )
+    )
+
+    # ── 10. Per-Capability Breakdown (if records carry category) ────────────
+    # The payoff: cost-per-correct sliced by what the task demands (locate/trace/
+    # fix/debug), so the delta reveals WHERE a tool helps, not just how much overall.
+    lines.extend(
+        _per_category_section(
+            records, by_mode, modes, "category", "Per-Capability Breakdown"
         )
     )
 

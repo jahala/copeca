@@ -234,6 +234,9 @@ def run_single(
         record: dict[str, Any] = {
             "task": task.name,
             "repo": task.repo,
+            "category": task.category.value,
+            "language": task.language.value,
+            "difficulty": task.difficulty.value,
             "mode": mode_name,
             "model": model,
             "runner": runner.name,

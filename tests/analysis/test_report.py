@@ -19,6 +19,7 @@ def _make_record(
     tool_sequence: list[str] | None = None,
     language: str | None = None,
     difficulty: str | None = None,
+    category: str | None = None,
 ) -> dict:
     """Helper to build a minimal JSONL record."""
     record: dict = {
@@ -41,6 +42,8 @@ def _make_record(
         record["language"] = language
     if difficulty is not None:
         record["difficulty"] = difficulty
+    if category is not None:
+        record["category"] = category
     return record
 
 
@@ -329,6 +332,33 @@ class TestGenerateReport:
         assert "hard" in report
         # hard baseline CPC: 0.60 / 1 = 0.6000
         assert "$0.6000" in report
+
+    def test_report_contains_per_capability_breakdown(self):
+        """Per-Capability (category) breakdown with a delta — the payoff: WHERE a
+        tool helps. Records carry the `category` field (TX-3)."""
+        records = [
+            _make_record(task="t1", mode="baseline", category="trace",
+                         total_cost_usd=0.20, correct=True),
+            _make_record(task="t1", mode="experimental", category="trace",
+                         total_cost_usd=0.10, correct=True),
+            _make_record(task="t2", mode="baseline", category="trace",
+                         total_cost_usd=0.40, correct=True),
+            _make_record(task="t2", mode="experimental", category="trace",
+                         total_cost_usd=0.30, correct=True),
+            _make_record(task="t3", mode="baseline", category="fix",
+                         total_cost_usd=0.10, correct=True),
+            _make_record(task="t3", mode="experimental", category="fix",
+                         total_cost_usd=0.10, correct=True),
+        ]
+        report = generate_report(records)
+
+        assert "Per-Capability Breakdown" in report
+        assert "trace" in report
+        assert "fix" in report
+        # trace aggregate: baseline (0.20+0.40)/2=0.30, exp (0.10+0.30)/2=0.20 -> -33.3%.
+        # This differs from every single-task delta (t1=-50%, t2=-25%, t3=0%), so it
+        # proves the section aggregates by capability, not by task.
+        assert "-33.3%" in report
 
     def test_report_skips_sections_when_no_data(self):
         """Sections should be skipped gracefully when data fields are absent."""
