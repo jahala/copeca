@@ -37,6 +37,7 @@ def run_single(
     worktree_id: str | None = None,
     budget_usd: float | None = None,
     adversarial_thresholds: AdversarialThresholds | None = None,
+    keep_worktree: bool = False,
 ) -> dict[str, Any]:
     """Execute a single copeca run — the complete measurement pipeline.
 
@@ -220,6 +221,7 @@ def run_single(
             "result_text": parsed.result_text[:5000] if parsed.result_text else "",
             "tool_sequence": [tc.name for tc in parsed.tool_calls],
             "error": parsed.error,
+            "exit_code": parsed.exit_code,
             "adversarial_flags": flags,
             "test_command_output": test_command_record,
             "metadata": {
@@ -239,8 +241,13 @@ def run_single(
 
 
     finally:
-        # 9. Reset worktree
-        repo_mgr.reset(worktree)
+        # 9. Reset the worktree — unless the caller asked to keep it for
+        #    debugging, in which case the per-arm mcp.json / config dir / agent
+        #    edits survive for inspection (shakedown SD-C).
+        if keep_worktree:
+            logger.info("Keeping worktree for inspection: %s", worktree)
+        else:
+            repo_mgr.reset(worktree)
 
 
 def _compute_adversarial_flags(
@@ -321,6 +328,7 @@ def run_matrix(
     max_workers: int = 1,
     pricing: dict[str, dict[str, float]] | None = None,
     mode_defs: dict[str, Mode] | None = None,
+    keep_worktrees: bool = False,
 ) -> list[dict[str, Any]]:
     """Run a scenario matrix: tasks x modes x reps x models concurrently.
 
@@ -391,7 +399,7 @@ def run_matrix(
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         future_to_item = {
             executor.submit(_run_one_work_item, item, runner_factory, repo_mgr,
-                            scenario, pricing): item
+                            scenario, pricing, keep_worktrees): item
             for item in work_items
         }
 
@@ -428,6 +436,7 @@ def _run_one_work_item(
     repo_mgr: Any,
     scenario: Scenario,
     pricing: dict[str, dict[str, float]] | None,
+    keep_worktrees: bool = False,
 ) -> dict[str, Any]:
     """Execute a single work item in a thread worker.
 
@@ -466,6 +475,7 @@ def _run_one_work_item(
         worktree_id=worktree_id,
         budget_usd=scenario.budget_usd,
         adversarial_thresholds=scenario.adversarial_thresholds,
+        keep_worktree=keep_worktrees,
     )
     record["repetition"] = item["rep"]
     return record

@@ -169,3 +169,23 @@ class TestAsciiSparkline:
         assert len(result) == 8
         # All constant values map to the same character (bar at position 4)
         assert len(set(result)) == 1
+
+
+class TestCostPerCorrectExcludesFailures:
+    """A crashed run (error set) is not a valid measurement — it must be excluded
+    from cost-per-correct so it cannot pollute the headline metric (SD-B).
+    """
+
+    def test_errored_record_excluded(self):
+        records = [
+            {"total_cost_usd": 0.20, "correct": True},
+            # crashed run with (hypothetical) partial cost — must NOT count
+            {
+                "total_cost_usd": 0.50,
+                "correct": False,
+                "error": "runner exited with code 1",
+            },
+        ]
+        # Only the valid run counts: 0.20 / 1 correct = 0.20 (the $0.50 crash is
+        # excluded). Without the fix it would be 0.70 / 1 = 0.70.
+        assert cost_per_correct(records) == pytest.approx(0.20)

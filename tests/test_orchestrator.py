@@ -286,3 +286,38 @@ class TestFullPipeline:
         assert isinstance(result["metadata"], dict)
         assert "copeca_version" in result["metadata"]
         assert "task_version" in result["metadata"]
+
+
+class TestKeepWorktrees:
+    """--keep-worktrees must skip the worktree reset so per-arm state (mcp.json,
+    config dir, the agent's repo edits) survives for debugging. Shakedown SD-C:
+    debugging the tilth-arm failure required hand-recreating a worktree because
+    run_single reset unconditionally.
+    """
+
+    def test_keep_worktree_skips_reset(self, tmp_path, test_repo):
+        repo_mgr = StubRepoManager(tmp_path / "worktrees")
+        run_single(
+            task=_make_task("keep_test"),
+            mode_name="baseline",
+            model="test-model",
+            runner=_make_runner(),
+            repo_mgr=repo_mgr,
+            repo_uri=str(test_repo),
+            repo_commit=None,
+            keep_worktree=True,
+        )
+        assert repo_mgr.resets_called == 0
+
+    def test_default_resets_worktree(self, tmp_path, test_repo):
+        repo_mgr = StubRepoManager(tmp_path / "worktrees")
+        run_single(
+            task=_make_task("reset_test"),
+            mode_name="baseline",
+            model="test-model",
+            runner=_make_runner(),
+            repo_mgr=repo_mgr,
+            repo_uri=str(test_repo),
+            repo_commit=None,
+        )
+        assert repo_mgr.resets_called == 1

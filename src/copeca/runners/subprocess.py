@@ -119,15 +119,28 @@ class SubprocessRunner(BaseRunner):
             process.wait()
             raise
 
+        returncode = process.returncode
+
         if self.parser:
             result = self.parser.parse(stdout)
-            result.duration_ms = duration_ms
-            return result
+        else:
+            result = RunResult(result_text=stdout)
+        result.duration_ms = duration_ms
+        result.exit_code = returncode
 
-        return RunResult(
-            result_text=stdout,
-            duration_ms=duration_ms,
-        )
+        # Surface execution failures the parser can't see. A non-zero exit, or
+        # empty stdout with stderr diagnostics, means the agent did not run to
+        # completion — record it as an error so the run is never mistaken for a
+        # legitimate empty answer (shakedown SD-B). Don't clobber an error the
+        # parser already set.
+        if result.error is None and (
+            returncode != 0 or (not stdout.strip() and stderr.strip())
+        ):
+            stderr_tail = stderr.strip()[-500:]
+            detail = f": {stderr_tail}" if stderr_tail else ""
+            result.error = f"runner exited with code {returncode}{detail}"
+
+        return result
 
     def parse(self, stdout: str, supported_events: list[str] | None = None) -> RunResult:
         """Not used directly — the parser is injected and called from run()."""

@@ -52,6 +52,7 @@ class RunResult:
     duration_ms: int = 0
     tool_calls: list[ToolCall] = field(default_factory=list)
     error: str | None = None
+    exit_code: int | None = None
 
     @property
     def num_turns(self) -> int:

@@ -27,7 +27,12 @@ class GitWorktreeManager:
     """
 
     def __init__(self, repos_dir: Path) -> None:
-        self._repos_dir = repos_dir
+        # Resolve to an absolute path so every derived path — the bare clone,
+        # the worktree, and the per-arm mcp.json / config-dir written under the
+        # worktree — is absolute. The agent runs with cwd=worktree, so a relative
+        # --mcp-config or CLAUDE_CONFIG_DIR would resolve against the wrong
+        # directory and silently fail (shakedown SD-A: tilth arm, 0 turns).
+        self._repos_dir = Path(repos_dir).resolve()
         self._repos_dir.mkdir(parents=True, exist_ok=True)
         self._bare_dir = self._repos_dir / "_bare"
         self._worktree_pool = self._repos_dir / "_worktrees"

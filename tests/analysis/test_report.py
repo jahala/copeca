@@ -395,3 +395,30 @@ class TestGenerateReport:
 
         # accuracy/rate column must appear in the Cost Per Correct Answer section header
         assert "accuracy" in report.lower() or "rate" in report.lower()
+
+
+class TestReportExcludesFailedRuns:
+    """Crashed runs (error set) are excluded from the accuracy denominator and
+    surfaced in a Failed Runs note — never silently counted as a result (SD-B).
+    """
+
+    def test_failed_run_excluded_from_accuracy_and_noted(self):
+        records = [
+            {
+                "task": "t1", "mode": "baseline", "total_cost_usd": 0.20,
+                "correct": True, "input_tokens": 100, "output_tokens": 50,
+                "cache_creation_tokens": 0, "cache_read_tokens": 0,
+            },
+            {
+                "task": "t1", "mode": "baseline", "total_cost_usd": 0.0,
+                "correct": False, "input_tokens": 0, "output_tokens": 0,
+                "cache_creation_tokens": 0, "cache_read_tokens": 0,
+                "error": "runner exited with code 1",
+            },
+        ]
+        report = generate_report(records)
+        # accuracy denominator excludes the crash -> 1/1, not 1/2
+        assert "1/1" in report
+        assert "1/2" not in report
+        # the failure stays visible, not hidden
+        assert "Failed" in report

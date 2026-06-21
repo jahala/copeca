@@ -311,3 +311,39 @@ def _rmtree_workaround(path: Path) -> None:
 
     if path.exists():
         shutil.rmtree(path, onerror=_on_error)
+
+
+class TestWorktreePathsAreAbsolute:
+    """A relative repos_dir must still yield absolute worktree paths.
+
+    Regression (live shakedown SD-A): ``copeca run`` builds
+    ``GitWorktreeManager(repos_dir=Path("repos"))`` — a RELATIVE path — so the
+    worktree, and the per-arm mcp.json / config-dir paths derived from it, were
+    relative. claude runs with ``cwd=worktree``, so a relative
+    ``--mcp-config <path>`` resolved against the wrong directory and claude
+    exited with "MCP config file not found" — the tilth arm silently produced
+    nothing (0 turns, empty output, $0).
+    """
+
+    def test_relative_repos_dir_yields_absolute_worktree(
+        self,
+        tmp_path: Path,
+        test_repo: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        # chdir into tmp so the relative "repos" dir is created under tmp,
+        # never the real project tree.
+        monkeypatch.chdir(tmp_path)
+
+        mgr = GitWorktreeManager(repos_dir=Path("repos"))  # RELATIVE on purpose
+        worktree = mgr.create_worktree(
+            "test-repo", commit=None, uri=str(test_repo), worktree_id="abs-check"
+        )
+
+        assert worktree.is_absolute(), (
+            "worktree path must be absolute even when repos_dir is relative "
+            "(so a cwd=worktree --mcp-config path resolves); got: "
+            f"{worktree}"
+        )
+
+        _rmtree_workaround(worktree)

@@ -72,6 +72,8 @@ def cost_per_correct(records: list[dict[str, Any]]) -> float | None:
     correct_count = 0
     total_cost = 0.0
     for r in records:
+        if r.get("error"):
+            continue  # crashed/failed run — not a valid measurement (SD-B)
         total_cost += float(r.get("total_cost_usd", 0.0))
         if r.get("correct"):
             correct_count += 1

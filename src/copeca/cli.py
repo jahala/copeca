@@ -219,6 +219,12 @@ def run(
         "with a detached signature (real tamper-evidence). Requires --artifacts.",
     ),
     verbose: bool = typer.Option(False, "--verbose", help="Show detailed output"),
+    keep_worktrees: bool = typer.Option(
+        False,
+        "--keep-worktrees",
+        help="Preserve run worktrees (and per-arm .copeca-arms/) for debugging "
+        "instead of resetting them after each run.",
+    ),
 ) -> None:
     """Run a task or scenario through a CLI agent and write JSONL results.
 
@@ -338,6 +344,7 @@ def run(
             max_workers=scenario.max_workers,
             pricing=pricing,
             mode_defs=mode_defs,
+            keep_worktrees=keep_worktrees,
         )
 
         for record in records:
@@ -354,6 +361,13 @@ def run(
             correct_count = sum(1 for r in records if r.get("correct"))
             typer.echo(f"Results: {correct_count}/{len(records)} correct")
             typer.echo(f"Written to: {results_path}")
+
+        if keep_worktrees:
+            pool = Path("repos").resolve() / "_worktrees"
+            typer.echo(
+                f"Worktrees preserved under {pool} "
+                "(per-arm config in each <worktree>/.copeca-arms/)"
+            )
     else:
         # ── Single-task mode ────────────────────────────────────────────
         task_obj = load_task(task)
@@ -383,6 +397,7 @@ def run(
             repo_commit=repo_commit,
             pricing=model_pricing,
             artifacts=artifacts,
+            keep_worktree=keep_worktrees,
         )
 
         # I/O at the boundary (architecture.md §2):
@@ -398,12 +413,17 @@ def run(
                 signed_note = " (signed)" if signing_key is not None else ""
                 typer.echo(f"Artifact: {artifact_path}{signed_note}")
             finally:
-                repo_mgr.reset(worktree)
+                if not keep_worktrees:
+                    repo_mgr.reset(worktree)
 
         if verbose:
             typer.echo(f"correct: {record['correct']}")
             typer.echo(f"cost: ${record['total_cost_usd']:.4f}")
             typer.echo(f"duration: {record['duration_ms']}ms")
+
+        if keep_worktrees:
+            pool = Path("repos").resolve() / "_worktrees"
+            typer.echo(f"Worktree preserved under {pool} for inspection")
 
 
 

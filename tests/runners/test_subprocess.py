@@ -106,3 +106,36 @@ class TestSubprocessRunner:
         assert "stdout_line" in result.result_text
         assert "stderr_line" not in result.result_text
         assert result.duration_ms > 0
+
+
+class TestRunnerFailureSurfacing:
+    """A crashed subprocess must surface exit_code + error — never look like a
+    legit empty answer. Shakedown SD-B: the tilth arm exited 1 with empty stdout
+    and was recorded as error=null / exit_code=null, indistinguishable from the
+    agent legitimately saying nothing.
+    """
+
+    def test_nonzero_exit_sets_error_and_exit_code(self):
+        runner = SubprocessRunner(
+            name="fail-test",
+            cli="sh",
+            default_args=[],
+            arg_map={"prompt_separator": ""},
+            parser=None,
+        )
+        result = runner.run(["sh", "-c", "echo boom 1>&2; exit 3"])
+        assert result.exit_code == 3
+        assert result.error is not None
+        assert "boom" in result.error
+
+    def test_clean_exit_leaves_error_none(self):
+        runner = SubprocessRunner(
+            name="ok-test",
+            cli="echo",
+            default_args=[],
+            arg_map={"prompt_separator": ""},
+            parser=None,
+        )
+        result = runner.run(["echo", "hi"])
+        assert result.exit_code == 0
+        assert result.error is None

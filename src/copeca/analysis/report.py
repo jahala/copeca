@@ -209,9 +209,31 @@ def generate_report(records: list[dict[str, Any]]) -> str:
     if not records:
         return "## Copeca Report\n\n*No results.*\n"
 
+    # Separate crashed/failed runs (error set) from valid measurements: they are
+    # surfaced in a Failed Runs section below but excluded from every metric so a
+    # crash can't deflate accuracy or skew cost (shakedown SD-B).
+    failed_records = [r for r in records if r.get("error")]
+    records = [r for r in records if not r.get("error")]
+    if not records:
+        return "## Copeca Report\n\n*No valid results — all runs failed.*\n"
+
     lines: list[str] = []
     lines.append("## Copeca Report")
     lines.append("")
+    if failed_records:
+        lines.append("### Failed Runs")
+        lines.append("")
+        lines.append(
+            f"{len(failed_records)} run(s) failed and are excluded from the "
+            "metrics below."
+        )
+        for r in failed_records:
+            raw = r.get("error") or "unknown error"
+            err = str(raw).splitlines()[0][:120]
+            lines.append(
+                f"- **{r.get('mode', '?')}** / {r.get('task', '?')}: {err}"
+            )
+        lines.append("")
 
     # Discover modes
     by_mode = group_by(records, key="mode")
