@@ -112,7 +112,11 @@ These are the invariants that make copeca numbers trustworthy:
 - **Reproducibility over convenience.** Every run records the repo commit SHA,
   verified toolchain versions, runner config with pricing, and task definition.
   A `.copeca` zip (opt-in via `--artifacts`) carries all of this with an
-  integrity manifest (a SHA-256 hash of every file).
+  integrity manifest (a SHA-256 hash of every file). The manifest detects
+  accidental corruption but is not tamper-proof on its own; for real
+  tamper-evidence, `--sign-key` writes a detached Ed25519 signature over the
+  content hash that `verify --pubkey` checks (a tampered, manifest-recomputed
+  artifact fails). External transparency-log anchoring is planned.
 - **No network during measurement.** The agent may use the network (it's a real
   coding agent), but copeca itself does not. Repos are pre-cloned. Pricing tables
   are local YAML. Schemas are local JSON.
@@ -174,10 +178,17 @@ Reviewer checks (CI enforces where possible):
 - **Prefer the standard library.** A new dependency needs a one-paragraph
   justification: what it replaces, license, maintenance signal.
 - **Licenses:** MIT, Apache-2.0, BSD, ISC are fine. No copyleft (GPL/AGPL).
-- **Core dependencies** (typer, pyyaml, jsonschema, pydantic, ruff, mypy, pytest)
-  are pinned in `pyproject.toml`. Minor/patch updates via Dependabot.
+- **Core dependencies** (typer, pyyaml, jsonschema, pydantic, cryptography, ruff,
+  mypy, pytest) are pinned in `pyproject.toml`. Minor/patch updates via Dependabot.
+- **`cryptography`** provides the Ed25519 detached signatures behind artifact
+  tamper-evidence (`results/signing.py`). It replaces hand-rolling asymmetric
+  crypto — which we will not do. Apache-2.0 / BSD dual-licensed, the de facto
+  standard Python crypto library (PyCA), actively maintained. It ships a small
+  compiled component (via `cffi`); this is the one non-`git` binary dependency
+  and is justified because correct signing must not be home-grown.
 - **No heavy ML dependencies.** Copeca is a CLI benchmark, not an inference
-  engine. The only binary dependency is `git` (system-installed).
+  engine. The system binary dependency is `git`; `cryptography` is the only
+  compiled Python dependency.
 - **SBOM** generation via `pip-audit` + `cyclonedx-bom` in CI — deferred until
   there's a release artifact to scan against.
 

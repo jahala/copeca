@@ -65,7 +65,7 @@ limited — small N means wide confidence intervals. See
 | **Correctness** | String matching (comprehension tasks) or test-command exit codes (edit tasks) (case-insensitive substring matching — gameable on single tasks; see known-limitations) |
 | **Completeness** | `all_of` field verifies the agent listed *everything* — not just *something* |
 | **Futility** | Adversarial flags: token snowball, talkative failure, tool storm, budget exhaustion, timeout |
-| **Integrity** | Each result is packaged with an integrity manifest — a SHA-256 hash of every file in the artifact. `copeca verify ARTIFACT` recomputes these to detect accidental corruption or modification of a downloaded artifact. The manifest lives inside the artifact, so it detects accidental damage, not deliberate tampering by someone who can recompute it; cryptographic signing and external anchoring are planned. |
+| **Integrity** | Each result is packaged with an integrity manifest — a SHA-256 hash of every file in the artifact. `copeca verify ARTIFACT` recomputes these to detect accidental corruption. The manifest alone is **not tamper-proof**: anyone who rewrites the zip can recompute it. For real tamper-evidence, sign artifacts with `copeca run … --artifacts --sign-key <private.pem>` — this writes a detached **Ed25519** signature over the content hash, and `copeca verify ARTIFACT --pubkey <public.pem>` rejects any artifact a holder of the private key did not sign (so a tampered-and-recomputed artifact fails). Unsigned artifacts get corruption detection only and are reported as unsigned. External transparency-log anchoring is a further planned option. |
 
 ---
 

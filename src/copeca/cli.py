@@ -210,6 +210,12 @@ def run(
     budget: float = typer.Option(1.0, "--budget", help="Max spend per run in USD"),
     timeout: int = typer.Option(300, "--timeout", help="Max wall time in seconds"),
     artifacts: bool = typer.Option(False, "--artifacts", help="Produce .copeca zip"),
+    sign_key: Path = typer.Option(
+        None,
+        "--sign-key",
+        help="Ed25519 private key PEM. Signs each .copeca artifact's content_hash "
+        "with a detached signature (real tamper-evidence). Requires --artifacts.",
+    ),
     verbose: bool = typer.Option(False, "--verbose", help="Show detailed output"),
 ) -> None:
     """Run a task or scenario through a CLI agent and write JSONL results.
@@ -239,6 +245,23 @@ def run(
         and "tasks" in doc
         or "scenario" in task.name.lower()
     )
+
+    # ── Resolve signing key (opt-in tamper-evidence) at the boundary ──────
+    signing_key = None
+    if sign_key is not None:
+        if not artifacts:
+            typer.echo("Error: --sign-key requires --artifacts", err=True)
+            raise typer.Exit(code=2)
+        from copeca.results.signing import load_private_key_file
+
+        try:
+            signing_key = load_private_key_file(str(sign_key))
+        except FileNotFoundError:
+            typer.echo(f"Error: signing key not found: {sign_key}", err=True)
+            raise typer.Exit(code=2)
+        except ValueError as e:
+            typer.echo(f"Error: invalid signing key: {e}", err=True)
+            raise typer.Exit(code=2)
 
     repos_path = Path("repos.yaml")
     if not repos_path.exists():
@@ -367,8 +390,11 @@ def run(
             from copeca.results.artifact import build_artifact
             worktree = repo_mgr.create_worktree(task_obj.repo, commit=repo_commit, uri=repo_uri)
             try:
-                artifact_path = build_artifact(record, worktree, Path("results"))
-                typer.echo(f"Artifact: {artifact_path}")
+                artifact_path = build_artifact(
+                    record, worktree, Path("results"), sign_key=signing_key
+                )
+                signed_note = " (signed)" if signing_key is not None else ""
+                typer.echo(f"Artifact: {artifact_path}{signed_note}")
             finally:
                 repo_mgr.reset(worktree)
 
@@ -419,10 +445,24 @@ def verify(
     scenario: Path = typer.Option(
         None, "--scenario", help="Scenario YAML to compare against (required with --batch)"
     ),
+    pubkey: Path = typer.Option(
+        None,
+        "--pubkey",
+        help="Ed25519 public key PEM to verify the artifact's detached signature "
+        "(real tamper-evidence). Without it, only corruption is detected.",
+    ),
 ) -> None:
     """Verify a .copeca artifact's integrity, or check batch completeness.
 
-    Single-artifact mode (default): verifies the content_hash chain of one zip.
+    Single-artifact mode (default): recomputes the integrity manifest to detect
+    corruption. The manifest alone is NOT tamper-proof — anyone who rewrites the
+    zip can recompute it.
+
+    Signature mode (--pubkey <public.pem>): additionally verifies the detached
+    Ed25519 signature over the content_hash. A tampered (and manifest-recomputed)
+    artifact fails here because the attacker cannot re-sign without the private
+    key. Exits non-zero if the artifact is unsigned, signed by a different key, or
+    its signature does not match.
 
     Batch mode (--batch <dir> --scenario <path>): compares the artifacts present
     in <dir> against the full expected set from <scenario> and reports missing
@@ -477,6 +517,36 @@ def verify(
     if artifact is None:
         typer.echo("Error: provide ARTIFACT or --batch / --scenario", err=True)
         raise typer.Exit(code=2)
+
+    if pubkey is not None:
+        # ── Signature mode: real tamper-evidence ──────────────────────────────
+        from copeca.results.signing import load_public_key_file
+        from copeca.results.verification import verify_signed_artifact
+
+        try:
+            public_key = load_public_key_file(str(pubkey))
+        except FileNotFoundError:
+            typer.echo(f"Error: public key not found: {pubkey}", err=True)
+            raise typer.Exit(code=2)
+        except ValueError as e:
+            typer.echo(f"Error: invalid public key: {e}", err=True)
+            raise typer.Exit(code=2)
+
+        try:
+            report = verify_signed_artifact(artifact, public_key=public_key)
+        except FileNotFoundError:
+            typer.echo(f"Error: file not found: {artifact}", err=True)
+            raise typer.Exit(code=2)
+
+        signed_label = "signed" if report.signed else "unsigned"
+        valid_label = "valid" if report.valid else "INVALID"
+        typer.echo(f"Signature: {signed_label} / {valid_label}")
+        typer.echo(f"Integrity: {'ok' if report.corruption_ok else 'CORRUPT'}")
+        if report.signed and report.valid and report.corruption_ok:
+            typer.echo(report.message)
+            return
+        typer.echo(f"FAILED: {report.message}", err=True)
+        raise typer.Exit(code=1)
 
     from copeca.results.verification import verify_artifact
 

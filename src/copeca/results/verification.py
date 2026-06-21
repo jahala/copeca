@@ -1,7 +1,16 @@
-"""Artifact verification — content_hash integrity checks for .copeca zips.
+"""Artifact verification — content_hash integrity + detached-signature checks.
 
 Architecture: adapter. Filesystem I/O for artifact verification.
 Never imports from orchestration/.
+
+Two levels of verification:
+  - ``verify_artifact`` — recomputes the content_hash and per-file hashes from
+    the zip's own members. Detects accidental corruption. NOT tamper-proof: an
+    attacker who rewrites the zip can recompute these too.
+  - ``verify_signed_artifact`` — additionally checks the detached Ed25519
+    ``manifest.sig`` against a trusted public key. A tampered-and-recomputed
+    artifact fails here (the attacker lacks the private key). An unsigned
+    artifact is reported as unsigned and given corruption detection only.
 """
 
 from __future__ import annotations
@@ -11,8 +20,14 @@ import itertools
 import json
 import re
 import zipfile
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+from copeca.results.artifact import MANIFEST_SIG_NAME
+
+if TYPE_CHECKING:
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
 
 # Matches: {task}__{mode}__{model}__rep{NN}.copeca.zip
@@ -107,7 +122,7 @@ def verify_artifact(path: Path) -> tuple[bool, str]:
         # before reading any member bytes into memory.
         cumulative_bytes = 0
         for info in zf.infolist():
-            if info.filename == "manifest.json":
+            if info.filename in ("manifest.json", MANIFEST_SIG_NAME):
                 continue
             if info.file_size > MAX_MEMBER_BYTES:
                 return (
@@ -123,10 +138,12 @@ def verify_artifact(path: Path) -> tuple[bool, str]:
                     f"({MAX_MEMBER_BYTES} bytes)",
                 )
 
-        # Recompute hashes for all non-manifest files
+        # Recompute hashes for all content files. manifest.json holds the
+        # expected hashes; manifest.sig is the detached signature that stands
+        # OUTSIDE the content_hash (it signs the hash, so it cannot be hashed in).
         file_hashes: dict[str, str] = {}
         for name in sorted(namelist):
-            if name == "manifest.json":
+            if name in ("manifest.json", MANIFEST_SIG_NAME):
                 continue
             try:
                 data = zf.read(name)
@@ -166,6 +183,137 @@ def verify_artifact(path: Path) -> tuple[bool, str]:
                 return False, f"Artifact tampered: hash mismatch for {fname}"
 
         return True, "Artifact valid: content_hash matches all files"
+
+
+@dataclass(frozen=True)
+class SignatureReport:
+    """Result of signature-aware artifact verification.
+
+    Attributes:
+        signed: Whether the artifact carries a detached signature (manifest.sig).
+        valid: Whether a signature was verified against the trusted public key
+            over the recomputed content_hash. False for unsigned artifacts, for a
+            signature that fails the key, and when no public key was supplied.
+        corruption_ok: The integrity-manifest result (True = no corruption).
+        message: Human-readable summary.
+    """
+
+    signed: bool
+    valid: bool
+    corruption_ok: bool
+    message: str
+
+
+def _read_zip_members(
+    path: Path,
+) -> tuple[str | None, bytes | None]:
+    """Read (content_hash, signature_bytes) from a .copeca zip.
+
+    Returns (None, None) for content_hash when the manifest is absent/unparseable
+    and None for signature_bytes when manifest.sig is absent. Thin I/O wrapper.
+    """
+    with zipfile.ZipFile(path, "r") as zf:
+        namelist = zf.namelist()
+        content_hash: str | None = None
+        if "manifest.json" in namelist:
+            try:
+                content_hash = json.loads(zf.read("manifest.json")).get("content_hash")
+            except (KeyError, json.JSONDecodeError):
+                content_hash = None
+        signature: bytes | None = None
+        if MANIFEST_SIG_NAME in namelist:
+            signature = zf.read(MANIFEST_SIG_NAME)
+    return content_hash, signature
+
+
+def verify_signed_artifact(
+    path: Path,
+    public_key: Ed25519PublicKey | None = None,
+) -> SignatureReport:
+    """Verify integrity AND, when present, the detached signature.
+
+    This is the real tamper-evidence path (F-C2). Steps:
+      1. Run the integrity-manifest check (corruption detection).
+      2. If a signature is present and a trusted public key is supplied, verify
+         it over the recomputed content_hash.
+
+    An UNSIGNED artifact reports ``signed=False`` and is given corruption
+    detection only — it is never reported as tamper-proof. A signed artifact with
+    a tampered-and-recomputed manifest fails (``valid=False``) because the
+    attacker cannot re-sign the new content_hash.
+
+    Args:
+        path: Path to the .copeca zip.
+        public_key: Trusted Ed25519 public key. When None, the signature (if any)
+            is not checked — but its presence is still reported via ``signed``.
+
+    Returns:
+        A SignatureReport.
+
+    Raises:
+        FileNotFoundError: If the path does not exist.
+    """
+    corruption_ok, corruption_msg = verify_artifact(path)
+
+    # If the zip could not be opened/parsed, there is nothing further to check.
+    try:
+        content_hash, signature = _read_zip_members(path)
+    except (zipfile.BadZipFile, OSError):
+        return SignatureReport(
+            signed=False,
+            valid=False,
+            corruption_ok=corruption_ok,
+            message=corruption_msg,
+        )
+
+    if signature is None:
+        return SignatureReport(
+            signed=False,
+            valid=False,
+            corruption_ok=corruption_ok,
+            message=(
+                f"Unsigned artifact (corruption detection only): {corruption_msg}"
+            ),
+        )
+
+    if public_key is None:
+        return SignatureReport(
+            signed=True,
+            valid=False,
+            corruption_ok=corruption_ok,
+            message=(
+                "Artifact is signed; no public key supplied to verify it "
+                f"(corruption detection only): {corruption_msg}"
+            ),
+        )
+
+    if content_hash is None:
+        return SignatureReport(
+            signed=True,
+            valid=False,
+            corruption_ok=corruption_ok,
+            message="Artifact is signed but content_hash is missing/unparseable",
+        )
+
+    from copeca.results.signing import verify_signature
+
+    sig_valid = verify_signature(content_hash, signature, public_key)
+    if sig_valid:
+        return SignatureReport(
+            signed=True,
+            valid=True,
+            corruption_ok=corruption_ok,
+            message="Artifact signature valid: content_hash signed by the trusted key",
+        )
+    return SignatureReport(
+        signed=True,
+        valid=False,
+        corruption_ok=corruption_ok,
+        message=(
+            "Artifact signature INVALID: signature does not match the content_hash "
+            "under the supplied key (tampered, wrong key, or corrupt signature)"
+        ),
+    )
 
 
 def verify_batch(

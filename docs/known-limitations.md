@@ -77,6 +77,23 @@ authoritative (`validator.py:96-113`). Any `required_strings` or
 record for diagnostics, but they do not affect the verdict. Only the test
 command exit code determines whether an edit task run is counted as correct.
 
+## Unsigned artifacts get corruption detection only, not tamper-evidence
+
+The integrity manifest inside a `.copeca` zip (per-file SHA-256 + a content_hash
+over them) catches accidental corruption, but an attacker who rewrites the zip
+can recompute it — so an unsigned artifact is **not tamper-proof**. Real
+tamper-evidence requires signing: `copeca run … --artifacts --sign-key
+<private.pem>` writes a detached Ed25519 signature over the content_hash, and
+`copeca verify ARTIFACT --pubkey <public.pem>` rejects any artifact a holder of
+the private key did not sign. Two residual limitations: (1) verification trust
+is only as good as the operator's out-of-band knowledge that a given public key
+belongs to the claimed runner — copeca does not distribute or attest keys; and
+(2) a signature proves *who produced* an artifact, not *when* — there is no
+external append-only anchor, so a signer can still re-sign a later, cherry-picked
+set under the same key. Batch completeness (`verify --batch --scenario`) is the
+partial defence against selective publishing; external transparency-log anchoring
+of content hashes is a planned further option.
+
 ---
 
 ## References

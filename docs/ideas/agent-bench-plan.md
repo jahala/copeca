@@ -691,9 +691,11 @@ run_20260607T120000_rg_trait_implementors_tilth_claude-sonnet-4-6_rep0.copeca
 └── repos.yaml           # Repo registry entry for this repo (single entry only)
 ```
 
-**Hash chain:** `content_hash = SHA-256(concat(sorted per-file hashes))`. Every file present is covered (`post_mutation.diff` is omitted for comprehension tasks, which have no mutation). The repo commit SHA and verified toolchain versions are recorded in `manifest.json` — so a reviewer knows exactly what code and environment produced the result. Bundling `runner.yaml` (with its pricing) means the cost is recomputable from the recorded tokens.
+**Integrity manifest:** `content_hash = SHA-256(concat(sorted per-file hashes))`. Every file present is covered (`post_mutation.diff` is omitted for comprehension tasks, which have no mutation). The repo commit SHA and verified toolchain versions are recorded in `manifest.json` — so a reviewer knows exactly what code and environment produced the result. Bundling `runner.yaml` (with its pricing) means the cost is recomputable from the recorded tokens. The manifest detects accidental corruption but is **not tamper-proof** on its own: anyone who rewrites the zip can recompute it.
 
-**Verification:** `copeca verify artifact.copeca` — detects any modification.
+**Tamper-evidence (opt-in):** `--sign-key <private.pem>` writes a detached Ed25519 signature over `content_hash` into the zip (`manifest.sig`). Only a private-key holder can produce it, so a tampered-and-recomputed artifact fails. External transparency-log anchoring of content hashes (a public append-only sequence, so the *set* of runs is anchored too) is a planned further option.
+
+**Verification:** `copeca verify artifact.copeca` recomputes the manifest (corruption detection). `copeca verify artifact.copeca --pubkey <public.pem>` additionally verifies the detached signature and rejects anything the key-holder did not sign.
 **Inspection:** `copeca inspect artifact.copeca` — dumps session for review.
 
 ### Batch Completeness
