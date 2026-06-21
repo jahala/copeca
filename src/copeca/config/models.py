@@ -111,6 +111,17 @@ class Mutation(BaseModel):
         return v
 
 
+class MutationStep(BaseModel):
+    """One commit step in a mutation_sequence — mutations applied then committed.
+
+    Used for debug tasks: each step builds real git history so the agent can
+    use git log / git diff to discover and diagnose the regression.
+    """
+
+    message: str = Field(..., min_length=1)
+    mutations: list[Mutation] = Field(..., min_length=1)
+
+
 # ── Task ──────────────────────────────────────────────────────────────────────
 
 
@@ -133,6 +144,10 @@ class Task(BaseModel):
     prompt: str = Field(..., min_length=1)
     ground_truth: GroundTruth
     mutations: list[Mutation] = Field(default_factory=list)
+    # Sequence of committed mutations for debug tasks. Each step applies its
+    # mutations to the worktree then `git commit`s them, building real history
+    # for the agent to navigate. Applied BEFORE working-tree `mutations`.
+    mutation_sequence: list[MutationStep] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def _category_consistent_with_type(self) -> "Task":

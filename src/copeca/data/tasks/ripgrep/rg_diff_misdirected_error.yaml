@@ -1,0 +1,32 @@
+name: rg_diff_misdirected_error
+description: "Test failures point at glue.rs but the regression lives in lines.rs; agent must inspect the most recent commit to locate the real source and fix it."
+source: "tilth-benchmark (MIT)"
+repo: ripgrep
+commit: 0a88cccd5188074de96f54a4b6b44a63971ac157
+type: edit
+category: debug
+language: rust
+difficulty: medium
+version: 1
+prompt: |
+  Integration tests in the searcher crate are failing — test output
+  shows wrong line numbers in tests defined in glue.rs. The root
+  cause may not be in the test file itself. A recent commit may have
+  introduced this regression. Check what changed in the most recent
+  commit and fix the bug.
+ground_truth:
+  required_strings: []
+  test_command:
+    - cargo
+    - test
+    - -p
+    - grep-searcher
+    - line_count
+mutation_sequence:
+  - message: "fix: improve line counter precision"
+    mutations:
+      - file: crates/searcher/src/lines.rs
+        action: replace
+        find: "memchr::memchr_iter(line_term, bytes).count() as u64"
+        replace: "memchr::memchr_iter(line_term, bytes).count() as u64 + 1"
+        occurrence: 1

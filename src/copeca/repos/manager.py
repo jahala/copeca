@@ -12,6 +12,10 @@ import shutil
 import subprocess
 import threading
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from copeca.config.models import MutationStep
 
 logger = logging.getLogger(__name__)
 
@@ -188,6 +192,64 @@ class GitWorktreeManager:
             raise RuntimeError(
                 f"git clean -fd failed: {exc.stderr.strip()}"
             ) from exc
+
+    def build_mutation_history(
+        self,
+        worktree: Path,
+        steps: "list[MutationStep]",
+    ) -> None:
+        """Apply each step's mutations and commit them into the worktree.
+
+        Builds real git history so debug-task agents can run git log / git diff
+        to locate and diagnose the committed regression.  All commits use a
+        fixed author identity so no local git config is required.
+
+        Args:
+            worktree: Path to the worktree (must already exist).
+            steps: Ordered list of MutationStep; each is applied in sequence,
+                   then committed with step.message.
+
+        Raises:
+            RuntimeError: If any mutation fails or git commit fails.
+        """
+        from copeca.tasks.mutations import apply_mutations
+
+        _GIT_ENV = {
+            "GIT_AUTHOR_NAME": "copeca-fixture",
+            "GIT_AUTHOR_EMAIL": "fixture@copeca.dev",
+            "GIT_COMMITTER_NAME": "copeca-fixture",
+            "GIT_COMMITTER_EMAIL": "fixture@copeca.dev",
+        }
+        env = {**os.environ, **_GIT_ENV}
+
+        for step in steps:
+            apply_mutations(step.mutations, base_path=worktree)
+            try:
+                subprocess.run(
+                    ["git", "add", "-A"],
+                    cwd=worktree,
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                    env=env,
+                )
+            except subprocess.CalledProcessError as exc:
+                raise RuntimeError(
+                    f"git add -A failed during mutation_sequence: {exc.stderr.strip()}"
+                ) from exc
+            try:
+                subprocess.run(
+                    ["git", "commit", "-m", step.message],
+                    cwd=worktree,
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                    env=env,
+                )
+            except subprocess.CalledProcessError as exc:
+                raise RuntimeError(
+                    f"git commit failed for step {step.message!r}: {exc.stderr.strip()}"
+                ) from exc
 
     # ------------------------------------------------------------------
     # Internal helpers

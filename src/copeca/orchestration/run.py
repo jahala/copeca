@@ -105,7 +105,12 @@ def run_single(
             from copeca.orchestration.state import ArmHarness
             harness = ArmHarness()
 
-        # 4. Apply mutations (edit tasks only) — run inside worktree
+        # 4. Build committed mutation history (debug tasks only) — must run
+        #    BEFORE working-tree mutations so the agent sees real git history.
+        if task.mutation_sequence:
+            repo_mgr.build_mutation_history(Path(worktree), task.mutation_sequence)
+
+        # 4.5. Apply working-tree mutations (edit tasks) — uncommitted, after history.
         if task.mutations:
             apply_mutations(task.mutations, base_path=Path(worktree))
 

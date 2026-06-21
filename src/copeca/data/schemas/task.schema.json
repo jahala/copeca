@@ -121,6 +121,35 @@
       "type": "array",
       "items": { "type": "string" },
       "description": "Deprecated — use ground_truth.test_command instead."
+    },
+    "mutation_sequence": {
+      "type": "array",
+      "description": "Ordered commit steps for debug tasks — each step applies mutations then commits them, building real git history for the agent to navigate.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["message", "mutations"],
+        "properties": {
+          "message": { "type": "string", "minLength": 1, "description": "Git commit message for this step." },
+          "mutations": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["file"],
+              "properties": {
+                "file": { "type": "string", "minLength": 1 },
+                "action": { "type": "string", "enum": ["replace", "delete", "insert_after", "create"], "default": "replace" },
+                "find": { "type": "string" },
+                "replace": { "type": "string" },
+                "content": { "type": "string" },
+                "occurrence": { "type": "integer", "minimum": 1 }
+              }
+            }
+          }
+        }
+      }
     }
   }
 }

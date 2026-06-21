@@ -124,7 +124,11 @@ class TestComprehensionTasks:
 
 class TestEditTasks:
     def test_edit_tasks_have_mutations_and_test_command(self):
-        """All edit tasks have a non-empty mutations list and test_command."""
+        """All edit tasks have a non-empty mutations or mutation_sequence, plus a test_command.
+
+        debug-category edit tasks use mutation_sequence (committed history) instead of
+        the plain mutations list — both are valid ways to introduce a regression.
+        """
         edit_count = 0
         for path in _discover_task_files():
             task = _load_task(path)
@@ -133,11 +137,16 @@ class TestEditTasks:
             edit_count += 1
 
             mutations = task.get("mutations", [])
+            mutation_sequence = task.get("mutation_sequence", [])
             assert isinstance(mutations, list), (
                 f"{path.name}: mutations must be a list"
             )
-            assert len(mutations) > 0, (
-                f"{path.name}: edit task must have at least one mutation"
+            assert isinstance(mutation_sequence, list), (
+                f"{path.name}: mutation_sequence must be a list"
+            )
+            assert len(mutations) > 0 or len(mutation_sequence) > 0, (
+                f"{path.name}: edit task must have at least one mutation "
+                f"(in 'mutations' or 'mutation_sequence')"
             )
 
             gt = task.get("ground_truth", {})

@@ -1,0 +1,29 @@
+name: gin_diff_comprehension
+description: "A committed header-order swap in gin.go changed client-IP detection priority; the agent must read the diff and explain the old and new behavior and its user-visible impact."
+source: "tilth-benchmark (MIT)"
+repo: gin
+commit: d7776de7d444935ea4385999711bd6331a98fecb
+type: comprehension
+category: debug
+language: go
+difficulty: medium
+version: 1
+prompt: |
+  The most recent commit changed how Gin handles client IP detection.
+  Look at what changed in the last commit and explain: (1) which
+  function or configuration was changed, (2) what the old behavior
+  was, (3) what the new behavior is, and (4) what would break for
+  users who rely on X-Forwarded-For having priority over X-Real-IP.
+ground_truth:
+  required_strings:
+    - RemoteIPHeaders
+    - X-Forwarded-For
+    - X-Real-IP
+mutation_sequence:
+  - message: "refactor: reorder remote IP header preference"
+    mutations:
+      - file: gin.go
+        action: replace
+        find: 'RemoteIPHeaders:        []string{"X-Forwarded-For", "X-Real-IP"},'
+        replace: 'RemoteIPHeaders:        []string{"X-Real-IP", "X-Forwarded-For"},'
+        occurrence: 1
