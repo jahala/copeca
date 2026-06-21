@@ -67,6 +67,31 @@
       "type": "string",
       "default": "results",
       "description": "Directory for output artifacts."
+    },
+    "adversarial_thresholds": {
+      "type": "object",
+      "description": "Per-scenario thresholds for adversarial flag computation (plan §5).",
+      "additionalProperties": false,
+      "properties": {
+        "snowball_factor": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "default": 2.0,
+          "description": "Factor for token_snowball: fires when max(per_turn) > num_turns × avg(first_3) × factor."
+        },
+        "talkative_tokens": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 1000,
+          "description": "Output token threshold for talkative_failure (fires when output_tokens > threshold AND wrong)."
+        },
+        "tool_storm_calls": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 50,
+          "description": "Tool call threshold for tool_storm (fires when num_tool_calls > threshold)."
+        }
+      }
     }
   }
 }

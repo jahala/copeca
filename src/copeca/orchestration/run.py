@@ -12,7 +12,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from copeca.config.models import EditGroundTruth, Mode, Scenario, Task
+from copeca.config.models import AdversarialThresholds, EditGroundTruth, Mode, Scenario, Task
 from copeca.orchestration.state import provision_arm
 from copeca.runners.base import BaseRunner
 from copeca.runners.cost import compute_cost
@@ -35,6 +35,8 @@ def run_single(
     timeout_seconds: int = 300,
     mode: Mode | None = None,
     worktree_id: str | None = None,
+    budget_usd: float | None = None,
+    adversarial_thresholds: AdversarialThresholds | None = None,
 ) -> dict[str, Any]:
     """Execute a single copeca run — the complete measurement pipeline.
 
@@ -57,6 +59,11 @@ def run_single(
         worktree_id: Per-work-item discriminator forwarded to repo_mgr so
               concurrent workers for the same repo get distinct worktree paths.
               None lets repo_mgr generate a UUID (safe but non-deterministic).
+        budget_usd: Dollar cap for this run; sourced from scenario.budget_usd.
+              When provided, passed to build_command for runner enforcement and
+              used to compute budget_exhausted.  None = no cap.
+        adversarial_thresholds: Per-scenario flag thresholds. When None, the
+              AdversarialThresholds defaults apply.
 
     Returns:
         The JSONL record as a dict. The caller is responsible for persisting it.
@@ -91,6 +98,7 @@ def run_single(
         command = runner.build_command(
             model=model,
             prompt=task.prompt,
+            budget=budget_usd,
             mcp_config=harness.mcp_config_path,
         )
         if harness.wrapper:
@@ -170,12 +178,16 @@ def run_single(
         else:
             total_cost_usd = parsed.total_cost_usd
             vendor_cost_usd = None
-        # 6.6 Compute adversarial flags from parsed data
+        # 6.6 Compute adversarial flags — must run after grading so correct/
+        #     result_text are available.
+        _thresholds = adversarial_thresholds or AdversarialThresholds()
         flags = _compute_adversarial_flags(
             parsed=parsed,
             total_cost_usd=total_cost_usd,
-            budget_usd=None,  # budget from scenario, passed later
+            budget_usd=budget_usd,
             timeout_seconds=timeout_seconds,
+            correct=correct,
+            thresholds=_thresholds,
         )
 
         # 7. Build JSONL record
@@ -236,42 +248,66 @@ def _compute_adversarial_flags(
     total_cost_usd: float,
     budget_usd: float | None,
     timeout_seconds: int,
+    correct: bool | None,
+    thresholds: AdversarialThresholds,
 ) -> dict[str, bool | None]:
-    """Compute adversarial flags from parsed run data.
+    """Compute adversarial flags from parsed run data (plan §5).
 
-    Architecture.md §4 defines these heuristics. Flags that cannot be
-    computed from available data are None (not False).
+    Flags that cannot be computed from available data are None (not False).
+    All thresholds come from the caller-supplied AdversarialThresholds.
     """
+    # talkative_failure: verbose output AND wrong answer.
+    # null when correctness is unknown (correct=None) — data genuinely missing.
+    if correct is None:
+        talkative_failure: bool | None = None
+    else:
+        output_tokens = parsed.total_output_tokens
+        talkative_failure = (
+            output_tokens > thresholds.talkative_tokens and not correct
+        )
+
+    # tool_storm: excessive tool calls.
+    # null only if num_tool_calls is unavailable; the RunResult always has it,
+    # so this will always be bool in practice.
+    num_calls = parsed.num_tool_calls
+    tool_storm: bool | None = num_calls > thresholds.tool_storm_calls
+
+    # budget_exhausted: cost >= cap AND no result produced.
+    if budget_usd is None:
+        budget_exhausted: bool | None = None
+    else:
+        result_empty = not parsed.result_text  # covers "" and None
+        budget_exhausted = total_cost_usd >= budget_usd and result_empty
+
     return {
         "timeout": (
             parsed.duration_ms >= timeout_seconds * 1000
             if timeout_seconds > 0
             else None
         ),
-        "budget_exhausted": (
-            total_cost_usd >= budget_usd
-            if budget_usd is not None
-            else None
-        ),
+        "budget_exhausted": budget_exhausted,
         "error": parsed.error is not None,
-        "token_snowball": _check_token_snowball(parsed),
-        "talkative_failure": None,  # requires correctness context across reps
-        "tool_storm": None,  # requires threshold config from scenario
+        "token_snowball": _check_token_snowball(parsed, thresholds.snowball_factor),
+        "talkative_failure": talkative_failure,
+        "tool_storm": tool_storm,
     }
 
 
-def _check_token_snowball(parsed: Any) -> bool | None:
-    """Check if later turns grow tokens suspiciously vs first turns."""
+def _check_token_snowball(parsed: Any, factor: float = 2.0) -> bool | None:
+    """Check if any turn's output grows past num_turns × avg(first_3) × factor.
+
+    Plan §5 formula: max(per_turn) > num_turns × avg(first_3_turns) × factor
+    Returns None when data is genuinely missing (< 3 turns or zero avg).
+    """
     if parsed.num_turns < 3 or not parsed.turns:
         return None
     first_three = parsed.turns[:3]
     avg_first = sum(t.output_tokens for t in first_three) / len(first_three)
     if avg_first == 0:
         return None
-    for turn in parsed.turns:
-        if turn.output_tokens > avg_first * 3:  # 3x growth is suspicious
-            return True
-    return False
+    threshold = parsed.num_turns * avg_first * factor
+    max_output = max(t.output_tokens for t in parsed.turns)
+    return max_output > threshold
 
 
 def run_matrix(
@@ -428,6 +464,8 @@ def _run_one_work_item(
         timeout_seconds=scenario.timeout_seconds,
         mode=mode_obj,
         worktree_id=worktree_id,
+        budget_usd=scenario.budget_usd,
+        adversarial_thresholds=scenario.adversarial_thresholds,
     )
     record["repetition"] = item["rep"]
     return record

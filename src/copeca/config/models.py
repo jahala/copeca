@@ -199,6 +199,21 @@ class RunnerConfig(BaseModel):
         return self
 
 
+# ── AdversarialThresholds ──────────────────────────────────────────────────────
+
+
+class AdversarialThresholds(BaseModel):
+    """Configurable thresholds for adversarial flag computation (§5).
+
+    All fields have defaults matching the plan's documented values.
+    Set per-scenario in the YAML to tune detection sensitivity.
+    """
+
+    snowball_factor: float = Field(default=2.0, gt=0)
+    talkative_tokens: int = Field(default=1000, ge=1)
+    tool_storm_calls: int = Field(default=50, ge=1)
+
+
 # ── Scenario ──────────────────────────────────────────────────────────────────
 
 
@@ -219,3 +234,6 @@ class Scenario(BaseModel):
     timeout_seconds: int = Field(default=300, ge=1)
     max_workers: int = Field(default=1, ge=1)
     output_dir: str = "results"
+    adversarial_thresholds: AdversarialThresholds = Field(
+        default_factory=AdversarialThresholds
+    )
