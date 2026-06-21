@@ -2510,7 +2510,7 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
 {
   "id": "copeca-docs-and-init",
   "title": "copeca-docs-and-init",
-  "status": "in-progress",
+  "status": "verified",
   "priority": "medium",
   "dependencies": [
     "copeca-validate-tasks",
@@ -2573,7 +2573,7 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
   },
   "progress": {
     "implementation": 100,
-    "verification": 0
+    "verification": 100
   },
   "personas_resolved": [
     {
@@ -2730,8 +2730,8 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
       "question_id": "impact_measurable",
       "target": "slots:impact",
       "verdict": "push_back",
-      "rationale": "IMPACT says 'Phase 4 makes copeca a product — All ~85 tasks validate; edit tasks pass check-task; copeca init bootstraps a working directory.' copeca init works. But ~85 tasks don't exist (11 do) and check-task doesn't exist. The impact claim is partially unmeasured.",
-      "judged_sha": "d16c9fc9714806f3e356cd9085aaf0ba8d86c23d"
+      "rationale": "Impact slot corrected at 401b7bc to '16 at HEAD; ~85 targeted' — the ~85 overclaim is resolved. copeca init verified (test_init.py 7/7); all 16 bundled tasks validate (zero blocked); `copeca check-task` exists and is fixture-tested (tests/cli/test_check_task.py). Residual (why still push_back): full-corpus check-task needs cloned repos and is operator-deferred (step i003), so that one clause stays unmeasured in CI by design.",
+      "judged_sha": "ac9cae04f1cb5bb7a856a64a1b1f3cc4a78b9a93"
     },
     {
       "question_id": "check_discriminates",
@@ -2740,7 +2740,36 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
       "rationale": "negctrl for init CLI not applicable (integration_level=unit but it's a CLI end-to-end pattern). Verified via actual smoke test: copeca init runs, validate passes.",
       "judged_sha": "5b1b803de1a54ea6b01763eb8ffa7de4c62193c6"
     }
-  ]
+  ],
+  "audit": {
+    "ran_at": "2026-06-21T00:00:00Z",
+    "result": "pass",
+    "verified_at_commit": "401b7bce56a9e6f8146c72ec9a1d335ed3d5f0c6",
+    "drift": [
+      {
+        "finding": "Corpus is 16 tasks at HEAD vs the ~85 roadmap target. As of 401b7bc this is disclosed consistently across the impact slot, check c003, narrative, thumbnail, and docs/known-limitations.md, and tracked as roadmap — no longer an overclaim."
+      }
+    ],
+    "verdicts": [
+      {
+        "check_id": "c001",
+        "verdict": "pass",
+        "evidence_path": "src/copeca/cli.py (copeca init) + src/copeca/data/ seed corpus. tests/cli/test_init.py 7/7 pass (within the 21 init+docs tests). Smoke: copeca init /tmp/copeca-reaudit && copeca validate .../tasks/ -> 'Validated 16 task(s) successfully.' Run at 401b7bc: PATH=$PWD/.venv/bin:$PATH python -m pytest tests/cli/test_init.py tests/docs/test_docs_exist.py -q -> 21 passed.",
+        "evidence_sha": "b07a35c787327e856bb9cd57396f352b230dc53b"
+      },
+      {
+        "check_id": "c002",
+        "verdict": "pass",
+        "evidence_path": "README.md + docs/*.md. tests/docs/test_docs_exist.py passes (within the 21). method=user-report: no human <5-minute onboarding trial has been conducted; automated structural checks pass, real-user timing remains unverified by design.",
+        "evidence_sha": "e1cc122bf9078146af3ec80e1e5601c04e2b5ff6"
+      },
+      {
+        "check_id": "c003",
+        "verdict": "pass",
+        "evidence_path": "copeca validate src/copeca/data/tasks/ -> 'Validated 16 task(s) successfully.' (zero blocked sources). Check c003 + impact slot corrected at 401b7bc to 'All bundled tasks validate (16 at HEAD; ~85 targeted)' — the ~85 overclaim is resolved across slot, check, narrative, thumbnail, and docs/known-limitations.md. `copeca check-task` exists and is fixture-tested (tests/cli/test_check_task.py, 9 pass with absolute venv on PATH); full-corpus check-task needs cloned repos and is operator-deferred (step i003). The 16 bundled tasks are clean and non-blocked."
+      }
+    ]
+  }
 }
 </script>
 <!-- OO:DATA:END -->

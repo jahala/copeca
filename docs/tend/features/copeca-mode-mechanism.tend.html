@@ -2570,7 +2570,8 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
       "description": "Experimental mode integration (env, config-dir, MCP) reaches the agent end-to-end via run_matrix — not just in isolation",
       "validates": "what",
       "method": "synthetic-test",
-      "verification_recipe": "Through the REAL run_matrix path (NOT hand-injected work items): (a) an experimental mode's env reaches the runner while baseline stays clean — tests/orchestration/test_provision_arm_wiring.py::TestMatrixPathModeWiring; (b) the per-arm config dir is delivered via the runner-declared config_dir_env when agent_config is set — tests/orchestration/test_config_dir_delivery.py; (c) mode.mcp_config is materialized to arms_dir/mcp.json and its path passed to build_command via the runner's arg_map — tests/orchestration/test_mcp_materialization.py + tests/runners/test_mcp_command_wiring.py; (d) mode names resolve from defaults/modes/<name>.yaml via load_mode — tests/config/test_loader.py. NOTE: prior checks c001-c003 only exercised Mode schema validation + provision_arm in isolation; this check covers the integration that was missing (the mechanism was built but disconnected from the run pipeline)."
+      "verification_recipe": "Through the REAL run_matrix path (NOT hand-injected work items): (a) an experimental mode's env reaches the runner while baseline stays clean — tests/orchestration/test_provision_arm_wiring.py::TestMatrixPathModeWiring; (b) the per-arm config dir is delivered via the runner-declared config_dir_env when agent_config is set — tests/orchestration/test_config_dir_delivery.py; (c) mode.mcp_config is materialized to arms_dir/mcp.json and its path passed to build_command via the runner's arg_map — tests/orchestration/test_mcp_materialization.py + tests/runners/test_mcp_command_wiring.py; (d) mode names resolve from defaults/modes/<name>.yaml via load_mode — tests/config/test_loader.py. NOTE: prior checks c001-c003 only exercised Mode schema validation + provision_arm in isolation; this check covers the integration that was missing (the mechanism was built but disconnected from the run pipeline).",
+      "validates_job": "tool-builder:1"
     }
   ],
   "smoke": {
@@ -2708,6 +2709,27 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
           "text": "Smoke verified: 5 mode YAMLs load and validate. Mode model + per-arm harness + compat warnings all implemented and tested. Completeness: feature structurally complete, integration test validates full mode lifecycle."
         }
       ]
+    },
+    {
+      "id": "i006",
+      "title": "F-C3 part 2: thread the mode mechanism through run_matrix — env/config-dir/MCP reach the agent end-to-end",
+      "dependencies": [
+        "i003"
+      ],
+      "status": "done",
+      "step_type": "agent",
+      "traces_to": [
+        "c004"
+      ],
+      "description": "Test: tests/orchestration/test_provision_arm_wiring.py::TestMatrixPathModeWiring + tests/orchestration/test_config_dir_delivery.py + tests/orchestration/test_mcp_materialization.py + tests/runners/test_mcp_command_wiring.py + tests/config/test_loader.py::TestLoadMode\nAsserts (through the REAL run_matrix path, not hand-injected work items): (a) an experimental mode's env reaches the runner while baseline stays clean; (b) the per-arm config dir is delivered via the runner-declared config_dir_env when agent_config is set; (c) mode.mcp_config is materialized to arms_dir/mcp.json and its path passed to build_command via the runner arg_map; (d) mode names resolve from defaults/modes/<name>.yaml via load_mode.\nBoundary: orchestration + runner integration (run_matrix -> provision_arm -> build_command).\nRun: PATH=$PWD/.venv/bin:$PATH python -m pytest tests/orchestration/test_provision_arm_wiring.py tests/orchestration/test_config_dir_delivery.py tests/orchestration/test_mcp_materialization.py tests/runners/test_mcp_command_wiring.py tests/config/test_loader.py -q\n\nImplement: run.py run_matrix populates the work-item 'mode_obj' from mode_defs and threads it through _run_one_work_item -> run_single -> provision_arm; state.py provision_arm writes arms_dir/mcp.json; the subprocess runner build_command consumes config_dir_env + the mcp arg via the runner arg_map. This is the F-C3 part-2 remediation (the mechanism was built in i001-i003 but DISCONNECTED from the run pipeline). Recorded as a discrete step so check c004 is no longer an orphan (it now traces to an implementation step).",
+      "verification_profile": "thorough",
+      "log": [
+        {
+          "at": "2026-06-21T00:00:00Z",
+          "type": "note",
+          "text": "F-C3 part-2 wiring recorded as a discrete step linking the end-to-end run_matrix mode integration to check c004 (previously an orphan). Closes the last orphan check in the garden."
+        }
+      ]
     }
   ],
   "judgments": [
@@ -2736,38 +2758,34 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
   "audit": {
     "ran_at": "2026-06-21T00:00:00Z",
     "result": "pass",
-    "verified_at_commit": "778f9b44cd7136a7717e721a07975270893395a3",
+    "verified_at_commit": "401b7bce56a9e6f8146c72ec9a1d335ed3d5f0c6",
+    "drift": [],
     "verdicts": [
+      {
+        "check_id": "c004",
+        "verdict": "pass",
+        "evidence_path": "src/copeca/orchestration/run.py (run_matrix populates work-item mode_obj + threads through _run_one_work_item -> run_single -> provision_arm) + src/copeca/orchestration/state.py (provision_arm writes arms_dir/mcp.json) + src/copeca/runners/subprocess.py (build_command consumes config_dir_env + the mcp arg via the runner arg_map). Now traced by step i006 (orphan closed) and anchored to job tool-builder:1. Full mode-mechanism evidence re-run at 401b7bc: PATH=$PWD/.venv/bin:$PATH python -m pytest tests/config/test_mode_models.py tests/config/test_mode_yaml.py tests/orchestration/test_mode_isolation.py tests/orchestration/test_provision_arm_wiring.py tests/orchestration/test_config_dir_delivery.py tests/orchestration/test_mcp_materialization.py tests/runners/test_mcp_command_wiring.py tests/config/test_loader.py -q -> 71 passed (covers c001-c004).",
+        "evidence_sha": "61c7a21325cc9f3cea9bd20b383c18a051e95941"
+      },
       {
         "check_id": "c001",
         "verdict": "pass",
-        "evidence_path": "src/copeca/config/models.py (Mode Pydantic model, 5 integration paths) + src/copeca/data/defaults/modes/ (5 YAML files). tests/config/test_mode_models.py 9/9 pass (all 5 paths, tools-only, multi-path, name pattern). tests/config/test_mode_yaml.py 11/11 pass (all 5 YAMLs load as valid Mode, content assertions per path). Python validation: load_mode('baseline'), load_mode('hook'), load_mode('proxy'), load_mode('wrapper'), load_mode('indexed') all succeed. Smoke: copeca validate --modes defaults/modes/ flag does not exist; instead, all 5 mode YAMLs validated via load_mode() in Python — all OK. Run: PATH=.venv/bin:$PATH python -m pytest tests/config/test_mode_models.py tests/config/test_mode_yaml.py -q -> 20 passed.",
-        "validates_job_satisfied": null,
+        "evidence_path": "src/copeca/config/models.py (Mode Pydantic model, 5 integration paths) + src/copeca/data/defaults/modes/ (5 YAML files). tests/config/test_mode_models.py 9/9 pass (all 5 paths, tools-only, multi-path, name pattern). tests/config/test_mode_yaml.py 11/11 pass (all 5 YAMLs load as valid Mode, content assertions per path). Re-verified at 401b7bc within the 71-test mode-mechanism run.",
         "evidence_sha": "c9738cbb29c5275b94bd5b7608b09ecbba252c2b"
       },
       {
         "check_id": "c002",
         "verdict": "pass",
-        "evidence_path": "src/copeca/orchestration/state.py (provision_arm, ArmHarness) + src/copeca/orchestration/run.py (run_matrix). tests/orchestration/test_mode_isolation.py: 16 pass (baseline clean, env isolation, wrapper prefix, agent_config copy, setup run, per-arm isolation). tests/orchestration/test_provision_arm_wiring.py::TestMatrixPathModeWiring::test_run_matrix_threads_mode_env_to_runner PASS — experimental mode env reaches runner while baseline stays clean, through real run_matrix path. Run: PATH=.venv/bin:$PATH python -m pytest tests/orchestration/test_mode_isolation.py tests/orchestration/test_provision_arm_wiring.py -q -> 21 passed.",
-        "validates_job_satisfied": null,
+        "evidence_path": "src/copeca/orchestration/state.py (provision_arm, ArmHarness) + src/copeca/orchestration/run.py (run_matrix). tests/orchestration/test_mode_isolation.py 16 pass (baseline clean, env isolation, wrapper prefix, agent_config copy, setup run, per-arm isolation). tests/orchestration/test_provision_arm_wiring.py::TestMatrixPathModeWiring PASS — experimental mode env reaches the runner while baseline stays clean, through the real run_matrix path. Re-verified at 401b7bc within the 71-test run.",
         "evidence_sha": "ce37d5c5791d294e6d1839b4ee2b7e45096d5734"
       },
       {
         "check_id": "c003",
         "verdict": "pass",
-        "evidence_path": "src/copeca/orchestration/state.py (provision_arm env isolation). tests/orchestration/test_mode_isolation.py — env dict copy per arm, baseline gets no overrides, experimental gets ANTHROPIC_BASE_URL. Env isolation confirmed: each arm gets its own env dict copy, no cross-contamination between arms. Run: PATH=.venv/bin:$PATH python -m pytest tests/orchestration/test_mode_isolation.py -q -> 16 passed.",
-        "validates_job_satisfied": null,
+        "evidence_path": "src/copeca/orchestration/state.py (provision_arm env isolation). tests/orchestration/test_mode_isolation.py — env dict copied per arm, baseline gets no overrides, experimental gets ANTHROPIC_BASE_URL; no cross-arm contamination. Re-verified at 401b7bc within the 71-test run.",
         "evidence_sha": "ce37d5c5791d294e6d1839b4ee2b7e45096d5734"
-      },
-      {
-        "check_id": "c004",
-        "verdict": "pass",
-        "evidence_path": "tests/orchestration/test_provision_arm_wiring.py::TestMatrixPathModeWiring::test_run_matrix_threads_mode_env_to_runner PASS (env through real run_matrix). tests/orchestration/test_config_dir_delivery.py 4/4 pass (config dir delivered via runner-declared env var when agent_config set). tests/orchestration/test_mcp_materialization.py 6/6 pass (mcp_config written as mcp.json, path passed to build_command). tests/runners/test_mcp_command_wiring.py 6/6 pass (mcp flag in command when arg_map declares it, end-to-end from run_single). tests/config/test_loader.py::TestLoadMode::test_load_mode_baseline_returns_mode PASS (mode names resolve from defaults/modes/<name>.yaml). Run: PATH=.venv/bin:$PATH python -m pytest tests/orchestration/test_provision_arm_wiring.py tests/orchestration/test_config_dir_delivery.py tests/orchestration/test_mcp_materialization.py tests/runners/test_mcp_command_wiring.py -q -> 21 passed.",
-        "validates_job_satisfied": null,
-        "evidence_sha": "90f57694107a83aadd2e52a83eaad9241ffa9266"
       }
-    ],
-    "drift": []
+    ]
   }
 }
 </script>
