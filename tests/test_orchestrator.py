@@ -321,3 +321,68 @@ class TestKeepWorktrees:
             repo_commit=None,
         )
         assert repo_mgr.resets_called == 1
+
+
+class TestVendorPrimaryCost:
+    """The provider's reported (vendor) cost is authoritative for the headline;
+    the modeled (computed-from-tokens) cost is a labeled cross-check and the
+    fallback when a runner reports no cost of its own (shakedown SD-D). Token
+    counts cannot reconstruct cache TTL / tier / discounts, so the billed cost
+    is the real number.
+    """
+
+    PRICING = {"input": 3.0, "cache_creation": 3.75, "cache_read": 0.30, "output": 15.0}
+
+    def test_vendor_cost_is_authoritative_when_reported(self, tmp_path, test_repo):
+        repo_mgr = StubRepoManager(tmp_path / "worktrees")
+        # EchoParser reports total_cost_usd=0.05 (vendor) and no token turns
+        # (so modeled computed cost is 0.0).
+        result = run_single(
+            task=_make_task("vendor_primary"),
+            mode_name="baseline",
+            model="test-model",
+            runner=_make_runner(),
+            repo_mgr=repo_mgr,
+            repo_uri=str(test_repo),
+            repo_commit=None,
+            pricing=self.PRICING,
+        )
+        assert result["cost_source"] == "vendor"
+        assert result["total_cost_usd"] == 0.05          # billed cost, NOT modeled
+        assert result["vendor_cost_usd"] == 0.05
+        assert result["computed_cost_usd"] == 0.0        # modeled estimate kept
+
+    def test_modeled_cost_is_fallback_when_no_vendor_cost(self, tmp_path, test_repo):
+        from copeca.runners.parsers.base import RunResult, Turn
+
+        class _TokensNoVendorParser:
+            def parse(self, stdout, supported_events=None):
+                return RunResult(
+                    turns=[Turn(input_tokens=1000, output_tokens=500)],
+                    result_text="Matcher find_at",
+                    total_cost_usd=0.0,   # runner reports NO cost
+                    duration_ms=100,
+                )
+
+        runner = SubprocessRunner(
+            name="no-vendor",
+            cli="echo",
+            default_args=[],
+            arg_map={"prompt_separator": ""},
+            parser=_TokensNoVendorParser(),
+        )
+        repo_mgr = StubRepoManager(tmp_path / "worktrees")
+        result = run_single(
+            task=_make_task("modeled_fallback"),
+            mode_name="baseline",
+            model="test-model",
+            runner=runner,
+            repo_mgr=repo_mgr,
+            repo_uri=str(test_repo),
+            repo_commit=None,
+            pricing=self.PRICING,
+        )
+        # computed = (1000*3 + 500*15) / 1e6 = 0.0105
+        assert result["cost_source"] == "modeled"
+        assert result["total_cost_usd"] == pytest.approx(0.0105)
+        assert result["vendor_cost_usd"] == 0.0

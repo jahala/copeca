@@ -105,10 +105,13 @@ These are the invariants that make copeca numbers trustworthy:
   calls, no network. A planned authoring-time option will additionally probe a live
   model with the task ID and exclude if it reproduces the gold solution; that
   feature requires an API key and is not yet shipped.
-- **Cost is computed, never trusted.** `total_cost_usd` in the JSONL record comes
-  from `Σ tokens × pricing`. Vendor-reported cost goes into `vendor_cost_usd` —
-  a cross-check field, never the primary number. Divergence > 5% triggers
-  a staleness warning.
+- **Cost: the bill is the headline, the model is the yardstick.** `total_cost_usd`
+  is the vendor's billed cost when the runner reports it (`cost_source = "vendor"`) —
+  it captures cache TTL, tier, and discounts that token counts cannot. The computed
+  cost (`computed_cost_usd = Σ tokens × pricing`) is always recorded as the
+  reproducible, provider-neutral cross-check; a >5% divergence flags possible
+  misreporting. When no vendor cost is reported, computed is the fallback
+  (`cost_source = "modeled"`).
 - **Reproducibility over convenience.** Every run records the repo commit SHA,
   verified toolchain versions, runner config with pricing, and task definition.
   A `.copeca` zip (opt-in via `--artifacts`) carries all of this with an

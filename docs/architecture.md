@@ -179,8 +179,9 @@ Validator: check correctness
   │  └── test_command     → exit 0? (edit tasks only)
   │
   ▼
-Cost model: total_cost_usd = Σ(tokens × pricing[model])
-    vendor_cost_usd = parsed (cross-check only, >5% → warning)
+Cost model: vendor_cost_usd = parsed billed cost (authoritative when reported)
+    computed_cost_usd = Σ(tokens × pricing[model])   (reproducible cross-check)
+    total_cost_usd = vendor when reported, else computed   (cost_source records which)
   │
   ▼
 Writer: append JSONL record
@@ -305,9 +306,14 @@ or "guidelines" — they are the definition of what copeca IS.
    task set must be safe to load) and objectivity (if you need code to grade it,
    it probably isn't objective).
 
-2. **Cost is computed, never trusted.** The JSONL `total_cost_usd` field comes
-   from `Σ tokens × pricing`. Vendor cost is `vendor_cost_usd` — a cross-check
-   only. This is the only basis for cross-provider comparison.
+2. **Cost: the bill is the headline, the model is the yardstick.** `total_cost_usd`
+   is the vendor's billed cost when the runner reports it (`cost_source = "vendor"`) —
+   it captures cache TTL, tier, and discounts that token counts cannot, and it is
+   frozen into the `.copeca` artifact at run time. `computed_cost_usd = Σ tokens ×
+   pricing` is always recorded as the reproducible, provider-neutral number — the
+   basis for cross-provider and cross-time comparison — and as a cross-check on the
+   vendor's self-report (a large divergence flags possible misreporting). When no
+   vendor cost is reported, computed is the fallback (`cost_source = "modeled"`).
 
 3. **The baseline must be clean.** Every A/B comparison must run baseline with
    its own config dir, its own env, and zero inherited hooks. The subprocess

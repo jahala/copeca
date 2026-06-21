@@ -69,8 +69,8 @@ def test_repo(tmp_path: Path) -> Path:
 
 
 class TestCostInPipeline:
-    def test_cost_computed_from_tokens_and_pricing(self, tmp_path, test_repo):
-        """When pricing is provided, total_cost_usd is computed from tokens * rates."""
+    def test_computed_cost_recorded_vendor_is_headline(self, tmp_path, test_repo):
+        """computed_cost_usd is derived from tokens * rates; the vendor's reported cost is the headline total_cost_usd (SD-D)."""
         parser = TokenEchoParser(
             turns=[
                 Turn(
@@ -114,7 +114,8 @@ class TestCostInPipeline:
             pricing=SAMPLE_PRICING,
         )
 
-        # total_cost_usd should be computed from tokens * pricing, not the vendor's 0.05
+        # computed_cost_usd is derived from tokens * pricing; the headline
+        # total_cost_usd is the vendor's billed figure when reported (SD-D).
         expected = compute_cost(
             tokens={
                 "input_tokens": 5000,
@@ -124,8 +125,9 @@ class TestCostInPipeline:
             },
             pricing=SAMPLE_PRICING,
         )
-        assert result["total_cost_usd"] == pytest.approx(expected)
-        assert result["total_cost_usd"] != 0.05  # NOT the vendor cost
+        assert result["computed_cost_usd"] == pytest.approx(expected)
+        assert result["total_cost_usd"] == 0.05          # vendor billed cost = headline
+        assert result["cost_source"] == "vendor"
 
     def test_vendor_cost_usd_written(self, tmp_path, test_repo):
         """When pricing is provided, vendor_cost_usd records the parser's cost."""
@@ -276,7 +278,8 @@ class TestCostInPipeline:
         expected = (
             10000 * 3.0 + 500 * 3.75 + 2000 * 0.30 + 500 * 15.0
         ) / 1_000_000
-        assert result["total_cost_usd"] == pytest.approx(expected)
+        assert result["computed_cost_usd"] == pytest.approx(expected)
+        assert result["total_cost_usd"] == 0.10          # vendor billed cost = headline
         assert result["vendor_cost_usd"] == 0.10
 
     def test_zero_token_cost_is_zero(self, tmp_path, test_repo):

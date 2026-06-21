@@ -165,20 +165,34 @@ def run_single(
                 },
                 pricing=pricing,
             )
-            total_cost_usd = computed_cost
             vendor_cost_usd = parsed.total_cost_usd
-            # Check for vendor cost divergence (>5% triggers warning)
+            # The provider's reported cost is the AUTHORITATIVE bill: it accounts
+            # for cache hits, cache TTL (1h vs 5m), service tier and discounts,
+            # none of which can be reconstructed from token counts. Use it as the
+            # headline cost when present; keep the modeled (token-derived) cost as
+            # a labeled cross-check / drift detector and as the fallback when a
+            # runner reports no cost of its own (shakedown SD-D).
             if vendor_cost_usd is not None and vendor_cost_usd > 0:
+                total_cost_usd = vendor_cost_usd
+                cost_source = "vendor"
                 divergence = abs(computed_cost - vendor_cost_usd) / vendor_cost_usd
                 if divergence > 0.05:
                     _divergence = divergence
                     _divergence_warning = (
-                        f"Computed cost ({computed_cost:.4f}) differs from "
-                        f"vendor cost ({vendor_cost_usd:.4f}) by {divergence*100:.1f}%"
+                        f"Modeled cost ({computed_cost:.4f}) is a token-derived "
+                        f"estimate; it differs from the billed vendor cost "
+                        f"({vendor_cost_usd:.4f}) by {divergence*100:.1f}%. Token "
+                        f"counts cannot capture cache TTL / tier / discounts — the "
+                        f"billed cost is authoritative."
                     )
+            else:
+                total_cost_usd = computed_cost
+                cost_source = "modeled"
         else:
             total_cost_usd = parsed.total_cost_usd
             vendor_cost_usd = None
+            computed_cost = None
+            cost_source = "vendor"
         # 6.6 Compute adversarial flags — must run after grading so correct/
         #     result_text are available.
         _thresholds = adversarial_thresholds or AdversarialThresholds()
@@ -210,6 +224,7 @@ def run_single(
             "num_turns": parsed.num_turns,
             "num_tool_calls": parsed.num_tool_calls,
             "total_cost_usd": total_cost_usd,
+            "cost_source": cost_source,
             "duration_ms": parsed.duration_ms,
             "context_tokens": (
                 parsed.total_input_tokens + parsed.total_cache_creation_tokens
@@ -232,6 +247,8 @@ def run_single(
 
         if vendor_cost_usd is not None:
             record["vendor_cost_usd"] = vendor_cost_usd
+        if computed_cost is not None:
+            record["computed_cost_usd"] = computed_cost
 
         if _divergence is not None:
             record["metadata"]["vendor_cost_divergence"] = _divergence

@@ -81,9 +81,11 @@ Each model has per-million-token rates:
 | `cache_read` | USD per 1M cache read tokens |
 | `updated` | ISO date of last price update |
 
-Cost is computed from token counts and these rates — never from vendor
-self-reported cost. A staleness warning fires if `updated` is older than
-30 days (`architecture.md` invariant 2).
+These rates produce `computed_cost_usd` (Σ tokens × rates) — the reproducible,
+provider-neutral cost used as a cross-check and as the fallback when a runner
+reports no cost of its own. The headline `total_cost_usd` is the vendor's billed
+cost when reported. A staleness warning fires if `updated` is older than 30 days
+(`architecture.md` invariant 2).
 
 ---
 

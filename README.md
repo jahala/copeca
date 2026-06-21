@@ -61,7 +61,7 @@ limited — small N means wide confidence intervals. See
 
 | Dimension | How |
 |---|---|
-| **Cost** | `Σ tokens × runner.pricing[model]` — computed, never trusted from vendor self-reported numbers (USD is recomputed by copeca; token counts are read from the agent CLI and not re-tokenized — see known-limitations) |
+| **Cost** | The vendor's billed cost when the runner reports it (the real bill — reflects cache TTL/tier/discounts; frozen into the artifact at run time). copeca also records a reproducible, provider-neutral cross-check: `computed_cost_usd = Σ tokens × runner.pricing[model]`. Token counts are read from the agent CLI and not re-tokenized — see known-limitations. |
 | **Correctness** | String matching (comprehension tasks) or test-command exit codes (edit tasks) (case-insensitive substring matching — gameable on single tasks; see known-limitations) |
 | **Completeness** | `all_of` field verifies the agent listed *everything* — not just *something* |
 | **Futility** | Adversarial flags: token snowball, talkative failure, tool storm, budget exhaustion, timeout |
@@ -148,8 +148,9 @@ not editing copeca's code. See
 [docs/runner-configuration.md](docs/runner-configuration.md).
 
 To compute cost, copeca requires the *minimum* from the agent's output: token
-counts. Cost, duration, and completion are derived — never trusted from vendor
-self-reports.
+counts. From those it derives `computed_cost_usd` — a reproducible, provider-neutral
+cross-check; when the runner also reports its own billed cost, that vendor figure is
+the headline. Duration and completion are derived from the output too.
 
 ```jsonl
 {"type": "turn", "input_tokens": 5000, "output_tokens": 200,

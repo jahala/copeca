@@ -12,8 +12,11 @@ through this lens.
 cost_per_correct = total_cost_usd / correct_count
 ```
 
-`total_cost_usd` is the sum of token cost across all runs in a mode, computed
-from token counts and the pricing table — never from vendor self-reported cost.
+`total_cost_usd` is the vendor's billed cost when the runner reports it (the real
+bill — it reflects cache hits, cache TTL, service tier, and discounts), summed
+across all runs in a mode. copeca also records `computed_cost_usd` (Σ tokens × the
+pricing table) as a reproducible, provider-neutral cross-check; when a runner
+reports no cost, the computed figure is the fallback.
 `correct_count` is the number of runs where the agent got the answer right.
 
 A mode with 100 runs at $0.10 each and 50 correct answers has a

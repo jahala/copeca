@@ -59,15 +59,28 @@ averages out. Semantic grading (embedding similarity, LLM judge) is planned but
 is not in the scoring path (see `architecture.md` §8 — LLM judge is
 deliberately excluded from scoring).
 
-## Cost is computed from self-reported token counts
+## Cost figures depend on the runner's self-report
 
-Cost (USD) is recomputed by copeca from token counts using a fixed price table —
-never taken from a vendor dollar figure. However, the token counts themselves
-come from the agent CLI's own output and are not independently re-tokenized by
-copeca. A runner that misreports token counts would mislead cost figures without
-triggering the >5% vendor-cost cross-check (which compares computed cost against
-the vendor's self-reported dollar figure, not against independently counted
-tokens). Transcript re-tokenization is planned.
+The headline `total_cost_usd` is the vendor's billed cost when the runner reports
+one (e.g. Claude Code's result-event cost). It is the real bill — it reflects cache
+hits, cache TTL, service tier, and discounts — and it is frozen into the `.copeca`
+artifact at run time, so later vendor price drift does not change a published
+result. copeca also records `computed_cost_usd` (Σ tokens × a pinned price table)
+as a reproducible, provider-neutral cross-check and as the fallback when no vendor
+cost is reported.
+
+Two honest caveats. (1) The computed figure is a **rough estimate** — it can differ
+from the bill by ~30% because token counts cannot capture cache TTL (1h vs 5m
+writes are priced differently), service tier, or discounts; copeca deliberately
+does not model these, so a computed-vs-vendor divergence is informational, not
+proof the vendor is wrong. (2) Both figures ultimately trace to the agent CLI's own
+output (the billed dollar figure and the token counts are self-reported; copeca
+does not independently re-tokenize the transcript). A runner that misreports both
+consistently would mislead — the cross-check catches gross inconsistency between
+the two, and artifact signing addresses provenance — but transcript re-tokenization
+is planned. Token usage is now de-duplicated per message id; the parser previously
+counted each assistant message's usage 2–3× because the stream emits it once per
+content block.
 
 ## Edit task correctness is decided solely by test command exit code
 
