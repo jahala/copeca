@@ -49,7 +49,7 @@ class StubRepoManager:
     def verify_toolchain(self, repo_key: str) -> None:
         pass
 
-    def create_worktree(self, repo_key: str, commit=None, uri=None) -> Path:
+    def create_worktree(self, repo_key: str, commit=None, uri=None, worktree_id=None) -> Path:
         self._counter += 1
         wt = self.base_dir / f"worktree-{self._counter}"
         wt.mkdir(parents=True, exist_ok=True)

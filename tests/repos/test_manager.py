@@ -206,6 +206,101 @@ class TestGitWorktreeManager:
             mgr.verify_toolchain("test-repo")
 
 
+class TestWorktreeConcurrency:
+    """Concurrent create_worktree calls for the same repo must yield distinct paths."""
+
+    def test_concurrent_same_repo_distinct_paths(
+        self, tmp_path: Path, test_repo: Path
+    ) -> None:
+        """N threads calling create_worktree for the same repo get N distinct paths.
+
+        Pins the TOCTOU bug: without per-item worktree IDs, all threads would
+        compute the same path (``{repo_key}-worktree``) and collide.  With the
+        fix every caller receives a unique path even under high concurrency.
+        """
+        import threading
+
+        mgr = GitWorktreeManager(repos_dir=tmp_path / "repos")
+        n_threads = 4
+        results: list[Path | Exception] = [Exception("not set")] * n_threads
+        lock = threading.Lock()
+
+        def worker(idx: int, worktree_id: str) -> None:
+            try:
+                wt = mgr.create_worktree(
+                    "test-repo",
+                    commit=None,
+                    uri=str(test_repo),
+                    worktree_id=worktree_id,
+                )
+                with lock:
+                    results[idx] = wt
+            except Exception as exc:  # noqa: BLE001
+                with lock:
+                    results[idx] = exc
+
+        ids = [f"mode-a_model-x_rep{i}" for i in range(n_threads)]
+        threads = [
+            threading.Thread(target=worker, args=(i, ids[i]))
+            for i in range(n_threads)
+        ]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        # Every slot must hold a Path, not an exception.
+        exceptions = [r for r in results if isinstance(r, Exception)]
+        assert not exceptions, f"Threads raised exceptions: {exceptions}"
+
+        paths = [r for r in results if isinstance(r, Path)]
+        assert len(paths) == n_threads
+
+        # All paths must be distinct — no two workers share a worktree.
+        assert len(set(paths)) == n_threads, (
+            f"Worktree path collision detected: {paths}"
+        )
+
+        # Each path must actually exist on disk.
+        for p in paths:
+            assert p.exists(), f"Worktree path does not exist: {p}"
+
+        # Cleanup
+        for p in paths:
+            _rmtree_workaround(p)
+
+    def test_worktree_path_keyed_per_work_item(
+        self, tmp_path: Path, test_repo: Path
+    ) -> None:
+        """Worktree path embeds the worktree_id discriminator, not just the repo key.
+
+        Two sequential calls with different IDs must produce different paths;
+        the discriminator must appear in the path so the caller can predict it.
+        """
+        mgr = GitWorktreeManager(repos_dir=tmp_path / "repos")
+
+        wt_a = mgr.create_worktree(
+            "test-repo", commit=None, uri=str(test_repo), worktree_id="mode-a_rep0"
+        )
+        # Reset so the same repo can issue a second worktree.
+        mgr.reset(wt_a)
+
+        wt_b = mgr.create_worktree(
+            "test-repo", commit=None, uri=str(test_repo), worktree_id="mode-b_rep0"
+        )
+
+        assert wt_a != wt_b, "Different worktree_ids must produce different paths"
+        assert "mode-a_rep0" in str(wt_a), (
+            f"worktree_id discriminator must appear in path: {wt_a}"
+        )
+        assert "mode-b_rep0" in str(wt_b), (
+            f"worktree_id discriminator must appear in path: {wt_b}"
+        )
+
+        _rmtree_workaround(wt_a)
+        _rmtree_workaround(wt_b)
+
+
 def _rmtree_workaround(path: Path) -> None:
     """Remove a directory tree, handling git's read-only files."""
     import shutil

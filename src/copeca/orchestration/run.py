@@ -34,6 +34,7 @@ def run_single(
     artifacts: bool = False,
     timeout_seconds: int = 300,
     mode: Mode | None = None,
+    worktree_id: str | None = None,
 ) -> dict[str, Any]:
     """Execute a single copeca run — the complete measurement pipeline.
 
@@ -53,6 +54,9 @@ def run_single(
         timeout_seconds: Wall-clock timeout for this run's subprocess.
         mode: The Mode model for this arm. When provided, provision_arm applies
               env overrides and config-dir isolation. None = clean baseline.
+        worktree_id: Per-work-item discriminator forwarded to repo_mgr so
+              concurrent workers for the same repo get distinct worktree paths.
+              None lets repo_mgr generate a UUID (safe but non-deterministic).
 
     Returns:
         The JSONL record as a dict. The caller is responsible for persisting it.
@@ -60,9 +64,10 @@ def run_single(
     # 1. Verify toolchain
     repo_mgr.verify_toolchain(task.repo)
 
-    # 2. Create worktree at pinned commit
+    # 2. Create worktree at pinned commit — scoped to this work item so
+    #    concurrent workers for the same repo never share a path.
     worktree = repo_mgr.create_worktree(
-        task.repo, commit=repo_commit, uri=repo_uri
+        task.repo, commit=repo_commit, uri=repo_uri, worktree_id=worktree_id
     )
 
     try:
@@ -404,6 +409,13 @@ def _run_one_work_item(
     )
 
     mode_obj: Mode | None = item.get("mode_obj")
+    # Derive a stable, human-readable discriminator from the work-item tuple.
+    # This is embedded in the worktree directory name so concurrent workers
+    # for the same repo always land on distinct filesystem paths.
+    task_key = item["task_name"].replace("/", "_")
+    mode_key = item["mode_name"].replace("/", "_")
+    model_key = item["model"].replace("/", "_")
+    worktree_id = f"{task_key}__{mode_key}__{model_key}__rep{item['rep']}"
     record = run_single(
         task=item["task"],
         mode_name=item["mode_name"],
@@ -415,6 +427,7 @@ def _run_one_work_item(
         pricing=model_pricing,
         timeout_seconds=scenario.timeout_seconds,
         mode=mode_obj,
+        worktree_id=worktree_id,
     )
     record["repetition"] = item["rep"]
     return record

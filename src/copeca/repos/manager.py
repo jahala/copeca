@@ -10,6 +10,7 @@ import logging
 import os
 import shutil
 import subprocess
+import threading
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -30,6 +31,9 @@ class GitWorktreeManager:
         self._repos_dir.mkdir(parents=True, exist_ok=True)
         self._bare_dir = self._repos_dir / "_bare"
         self._worktree_pool = self._repos_dir / "_worktrees"
+        # Serialises bare-clone creation and per-worktree prune→add so that
+        # concurrent workers for the same repo never race on the same path.
+        self._lock = threading.Lock()
 
     # ------------------------------------------------------------------
     # Public interface (called by orchestration.run)
@@ -55,17 +59,26 @@ class GitWorktreeManager:
         repo_key: str,
         commit: str | None = None,
         uri: str | None = None,
+        worktree_id: str | None = None,
     ) -> Path:
         """Create an ephemeral worktree from a bare clone.
 
         On first use for a given repo_key, clones the repo as a bare
         clone.  Then adds a worktree at the requested commit (or HEAD).
 
+        Each call produces a path scoped to *worktree_id* so concurrent
+        workers targeting the same repo never collide.  The bare clone is
+        shared across workers; the lock serialises bare-clone creation and
+        the prune→add sequence so no two callers race on the same path.
+
         Args:
             repo_key: Unique key for this repo.
             commit: Git ref to check out (None means HEAD).
             uri: URI to clone from (only used on first invocation for
                 this repo_key — subsequent calls ignore it).
+            worktree_id: Discriminator appended to the worktree directory
+                name.  When None a UUID is generated so the path is always
+                unique per call (safe for callers that don't supply one).
 
         Returns:
             Path to the worktree directory.
@@ -73,24 +86,31 @@ class GitWorktreeManager:
         Raises:
             RuntimeError: If the bare clone or worktree creation fails.
         """
-        self._bare_dir.mkdir(parents=True, exist_ok=True)
-        bare_path = self._bare_dir / repo_key
+        import uuid as _uuid
 
-        if not (bare_path / "HEAD").exists():
-            if uri is None:
-                raise RuntimeError(
-                    f"No bare clone for {repo_key!r} and no uri provided"
-                )
-            self._clone_bare(uri, bare_path)
+        if worktree_id is None:
+            worktree_id = _uuid.uuid4().hex
 
-        self._worktree_pool.mkdir(parents=True, exist_ok=True)
-        worktree_path = self._worktree_pool / f"{repo_key}-worktree"
+        with self._lock:
+            self._bare_dir.mkdir(parents=True, exist_ok=True)
+            bare_path = self._bare_dir / repo_key
 
-        # If a worktree already exists for this repo_key, prune it first.
-        if worktree_path.exists():
-            self._prune_worktree(worktree_path, bare_path)
+            if not (bare_path / "HEAD").exists():
+                if uri is None:
+                    raise RuntimeError(
+                        f"No bare clone for {repo_key!r} and no uri provided"
+                    )
+                self._clone_bare(uri, bare_path)
 
-        self._add_worktree(bare_path, worktree_path, commit)
+            self._worktree_pool.mkdir(parents=True, exist_ok=True)
+            worktree_path = self._worktree_pool / f"{repo_key}-{worktree_id}"
+
+            # If a leftover worktree exists at this exact path, prune it first.
+            if worktree_path.exists():
+                self._prune_worktree(worktree_path, bare_path)
+
+            self._add_worktree(bare_path, worktree_path, commit)
+
         return worktree_path
 
     def setup(
