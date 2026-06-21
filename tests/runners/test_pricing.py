@@ -83,11 +83,22 @@ def load_pricing():
 
 class TestPricingContent:
     def test_all_models_have_four_rate_fields(self):
-        """Every model entry has input, output, cache_creation, cache_read."""
+        """Every model entry has the four rate keys, all numeric. input/output/
+        cache_read are always billed (> 0); cache_creation may be 0 for providers
+        that report no separate cache-write token count (e.g. codex), so the cost
+        model never multiplies a nonzero rate against it — it need only be >= 0.
+        """
         for model_name, entry in load_pricing():
             for field in ["input", "output", "cache_creation", "cache_read"]:
                 assert field in entry, f"{model_name} missing {field}"
+                assert isinstance(entry[field], (int, float)), (
+                    f"{model_name} {field} is not numeric: {entry[field]!r}"
+                )
+            for field in ["input", "output", "cache_read"]:
                 assert entry[field] > 0, f"{model_name} {field} is not positive"
+            assert entry["cache_creation"] >= 0, (
+                f"{model_name} cache_creation must be >= 0"
+            )
 
     def test_all_models_have_updated_date(self):
         for model_name, entry in load_pricing():

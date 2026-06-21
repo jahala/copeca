@@ -1,0 +1,44 @@
+# OpenAI Codex CLI runner — CLI interface + pricing.
+# Interface verified against `codex exec --help` and real `codex exec --json`
+# output (codex-cli 0.133.0). Pricing illustrative — verify current rates at use.
+# Updated: 2026-06-21
+
+# Everything here is data — copeca's build_runner reads it; nothing about codex
+# is hardcoded in cli.py.
+runner:
+  cli: codex
+  default_args:
+    - exec
+    - --json                 # emit events as JSONL (parsed by codex_json)
+    - --sandbox
+    - workspace-write        # 0.133.0: --full-auto is deprecated; select sandbox
+    - --ephemeral            # don't persist session files
+    - --skip-git-repo-check  # worktrees vary; don't refuse non-git dirs
+  arg_map:
+    model: -m
+    prompt_separator: --
+  # codex exec has NO --system-prompt flag, so fold the system prompt into the
+  # positional prompt rather than silently dropping a mode's instructions.
+  prepend_system_prompt: true
+  parser: codex_json
+
+# codex `exec --json` emits no total_cost_usd, so cost is computed from these
+# rates (cost_source="modeled"; see orchestration/run.py + docs/metrics.md).
+# cache_creation is unused — codex reports no cache-write token count — but the
+# cost model reads the key, so it is present (rate irrelevant: tokens are 0).
+# Rates illustrative (USD per 1M tokens). On a ChatGPT-account auth the working
+# model is gpt-5.5 (gpt-5 / gpt-5-codex are rejected for that auth); gpt-5-codex
+# is kept for API-key auth and matches the old tilth benchmark's reference rates.
+pricing:
+  gpt-5.5:
+    input: 2.00
+    cache_creation: 0.00
+    cache_read: 0.50
+    output: 8.00
+    updated: "2026-06-21"
+  gpt-5-codex:
+    input: 2.00
+    cache_creation: 0.00
+    cache_read: 0.50
+    output: 8.00
+    updated: "2026-06-21"

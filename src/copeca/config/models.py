@@ -184,6 +184,9 @@ class RunnerConfig(BaseModel):
     default_args: list[str] = Field(default_factory=list)
     arg_map: dict[str, str] = Field(default_factory=dict)
     invoke_template: str = ""
+    # Fold the system prompt into the positional prompt for CLIs with no
+    # system-prompt flag (e.g. codex exec). Default off — claude uses --system-prompt.
+    prepend_system_prompt: bool = False
     config_dir_env: str | None = None
     parser: str = ""
     # Raw pricing as authored: each model -> {input, output, cache_*: float,

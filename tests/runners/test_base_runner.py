@@ -238,3 +238,48 @@ class TestFullArgs:
         cmd = runner.build_command(model="m", prompt="p", mcp_config="")
 
         assert "--mcp-config" not in cmd
+
+
+class TestPrependSystemPrompt:
+    """codex `exec` has no --system-prompt flag, so a runner with
+    prepend_system_prompt=True must fold the system prompt INTO the positional
+    prompt rather than drop it. A silent drop would be a measurement bug (the
+    experimental arm would lose its instructions without anyone noticing).
+    """
+
+    def _codex_like(self):
+        return StubRunner(
+            name="codex-like",
+            cli="codex",
+            default_args=["exec"],
+            arg_map={"model": "-m", "prompt_separator": "--"},
+            prepend_system_prompt=True,
+        )
+
+    def test_prepends_system_prompt_to_positional(self):
+        cmd = self._codex_like().build_command(
+            model="m", prompt="USER", system_prompt="SYS"
+        )
+        assert "--system-prompt" not in cmd  # no flag — codex has none
+        assert cmd[-1] == "SYS\n\nUSER"  # folded into the positional prompt
+        sep_idx = cmd.index("--")
+        assert cmd[sep_idx + 1] == "SYS\n\nUSER"
+
+    def test_no_system_prompt_leaves_prompt_unchanged(self):
+        cmd = self._codex_like().build_command(model="m", prompt="USER")
+        assert cmd[-1] == "USER"
+
+    def test_default_runner_does_not_prepend(self):
+        """prepend_system_prompt defaults False — a flag-style runner is unaffected."""
+        runner = StubRunner(
+            name="claude-like",
+            cli="claude",
+            arg_map={
+                "model": "--model",
+                "system_prompt": "--system-prompt",
+                "prompt_separator": "--",
+            },
+        )
+        cmd = runner.build_command(model="m", prompt="USER", system_prompt="SYS")
+        assert "--system-prompt" in cmd
+        assert cmd[-1] == "USER"  # positional prompt NOT modified

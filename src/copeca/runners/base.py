@@ -26,6 +26,9 @@ class BaseRunner(ABC):
     default_args: list[str] = field(default_factory=list)
     arg_map: dict[str, str] = field(default_factory=dict)
     invoke_template: str = ""
+    # When True, fold the system prompt into the positional prompt instead of
+    # passing a flag — for CLIs (e.g. codex exec) that have no system-prompt flag.
+    prepend_system_prompt: bool = False
 
     def build_command(
         self,
@@ -92,11 +95,16 @@ class BaseRunner(ABC):
             elif key == "mcp_config" and mcp_config:
                 cmd.extend([flag, mcp_config])
 
-        # prompt_separator + positional prompt always comes last
+        # prompt_separator + positional prompt always comes last. A runner with
+        # no system-prompt flag (codex) folds the system prompt into the positional
+        # prompt here, so the instructions are carried rather than silently dropped.
+        effective_prompt = prompt
+        if self.prepend_system_prompt and system_prompt:
+            effective_prompt = f"{system_prompt}\n\n{prompt}"
         separator = self.arg_map.get("prompt_separator", "")
         if separator:
             cmd.append(separator)
-        cmd.append(prompt)
+        cmd.append(effective_prompt)
 
         return cmd
 

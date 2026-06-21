@@ -118,6 +118,7 @@ def build_runner(
         default_args=cfg.default_args,
         arg_map=cfg.arg_map,
         invoke_template=cfg.invoke_template,
+        prepend_system_prompt=cfg.prepend_system_prompt,
         parser=get_parser(cfg.parser),
         config_dir_env=cfg.config_dir_env,
     )
