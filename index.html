@@ -1,86 +1,803 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Copeca</title>
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: #f8f8f7;
-      color: #1a1a1a;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 2rem;
-    }
-    .hero {
-      max-width: 540px;
-      width: 100%;
-      text-align: center;
-    }
-    h1 {
-      font-size: clamp(1.75rem, 5vw, 2.5rem);
-      font-weight: 700;
-      letter-spacing: -0.02em;
-      line-height: 1.2;
-      margin-bottom: 0.75rem;
-      color: #111;
-    }
-    .tagline {
-      font-size: 1.05rem;
-      color: #555;
-      margin-bottom: 2.5rem;
-      min-height: 1.5em;
-    }
-    .links {
-      display: flex;
-      gap: 1rem;
-      justify-content: center;
-      flex-wrap: wrap;
-    }
-    .links a {
-      display: inline-block;
-      padding: 0.6rem 1.4rem;
-      border-radius: 6px;
-      font-size: 0.95rem;
-      font-weight: 500;
-      text-decoration: none;
-      transition: opacity 0.15s;
-    }
-    .links a:hover { opacity: 0.8; }
-    .links .primary {
-      background: #1a1a1a;
-      color: #fff;
-    }
-    .links .secondary {
-      background: #e8e8e6;
-      color: #1a1a1a;
-    }
-    footer {
-      margin-top: 3rem;
-      font-size: 0.78rem;
-      color: #aaa;
-    }
-    footer a {
-      color: inherit;
-      text-decoration: underline;
-      text-underline-offset: 2px;
-    }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>copeca — cost per correct answer</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%231C1610'/><line x1='8' y1='20' x2='24' y2='20' stroke='%231F8A7B' stroke-width='2.2' stroke-linecap='round'/><line x1='8' y1='14' x2='24' y2='14' stroke='%23403628' stroke-width='1.4' stroke-linecap='round'/><line x1='8' y1='20' x2='8' y2='14' stroke='%23403628' stroke-width='1.2'/><line x1='24' y1='20' x2='24' y2='14' stroke='%23403628' stroke-width='1.2'/><circle cx='8' cy='14' r='2.4' fill='%239A8C72'/><circle cx='24' cy='20' r='2.4' fill='%231F8A7B'/></svg>">
+<meta name="description" content="copeca A/B-compares a coding agent with a tool against a clean baseline on one objective number: the dollar cost of getting a correct answer. Neutral, reproducible, verifiable.">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..700;1,9..144,400..600&family=Hanken+Grotesk:wght@400..800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+<style>
+/* ─────────────────────────────────────────────────────────────────────────
+   copeca landing page — set in the plotplot brand (v2.0.0). a plotplot garden tool.
+   Every value below resolves to .brand/ (palette, type, layout, surface, motion).
+   copeca's claimed accent is Teal #1F8A7B — "the yardstick · cost per correct".
+   ───────────────────────────────────────────────────────────────────────── */
+:root {
+  /* shared family palette — colors.md */
+  --pp-primary:      #357E2C;
+  --pp-primary-deep: #2C6B2A;
+  --pp-leaf:         #4A9E3F;
+  --pp-forest:       #214A2C;
+  --pp-accent:       #1F8A7B;   /* teal — copeca's bloom */
+  --pp-accent-ink:   #136B5F;   /* teal as a word — labels, ink on paper */
+
+  --pp-text:         #3A2718;
+  --pp-text-soft:    #786148;
+  --pp-bg:           #FAF5E9;
+  --pp-bg-band:      #F2EAD6;
+  --pp-bg-artifact:  #FCFAF2;
+  --pp-surface:      #F5EEDD;
+  --pp-border:       #E2D8C0;
+
+  --pp-healthy: #46913C;
+  --pp-caution: #B0741C;
+  --pp-error:   #BC4126;
+  --pp-info:    #3F7186;
+  --pp-muted:   #9A8C72;
+
+  /* product blooms — for the garden footer only */
+  --pp-tilth:  #4E88A6;
+  --pp-tend:   #D6502F;
+  --pp-petals: #E588A0;
+  --pp-pleach: #97539B;
+  --pp-umbel:  #E89227;
+  --pp-copeca: #1F8A7B;
+
+  /* soil-night terminal — colors.md */
+  --pp-term-bg:      #1C1610;
+  --pp-term-surface: #262019;
+  --pp-term-border:  #403628;
+  --pp-term-green:   #84C56A;
+  --pp-term-sun:     #F2A93B;
+  --pp-term-teal:    #3CBFAF;
+  --pp-term-text:    #F3ECD9;
+  --pp-term-soft:    #C9BBA0;
+
+  /* type — typography.md */
+  --font-heading: 'Fraunces', Georgia, serif;
+  --font-body:    'Hanken Grotesk', system-ui, sans-serif;
+  --font-code:    'JetBrains Mono', monospace;
+
+  /* radius — components.md */
+  --radius-xs: 3px; --radius-sm: 6px; --radius-md: 8px; --radius-lg: 10px; --radius-xl: 12px;
+
+  /* shadow — components.md (ink-tinted) */
+  --shadow-rest: 0 1px 0 #E2D8C0, 0 12px 40px -16px rgba(58,39,24,0.35);
+  --shadow-lift: 0 2px 4px rgba(58,39,24,0.05), 0 14px 32px rgba(58,39,24,0.08);
+  --shadow-float: 0 2px 6px rgba(58,39,24,0.07), 0 18px 44px rgba(58,39,24,0.12);
+
+  /* motion — components.md */
+  --ease-petal: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur-unfold: 0.8s;
+  --dur-micro: 0.22s;
+
+  /* layout — layout.md */
+  --container: 1200px;
+  --gutter: 32px;
+}
+
+[data-theme="dark"] {
+  --pp-primary: #84C56A;
+  --pp-primary-deep: #9FD08A;
+  --pp-accent: #3CBFAF;
+  --pp-accent-ink: #3CBFAF;
+  --pp-leaf: #9FD08A;
+  --pp-text: #F3ECD9;
+  --pp-text-soft: #C9BBA0;
+  --pp-bg: #1C1610;
+  --pp-bg-band: #211A12;
+  --pp-bg-artifact: #211A12;
+  --pp-surface: #262019;
+  --pp-border: #403628;
+  --pp-muted: #C9BBA0;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html { font-size: 18px; -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+@media (max-width: 880px) { html { font-size: 17px; } }
+@media (max-width: 520px) { html { font-size: 16px; } }
+
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  font-weight: 400;
+  font-size: 1.0625rem;
+  line-height: 1.65;
+  color: var(--pp-text);
+  background: var(--pp-bg);
+  -webkit-font-smoothing: antialiased;
+  transition: background var(--dur-micro) ease, color var(--dur-micro) ease;
+}
+
+h1, h2, h3, h4 { font-family: var(--font-heading); font-optical-sizing: auto; margin: 0; color: var(--pp-text); }
+h1 { font-size: clamp(3.4rem, 6vw, 4.6rem); line-height: 1.04; font-weight: 620; letter-spacing: -0.015em; }
+h2 { font-size: 2.4rem; line-height: 1.12; font-weight: 560; letter-spacing: -0.01em; }
+h3 { font-size: 1.6rem; line-height: 1.2; font-weight: 560; }
+h4 { font-size: 1.25rem; line-height: 1.3; font-weight: 560; }
+h1 em, h2 em { font-style: italic; font-weight: inherit; color: var(--pp-accent-ink); }
+p { margin: 0; }
+a { color: var(--pp-primary); text-decoration: none; }
+a:hover { color: var(--pp-primary-deep); }
+
+.container { max-width: var(--container); margin: 0 auto; padding: 0 var(--gutter); }
+section { padding: 112px 0; }
+@media (max-width: 880px) { section { padding: 80px 0; } }
+.band { background: var(--pp-bg-band); }
+
+.kicker {
+  font-family: var(--font-code); font-size: 0.8rem; font-weight: 500;
+  letter-spacing: 0.12em; text-transform: uppercase; color: var(--pp-accent-ink);
+  margin-bottom: 20px;
+}
+.lede { font-size: 1.3rem; line-height: 1.5; font-weight: 400; color: var(--pp-text-soft); max-width: 62ch; }
+.section-head { max-width: 64ch; margin-bottom: 56px; }
+.section-head p { margin-top: 16px; }
+
+:where(a, button, .btn, summary):focus-visible {
+  outline: 2px solid var(--pp-primary); outline-offset: 3px; border-radius: var(--radius-xs);
+}
+
+/* ── buttons — components.md conventions ── */
+.btn {
+  display: inline-flex; align-items: center; gap: 8px; font-family: var(--font-body);
+  font-size: 1rem; font-weight: 600; padding: 12px 22px; border-radius: var(--radius-sm);
+  border: 1.5px solid transparent; cursor: pointer; transition: all var(--dur-micro) ease;
+  text-decoration: none; line-height: 1;
+}
+/* teal fill — copeca's bloom colour, mirrors umbel's .btn-sun pattern */
+.btn-teal { background: var(--pp-accent); color: #FAF5E9; }
+.btn-teal:hover { color: #FAF5E9; filter: brightness(0.92); transform: translateY(-1px); }
+.btn-teal:active { transform: translateY(0); }
+.btn-outline { background: transparent; border-color: var(--pp-primary); color: var(--pp-primary); }
+.btn-outline:hover { background: var(--pp-surface); }
+
+/* ── nav ── */
+header.nav {
+  position: sticky; top: 0; z-index: 50;
+  background: color-mix(in srgb, var(--pp-bg) 88%, transparent);
+  backdrop-filter: blur(8px); border-bottom: 1px solid var(--pp-border);
+}
+.nav-inner { display: flex; align-items: center; justify-content: space-between; height: 64px; }
+.brand { display: inline-flex; align-items: center; gap: 10px; font-weight: 700; font-size: 1.15rem; color: var(--pp-text); }
+.brand:hover { color: var(--pp-text); }
+.nav-links { display: flex; align-items: center; gap: 28px; }
+.nav-links a { color: var(--pp-text-soft); font-size: 0.95rem; font-weight: 500; }
+.nav-links a:hover { color: var(--pp-primary); }
+.nav-right { display: flex; align-items: center; gap: 16px; }
+.theme-toggle {
+  width: 34px; height: 34px; display: inline-grid; place-items: center;
+  border-radius: var(--radius-sm); border: 1px solid var(--pp-border);
+  background: var(--pp-surface); color: var(--pp-text-soft); cursor: pointer;
+}
+.theme-toggle:hover { color: var(--pp-primary); }
+@media (max-width: 880px) { .nav-links { display: none; } }
+
+/* ── hero ── */
+.hero { padding: 75px 0 72px; }
+.hero-grid { display: grid; grid-template-columns: 1.05fr 0.95fr; gap: 56px; align-items: center; }
+@media (max-width: 880px) { .hero-grid { grid-template-columns: 1fr; gap: 44px; } }
+.hero h1 { margin-bottom: 24px; }
+.hero .lede { margin-bottom: 32px; }
+.hero-cta { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; }
+.hero-note { margin-top: 18px; font-family: var(--font-code); font-size: 0.82rem; color: var(--pp-muted); }
+
+/* ── copeca motif figure ── */
+.copeca-fig { display: grid; gap: 16px; }
+.copeca-svg { width: 100%; height: auto; display: none; }
+
+/* ── terminal pane — components.md ── */
+.term {
+  background: var(--pp-term-bg); border: 1px solid var(--pp-term-border);
+  border-radius: var(--radius-md); box-shadow: var(--shadow-rest);
+  overflow: hidden; font-family: var(--font-code); font-size: 0.86rem; line-height: 1.6;
+}
+.term-bar { display: flex; align-items: center; gap: 7px; padding: 11px 14px; background: var(--pp-term-surface); border-bottom: 1px solid var(--pp-term-border); }
+.term-bar .dot { width: 11px; height: 11px; border-radius: 50%; }
+.term-bar .dot.r { background: var(--pp-error); }
+.term-bar .dot.y { background: var(--pp-caution); }
+.term-bar .dot.g { background: var(--pp-healthy); }
+.term-bar .title { margin-left: 8px; color: var(--pp-term-soft); font-size: 0.76rem; letter-spacing: 0.04em; }
+.term-body { padding: 18px 18px 20px; color: var(--pp-term-text); white-space: pre-wrap; }
+.term-body .pr  { color: var(--pp-term-sun); }
+.term-body .cmd { color: var(--pp-term-text); }
+.term-body .ok  { color: var(--pp-term-green); }
+.term-body .tl  { color: var(--pp-term-teal); }
+.term-body .dim { color: var(--pp-term-soft); }
+.term-body .hl  { color: var(--pp-term-sun); font-weight: 700; }
+
+/* ── cards / grids ── */
+.grid { display: grid; gap: 24px; }
+.grid-2 { grid-template-columns: repeat(2, 1fr); }
+.grid-3 { grid-template-columns: repeat(3, 1fr); }
+.grid-4 { grid-template-columns: repeat(4, 1fr); }
+@media (max-width: 880px) { .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; } }
+.card {
+  background: var(--pp-surface); border: 1px solid var(--pp-border); border-radius: var(--radius-lg);
+  padding: 28px; transition: transform var(--dur-micro) ease, box-shadow var(--dur-micro) ease;
+}
+.card:hover { transform: translateY(-3px); box-shadow: var(--shadow-lift); }
+.card h4 { margin-bottom: 12px; }
+.card p { color: var(--pp-text-soft); font-size: 0.98rem; }
+.card .num { font-family: var(--font-code); font-size: 0.8rem; color: var(--pp-accent-ink); font-weight: 500; }
+
+/* ── beats (how-it-works steps) ── */
+.beats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; margin-top: 16px; }
+@media (max-width: 880px) { .beats { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 520px) { .beats { grid-template-columns: 1fr; } }
+.beat { position: relative; border-top: 2px solid var(--pp-border); padding-top: 20px; }
+.beat::before { content: ""; position: absolute; top: -2px; left: 0; width: 36px; height: 2px; background: var(--pp-accent); }
+.beat .step { font-family: var(--font-code); font-size: 0.76rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--pp-accent-ink); }
+.beat .verb { font-family: var(--font-code); font-weight: 700; color: var(--pp-primary); font-size: 1.3rem; margin-top: 8px; display: flex; align-items: baseline; gap: 8px; }
+.beat .verb .seq { color: var(--pp-muted); font-weight: 400; font-size: 1rem; }
+.beat p { color: var(--pp-text-soft); font-size: 0.95rem; margin-top: 12px; }
+
+/* ── metric formula ── */
+.formula-block {
+  background: var(--pp-surface); border: 1px solid var(--pp-border);
+  border-left: 3px solid var(--pp-accent); border-radius: var(--radius-lg);
+  padding: 32px 36px; margin-top: 40px;
+}
+.formula { font-family: var(--font-code); font-size: 1.1rem; color: var(--pp-text); line-height: 2.2; }
+.formula .eq { color: var(--pp-accent-ink); font-weight: 700; }
+.formula .op { color: var(--pp-muted); }
+.formula-note { margin-top: 16px; font-size: 0.9rem; color: var(--pp-text-soft); }
+
+/* ── capability taxonomy ── */
+.taxon-list { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 32px; }
+@media (max-width: 880px) { .taxon-list { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 520px) { .taxon-list { grid-template-columns: 1fr; } }
+.taxon {
+  background: var(--pp-bg-artifact); border: 1px solid var(--pp-border);
+  border-radius: var(--radius-md); padding: 18px 20px;
+}
+.taxon .tag {
+  font-family: var(--font-code); font-size: 0.78rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.08em; color: var(--pp-accent-ink);
+  display: block; margin-bottom: 6px;
+}
+.taxon p { font-size: 0.9rem; color: var(--pp-text-soft); margin: 0; }
+
+/* ── two-column "for you" ── */
+.split { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
+@media (max-width: 880px) { .split { grid-template-columns: 1fr; } }
+.split ul { list-style: none; margin: 16px 0 0; padding: 0; }
+.split li { padding: 9px 0 9px 28px; position: relative; color: var(--pp-text-soft); border-bottom: 1px solid var(--pp-border); }
+.split li::before { position: absolute; left: 0; top: 9px; font-family: var(--font-code); }
+.split .yes li::before { content: "→"; color: var(--pp-primary); }
+.split .no  li::before { content: "·"; color: var(--pp-muted); font-weight: 700; }
+.split h3 .tag { font-family: var(--font-code); font-size: 0.7rem; letter-spacing: 0.06em; text-transform: uppercase; }
+
+/* ── install / status ── */
+.copyrow { display: flex; align-items: stretch; gap: 0; max-width: 520px; }
+.copyrow code {
+  flex: 1; font-family: var(--font-code); font-size: 0.92rem;
+  background: var(--pp-term-bg); color: var(--pp-term-text);
+  padding: 14px 18px; border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+  border: 1px solid var(--pp-term-border);
+}
+.copyrow button {
+  font-family: var(--font-body); font-weight: 600; font-size: 0.9rem; padding: 0 18px;
+  cursor: pointer; background: var(--pp-primary); color: var(--pp-bg);
+  border: none; border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+.copyrow button:hover { background: var(--pp-primary-deep); }
+.copyrow-note { margin-top: 10px; font-family: var(--font-code); font-size: 0.82rem; color: var(--pp-muted); }
+.status-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px;
+  background: var(--pp-border); border: 1px solid var(--pp-border);
+  border-radius: var(--radius-lg); overflow: hidden;
+}
+@media (max-width: 520px) { .status-grid { grid-template-columns: 1fr; } }
+.status-cell { background: var(--pp-bg-artifact); padding: 22px 24px; }
+.status-cell .label { font-family: var(--font-code); font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--pp-accent-ink); }
+.status-cell .val { font-family: var(--font-heading); font-size: 1.5rem; font-weight: 560; margin-top: 6px; }
+.status-cell .val small { font-family: var(--font-body); font-size: 0.85rem; color: var(--pp-text-soft); font-weight: 400; }
+
+/* ── code block ── */
+.code {
+  background: var(--pp-term-bg); border: 1px solid var(--pp-term-border); border-radius: var(--radius-md);
+  padding: 20px 22px; font-family: var(--font-code); font-size: 0.84rem; line-height: 1.7;
+  color: var(--pp-term-text); white-space: pre; overflow-x: auto; box-shadow: var(--shadow-rest);
+}
+.code .k  { color: var(--pp-term-teal); }
+.code .s  { color: var(--pp-term-green); }
+.code .c  { color: var(--pp-term-soft); }
+.code .hl { color: var(--pp-term-sun); }
+
+/* ── two-col layout (start section) ── */
+.face-layout { display: grid; grid-template-columns: 0.9fr 1.1fr; gap: 36px; align-items: start; }
+@media (max-width: 880px) { .face-layout { grid-template-columns: 1fr; gap: 24px; } }
+
+/* ── footer / garden ── */
+footer { background: var(--pp-forest); color: #F3ECD9; padding: 80px 0 48px; }
+footer a { color: #9FD08A; }
+footer a:hover { color: #FAF5E9; }
+footer h4 { color: #FAF5E9; font-size: 1.05rem; margin-bottom: 16px; }
+.foot-grid { display: grid; grid-template-columns: 1.3fr 1fr 1fr; gap: 40px; }
+@media (max-width: 880px) { .foot-grid { grid-template-columns: 1fr; gap: 32px; } }
+.garden { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 4px; }
+.garden a {
+  display: inline-flex; align-items: center; gap: 8px; font-family: var(--font-code); font-size: 0.85rem;
+  padding: 8px 12px; border-radius: 999px; background: rgba(250,245,233,0.06); color: #F3ECD9;
+}
+.garden a:hover { background: rgba(250,245,233,0.12); color: #FAF5E9; }
+.garden a.current { background: rgba(31,138,123,0.22); }
+.garden .dot { width: 8px; height: 8px; border-radius: 50%; }
+.foot-soft { color: #C9BBA0; font-size: 0.92rem; line-height: 1.6; }
+.foot-bottom {
+  margin-top: 56px; padding-top: 24px; border-top: 1px solid rgba(250,245,233,0.12);
+  display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+  color: #C9BBA0; font-size: 0.85rem;
+}
+
+/* ── motion: things unfold (ease-petal). reduced-motion disables all. ── */
+.reveal { opacity: 0; transform: translateY(30px); }
+.revealed .reveal, .reveal.revealed { opacity: 1; transform: none; transition: opacity var(--dur-unfold) var(--ease-petal), transform var(--dur-unfold) var(--ease-petal); }
+.stagger > * { opacity: 0; transform: translateY(30px); }
+.stagger.revealed > * { opacity: 1; transform: none; transition: opacity var(--dur-unfold) var(--ease-petal), transform var(--dur-unfold) var(--ease-petal); }
+.stagger.revealed > *:nth-child(2) { transition-delay: 0.1s; }
+.stagger.revealed > *:nth-child(3) { transition-delay: 0.2s; }
+.stagger.revealed > *:nth-child(4) { transition-delay: 0.3s; }
+.bloom { animation: bloom 0.62s var(--ease-petal) both; }
+@keyframes bloom { from { transform: scale(0.6) rotate(-14deg); opacity: 0; } to { transform: scale(1) rotate(0); opacity: 1; } }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .reveal, .stagger > * { opacity: 1 !important; transform: none !important; transition: none !important; }
+  .bloom { animation: none !important; }
+}
+</style>
 </head>
 <body>
-  <div class="hero">
-    <h1>Copeca</h1>
-    <p class="tagline"></p>
-    <nav class="links">
-      <a class="primary" href="docs/tend/overview.html">Overview</a>
-      <a class="secondary" href="docs/tend/board.html">Board</a>
+
+<!-- ═══ nav ═══ -->
+<header class="nav">
+  <div class="container nav-inner">
+    <a class="brand" href="#top" aria-label="copeca home">
+      <!--
+        copeca motif in miniature: a two-bar cost-delta gauge.
+        Baseline bar (muted) on the left, tool bar (teal, shorter = lower cost) on the right,
+        a vertical drop-line connecting them — "the yardstick".
+      -->
+      <svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true" fill="none">
+        <line x1="3" y1="8"  x2="21" y2="8"  stroke="var(--pp-text-soft)" stroke-width="1.6" stroke-linecap="round" opacity="0.5"/>
+        <line x1="3" y1="18" x2="15" y2="18" stroke="var(--pp-accent)"    stroke-width="2.2" stroke-linecap="round"/>
+        <line x1="3" y1="8"  x2="3"  y2="18" stroke="var(--pp-border)"    stroke-width="1"   stroke-linecap="round"/>
+        <line x1="15" y1="10" x2="15" y2="18" stroke="var(--pp-accent)"   stroke-width="1"   stroke-linecap="round" stroke-dasharray="2 2" opacity="0.7"/>
+        <circle cx="3"  cy="8"  r="2.2" fill="var(--pp-muted)" opacity="0.6"/>
+        <circle cx="15" cy="18" r="2.6" fill="var(--pp-accent)"/>
+      </svg>
+      copeca
+    </a>
+    <nav class="nav-links" aria-label="page sections">
+      <a href="#why">the gap</a>
+      <a href="#metric">the metric</a>
+      <a href="#how">how it works</a>
+      <a href="#pillars">credibility</a>
+      <a href="#start">start</a>
+      <a href="https://github.com/jahala/copeca">source</a>
     </nav>
+    <div class="nav-right">
+      <button class="theme-toggle" id="themeToggle" aria-label="toggle dark mode" title="toggle soil-night">&#9680;</button>
+      <a class="btn btn-teal" href="#start">get copeca</a>
+    </div>
   </div>
-  <footer>Generated by <a href="https://github.com/anthropics/tend-cli">tend</a></footer>
+</header>
+
+<main id="top">
+
+<!-- ═══ hero ═══ -->
+<section class="hero">
+  <div class="container hero-grid">
+
+    <!-- left: copy -->
+    <div class="reveal">
+      <div class="kicker">the yardstick &middot; cost per correct answer</div>
+      <h1>Does that tool actually <em>earn</em> its cost?</h1>
+      <p class="lede">copeca A/B-compares a coding agent <strong>with</strong> a tool &mdash; an MCP server, a model swap, a harness change &mdash; against a clean baseline, on one objective number: the dollar cost of getting a correct answer. Neutral, reproducible, verifiable.</p>
+      <div class="hero-cta">
+        <a class="btn btn-teal" href="#start">get copeca</a>
+        <a class="btn btn-outline" href="https://github.com/jahala/copeca">view source</a>
+      </div>
+      <p class="hero-note">pip install copeca &nbsp;&middot;&nbsp; Python &nbsp;&middot;&nbsp; MIT</p>
+    </div>
+
+    <!-- right: motif SVG + terminal -->
+    <div class="copeca-fig reveal">
+      <!--
+        The copeca motif: a ruler/yardstick cost-delta gauge.
+        Two bars — baseline (muted, taller = higher cost) and tool (teal, shorter = lower cost).
+        Ruler tick marks ground it as a measurement instrument.
+        Per-capability mini-bars on the right show the breakdown.
+        Stroke style matches the umbel family motif convention.
+      -->
+      <svg class="copeca-svg" viewBox="0 0 440 200" role="img" aria-label="Cost-delta gauge: a taller muted baseline bar and a shorter teal tool bar, with a dashed delta indicator showing the cost reduction, and per-capability breakdown mini-bars on the right.">
+        <!-- ruler baseline line -->
+        <line x1="54" y1="168" x2="404" y2="168" stroke="#E2D8C0" stroke-width="1"/>
+        <!-- ruler tick marks -->
+        <g stroke="#E2D8C0" stroke-width="1">
+          <line x1="78"  y1="162" x2="78"  y2="174"/>
+          <line x1="138" y1="162" x2="138" y2="174"/>
+          <line x1="198" y1="162" x2="198" y2="174"/>
+          <line x1="258" y1="162" x2="258" y2="174"/>
+          <line x1="318" y1="162" x2="318" y2="174"/>
+          <line x1="378" y1="162" x2="378" y2="174"/>
+        </g>
+        <!-- baseline bar (tall, muted = higher cost) -->
+        <rect x="76" y="56" width="50" height="112" rx="3" fill="#786148" opacity="0.28"/>
+        <!-- tool bar (shorter = lower cost, teal) -->
+        <rect x="143" y="100" width="50" height="68" rx="3" fill="#1F8A7B" opacity="0.82"/>
+        <!-- cost value labels (illustrative) -->
+        <text font-family="'JetBrains Mono', monospace" font-size="10" fill="#786148" x="101" y="49" text-anchor="middle">$0.031</text>
+        <text font-family="'JetBrains Mono', monospace" font-size="10" fill="#136B5F" x="168" y="92" text-anchor="middle">$0.019</text>
+        <!-- bar category labels -->
+        <text font-family="'JetBrains Mono', monospace" font-size="9.5" fill="#9A8C72" x="101" y="182" text-anchor="middle">baseline</text>
+        <text font-family="'JetBrains Mono', monospace" font-size="9.5" fill="#1F8A7B" x="168" y="182" text-anchor="middle">+ tool</text>
+        <!-- delta indicator: dashed brace with end caps -->
+        <line x1="214" y1="100"  x2="214" y2="168" stroke="#1F8A7B" stroke-width="1.4" stroke-dasharray="4 3"/>
+        <line x1="209" y1="100"  x2="219" y2="100"  stroke="#1F8A7B" stroke-width="1.4"/>
+        <line x1="209" y1="168" x2="219" y2="168" stroke="#1F8A7B" stroke-width="1.4"/>
+        <text font-family="'JetBrains Mono', monospace" font-size="10.5" fill="#136B5F" font-weight="500" x="226" y="138">&#8722;38%</text>
+        <!-- per-capability section label -->
+        <text font-family="'JetBrains Mono', monospace" font-size="9" fill="#9A8C72" x="302" y="44" text-anchor="middle">per capability</text>
+        <!-- locate row -->
+        <text font-family="'JetBrains Mono', monospace" font-size="9" fill="#9A8C72" x="258" y="66">locate</text>
+        <rect x="300" y="57" width="48" height="8" rx="2" fill="#786148" opacity="0.25"/>
+        <rect x="300" y="57" width="27" height="8" rx="2" fill="#1F8A7B" opacity="0.80"/>
+        <text font-family="'JetBrains Mono', monospace" font-size="9" fill="#136B5F" x="354" y="65">&#8722;42%</text>
+        <!-- trace row -->
+        <text font-family="'JetBrains Mono', monospace" font-size="9" fill="#9A8C72" x="258" y="88">trace</text>
+        <rect x="300" y="79" width="48" height="8" rx="2" fill="#786148" opacity="0.25"/>
+        <rect x="300" y="79" width="30" height="8" rx="2" fill="#1F8A7B" opacity="0.80"/>
+        <text font-family="'JetBrains Mono', monospace" font-size="9" fill="#136B5F" x="354" y="87">&#8722;37%</text>
+        <!-- fix row -->
+        <text font-family="'JetBrains Mono', monospace" font-size="9" fill="#9A8C72" x="258" y="110">fix</text>
+        <rect x="300" y="101" width="48" height="8" rx="2" fill="#786148" opacity="0.25"/>
+        <rect x="300" y="101" width="44" height="8" rx="2" fill="#1F8A7B" opacity="0.80"/>
+        <text font-family="'JetBrains Mono', monospace" font-size="9" fill="#136B5F" x="354" y="109">&#8722;8%</text>
+        <!-- debug row -->
+        <text font-family="'JetBrains Mono', monospace" font-size="9" fill="#9A8C72" x="258" y="132">debug</text>
+        <rect x="300" y="123" width="48" height="8" rx="2" fill="#786148" opacity="0.25"/>
+        <rect x="300" y="123" width="36" height="8" rx="2" fill="#1F8A7B" opacity="0.80"/>
+        <text font-family="'JetBrains Mono', monospace" font-size="9" fill="#136B5F" x="354" y="131">&#8722;25%</text>
+        <!-- illustrative label -->
+        <text font-family="'JetBrains Mono', monospace" font-size="8" fill="#9A8C72" x="220" y="196" text-anchor="middle">numbers illustrative</text>
+      </svg>
+
+      <div class="term">
+        <div class="term-bar">
+          <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+          <span class="title">copeca &mdash; report</span>
+        </div>
+<div class="term-body"><span class="pr">$</span> <span class="cmd">copeca run --task scenario.yaml --runner claude</span>
+<span class="dim">running 48 tasks &times; 2 arms (baseline / +ripgrep-mcp)&hellip;</span>
+
+<span class="ok">Cost Per Correct Answer</span>
+<span class="dim">&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;</span>
+<span class="dim">               baseline      tool      delta</span>
+<span class="tl">  overall       $0.031      $0.019    &#8722;38.7%</span>
+<span class="dim">  95% CI                           [&#8722;44%, &#8722;33%]</span>
+
+<span class="ok">Per-Capability Breakdown</span>
+<span class="dim">&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;</span>
+<span class="dim">  locate        $0.018      $0.010    &#8722;42.2%</span>
+<span class="dim">  trace         $0.027      $0.017    &#8722;37.0%</span>
+<span class="dim">  fix           $0.048      $0.044     &#8722;8.3%</span>
+<span class="dim">  debug         $0.036      $0.027    &#8722;25.0%</span>
+
+<span class="dim">  artifact: .copeca/run-2026-06-21.json (signed)</span>
+<span class="hl">  &#9888; numbers illustrative</span></div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══ the gap ═══ -->
+<section class="band" id="why">
+  <div class="container">
+    <div class="section-head reveal">
+      <div class="kicker">the gap</div>
+      <h2>tool demos show capability. not <em>value</em>.</h2>
+      <p class="lede">Does an MCP server, a model swap, or a harness change actually lower the cost of correct answers &mdash; or does it just add tokens and latency?</p>
+    </div>
+    <div class="grid grid-2 stagger">
+      <div class="card">
+        <div class="num">the accuracy trap</div>
+        <h4 style="margin-top:8px">accuracy alone ignores cost</h4>
+        <p>A tool that is a little more accurate but 3&times; the tokens can <em>lose</em> on cost-per-correct. An accuracy leaderboard tells you what passes, not what is worth paying for.</p>
+      </div>
+      <div class="card">
+        <div class="num">the cost trap</div>
+        <h4 style="margin-top:8px">cost alone ignores correctness</h4>
+        <p>A cheaper model that fails more tasks is not cheaper in any meaningful sense. Cost-per-correct divides the bill by the answers that actually count &mdash; it is the honest unit.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ the metric ═══ -->
+<section id="metric">
+  <div class="container">
+    <div class="section-head reveal">
+      <div class="kicker">the metric</div>
+      <h2>one number, no tricks.</h2>
+      <p>cost-per-correct is the total dollars spent, divided by the number of correct answers. Every parameter in the denominator is graded deterministically &mdash; no LLM judge in the scoring path.</p>
+    </div>
+    <div class="formula-block reveal">
+      <div class="formula">
+        <span class="eq">cost-per-correct</span>
+        &nbsp;<span class="op">=</span>&nbsp;
+        total&nbsp;$&nbsp;spent
+        &nbsp;<span class="op">&divide;</span>&nbsp;
+        correct&nbsp;answers
+      </div>
+      <p class="formula-note">A tool that is a little more accurate but 3&times; the tokens <strong>can lose on cost-per-correct</strong>. The metric makes this visible and comparable across runs.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ how it works ═══ -->
+<section class="band" id="how">
+  <div class="container">
+    <div class="section-head reveal">
+      <div class="kicker">clean isolation, honest grading</div>
+      <h2>define. run. grade. read.</h2>
+      <p>Four steps from a scenario file to a signed, per-capability report.</p>
+    </div>
+    <div class="beats stagger reveal">
+      <div class="beat">
+        <div class="step">step 01</div>
+        <div class="verb">define<span class="seq">&rarr;</span></div>
+        <p>Describe the scenario: tasks &times; modes &times; models. Each task names the information required &mdash; never the method &mdash; so no tool is privileged in the prompt.</p>
+      </div>
+      <div class="beat">
+        <div class="step">step 02</div>
+        <div class="verb">run<span class="seq">&rarr;</span></div>
+        <p>copeca runs each arm in an isolated git worktree &mdash; a clean baseline vs the tool under test, with real tool-restriction enforced per arm. No cross-contamination.</p>
+      </div>
+      <div class="beat">
+        <div class="step">step 03</div>
+        <div class="verb">grade<span class="seq">&rarr;</span></div>
+        <p>Deterministic grading only: a string rubric or a test-command exit code. Never an LLM judge in the scoring path. The grade is the same every time you run it.</p>
+      </div>
+      <div class="beat">
+        <div class="step">step 04</div>
+        <div class="verb">read</div>
+        <p>A per-capability cost-per-correct delta with bootstrap confidence intervals. See exactly where the tool helps &mdash; and where it does not justify its cost.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ credibility pillars ═══ -->
+<section id="pillars">
+  <div class="container">
+    <div class="section-head reveal">
+      <div class="kicker">neutral &middot; reproducible &middot; verifiable</div>
+      <h2>results you can share, and contest.</h2>
+      <p>Three properties that make a copeca report trustworthy enough to publish.</p>
+    </div>
+    <div class="grid grid-3 stagger">
+      <div class="card">
+        <div class="num">pillar 01</div>
+        <h4 style="margin-top:8px">Neutral</h4>
+        <p>Tasks name the information required, never the method &mdash; so no tool is privileged in the prompt. An agnosticism lint enforces this. Config-driven multi-CLI: the same scenario runs unmodified against <code>claude</code> or <code>codex</code>.</p>
+      </div>
+      <div class="card">
+        <div class="num">pillar 02</div>
+        <h4 style="margin-top:8px">Reproducible</h4>
+        <p>Deterministic grading, repos pinned to exact commits, bootstrap confidence intervals, no LLM judge in the scoring path. Run the same scenario twice &mdash; the grade is the same. The CI tells you how tight the estimate is.</p>
+      </div>
+      <div class="card">
+        <div class="num">pillar 03</div>
+        <h4 style="margin-top:8px">Verifiable</h4>
+        <p>Signed <code>.copeca</code> artifacts (Ed25519) with integrity manifests and batch verification. The vendor&rsquo;s billed cost is the headline, frozen into the artifact &mdash; with a token &times; price computed cross-check.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ capability taxonomy ═══ -->
+<section class="band">
+  <div class="container">
+    <div class="section-head reveal">
+      <div class="kicker">where does the tool help?</div>
+      <h2>the capability taxonomy.</h2>
+      <p>Every task is tagged with a capability, so the report shows <em>where</em> a tool helps &mdash; not just an overall average. A tool that lifts locate but not fix tells a very different story than one that lifts everything uniformly.</p>
+    </div>
+    <div class="taxon-list stagger">
+      <div class="taxon">
+        <span class="tag">locate</span>
+        <p>Finding where something lives in the codebase &mdash; file, function, or symbol.</p>
+      </div>
+      <div class="taxon">
+        <span class="tag">trace</span>
+        <p>Following a call chain, data flow, or control path across files.</p>
+      </div>
+      <div class="taxon">
+        <span class="tag">fix</span>
+        <p>Applying a targeted, correct change to the code without side-effects.</p>
+      </div>
+      <div class="taxon">
+        <span class="tag">debug</span>
+        <p>Identifying the root cause of a test failure or unexpected output.</p>
+      </div>
+    </div>
+    <div class="reveal" style="margin-top:48px">
+      <div class="card" style="max-width:640px">
+        <div class="num">the corpus</div>
+        <h4 style="margin-top:8px">48 tasks &middot; four codebases</h4>
+        <p style="margin-top:8px">ripgrep (Rust) &middot; gin (Go) &middot; express (JavaScript) &middot; fastapi (Python) &mdash; provenance-tracked and contamination-screened. Each codebase contributes tasks across all four capability tags.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ is copeca for you ═══ -->
+<section>
+  <div class="container">
+    <div class="section-head reveal">
+      <div class="kicker">the honest answer</div>
+      <h2>is copeca for you?</h2>
+      <p>copeca runs a controlled experiment and hands back a single comparable number. The experiment takes real time and real API spend &mdash; so:</p>
+    </div>
+    <div class="split reveal">
+      <div class="yes">
+        <h3>reach for copeca when <span class="tag" style="color:var(--pp-primary)">&mdash; a fit</span></h3>
+        <ul>
+          <li>you are choosing between MCP servers, models, or harness changes</li>
+          <li>you want one objective, comparable number &mdash; not a vibe-check</li>
+          <li>you publish results others can reproduce and verify</li>
+          <li>you need to know <em>which capability</em> benefits, not just whether the average moves</li>
+        </ul>
+      </div>
+      <div class="no">
+        <h3>look elsewhere when <span class="tag" style="color:var(--pp-muted)">&mdash; not this</span></h3>
+        <ul>
+          <li>you want a quick demo that looks good in a slide deck</li>
+          <li>you only care about accuracy, regardless of what it costs</li>
+          <li>a single leaderboard number is enough for your decision</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ start ═══ -->
+<section class="band" id="start">
+  <div class="container">
+    <div class="section-head reveal">
+      <div class="kicker">start</div>
+      <h2>install and run your first comparison.</h2>
+    </div>
+    <div class="face-layout reveal">
+      <div>
+        <h4 style="margin-bottom:16px">install</h4>
+        <div class="copyrow">
+          <code id="installCmd">pip install copeca</code>
+          <button id="copyBtn" aria-label="copy install command">copy</button>
+        </div>
+        <p class="copyrow-note">also: <code>pipx install copeca</code> for an isolated environment</p>
+
+        <h4 style="margin-top:32px; margin-bottom:16px">a minimal run</h4>
+        <div class="code"><span class="c"># run a scenario against the claude runner</span>
+<span class="k">copeca</span> run <span class="hl">--task</span> scenario.yaml <span class="hl">--runner</span> claude
+
+<span class="c"># or against the codex runner</span>
+<span class="k">copeca</span> run <span class="hl">--task</span> scenario.yaml <span class="hl">--runner</span> codex
+
+<span class="c"># verify a previous signed artifact</span>
+<span class="k">copeca</span> verify .copeca/run-2026-06-21.json</div>
+      </div>
+      <div>
+        <h4 style="margin-bottom:16px">where copeca is</h4>
+        <div class="status-grid">
+          <div class="status-cell">
+            <div class="label">runners</div>
+            <div class="val">2 <small>claude &middot; codex</small></div>
+          </div>
+          <div class="status-cell">
+            <div class="label">corpus</div>
+            <div class="val">48 <small>tasks</small></div>
+          </div>
+          <div class="status-cell">
+            <div class="label">grading</div>
+            <div class="val" style="font-size:1.05rem">deter&shy;min&shy;istic</div>
+          </div>
+        </div>
+        <p style="margin-top:16px; color:var(--pp-text-soft); font-size:0.92rem">
+          Numbers above are illustrative of the current state and move as copeca does.
+          <a href="https://github.com/jahala/copeca">Follow along on GitHub &rarr;</a>
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<!-- ═══ footer / the garden ═══ -->
+<footer>
+  <div class="container">
+    <div class="foot-grid">
+      <div class="reveal">
+        <h4>copeca</h4>
+        <p class="foot-soft">cost per correct answer. A/B-compare coding agents &mdash; MCP servers, models, harness changes &mdash; on one objective, signed, reproducible number.</p>
+        <p class="foot-soft" style="margin-top:16px">
+          <a href="https://github.com/jahala/copeca">github &rarr;</a>
+          &nbsp; MIT licensed &nbsp;&middot;&nbsp;
+          <a href="https://github.com/jahala/copeca/blob/master/CONTRIBUTING.md">contributing</a>
+        </p>
+      </div>
+      <div class="reveal">
+        <h4>the plotplot garden</h4>
+        <nav class="garden" aria-label="plotplot tools">
+          <a href="https://github.com/jahala/tilth"><span class="dot" style="background:var(--pp-tilth)"></span>tilth</a>
+          <a href="https://github.com/jahala/tend"><span class="dot" style="background:var(--pp-tend)"></span>tend</a>
+          <a href="https://github.com/jahala/petals"><span class="dot" style="background:var(--pp-petals)"></span>petals</a>
+          <a href="https://github.com/jahala/pleach"><span class="dot" style="background:var(--pp-pleach)"></span>pleach</a>
+          <a href="https://github.com/jahala/umbel"><span class="dot" style="background:var(--pp-umbel)"></span>umbel</a>
+          <a href="https://github.com/jahala/copeca" class="current"><span class="dot" style="background:var(--pp-copeca)"></span>copeca</a>
+        </nav>
+        <p class="foot-soft" style="margin-top:16px">small, sharp tools for building with agents.</p>
+      </div>
+      <div class="reveal">
+        <h4>nearby</h4>
+        <p class="foot-soft">
+          <a href="https://github.com/jahala/umbel">umbel</a> &mdash; fan your agent session out across every agent CLI. copeca tells you which configuration was worth it.
+        </p>
+        <p class="foot-soft" style="margin-top:16px">
+          <a href="https://buymeacoffee.com/jahala">buy me a coffee &rarr;</a>
+        </p>
+      </div>
+    </div>
+    <div class="foot-bottom">
+      <span>&copy; 2026 &middot; a plotplot garden tool &middot; MIT</span>
+      <span>the yardstick for building with agents.</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function () {
+  // theme toggle — soil at night
+  var root = document.documentElement;
+  var tg = document.getElementById('themeToggle');
+  try { var saved = localStorage.getItem('copeca-theme'); if (saved) root.setAttribute('data-theme', saved); } catch (e) {}
+  tg && tg.addEventListener('click', function () {
+    var next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    try { localStorage.setItem('copeca-theme', next); } catch (e) {}
+  });
+
+  // copy install command
+  var cb = document.getElementById('copyBtn');
+  cb && cb.addEventListener('click', function () {
+    navigator.clipboard && navigator.clipboard.writeText(document.getElementById('installCmd').textContent);
+    var was = cb.textContent;
+    cb.textContent = 'copied';
+    setTimeout(function () { cb.textContent = was; }, 1400);
+  });
+
+  // entrances — things unfold (reduced-motion handled in CSS + here)
+  var rm = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (rm) {
+    document.querySelectorAll('.reveal,.stagger').forEach(function (el) { el.classList.add('revealed'); });
+    return;
+  }
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) {
+      if (e.isIntersecting) { e.target.classList.add('revealed'); io.unobserve(e.target); }
+    });
+  }, { threshold: 0.12, rootMargin: '0px 0px -8% 0px' });
+  document.querySelectorAll('.reveal,.stagger').forEach(function (el) { io.observe(el); });
+})();
+</script>
 </body>
 </html>
