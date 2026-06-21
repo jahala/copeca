@@ -1,5 +1,5 @@
 name: terminal_cli_task
-description: "Fix ripgrep CLI to validate --max-depth flag against negative values."
+description: "Add validation to ripgrep's --max-depth flag parser so negative values produce a clear error instead of a panic; tests input-guard insertion in CLI argument parsing."
 source: "Terminal-Bench 2.0 (Apache-2.0)"
 repo: ripgrep
 type: edit

@@ -1,5 +1,5 @@
 name: t008_express_fix_route
-description: "Fix the route handler that returns wrong HTTP method error due to a misconfigured METHOD export."
+description: "Correct the METHOD constant in an Express route file so the handler is registered under the right HTTP verb; tests single-constant repair with a mismatched method declaration."
 source: "SWE-QA (Apache-2.0)"
 repo: express
 type: edit

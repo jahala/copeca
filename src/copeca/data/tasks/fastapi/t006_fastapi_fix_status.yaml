@@ -1,5 +1,5 @@
 name: t006_fastapi_fix_status
-description: "Fix the response status code bug in the endpoint handler that returns 201 instead of 200."
+description: "Correct a FastAPI endpoint that returns 201 instead of 200 on successful creation; tests single-value repair in a status code declaration."
 source: "SWE-QA (Apache-2.0)"
 repo: fastapi
 type: edit

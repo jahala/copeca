@@ -1,5 +1,5 @@
 name: crosscode_discovery
-description: "Find HTTP request binding logic in the Gin web framework."
+description: "Map Gin's JSON request binding from context method to decoder, contrasting Bind vs ShouldBind error handling and where struct-tag validation runs; tests end-to-end binding flow tracing."
 source: "CrossCodeEval (Apache-2.0)"
 repo: gin
 type: comprehension

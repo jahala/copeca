@@ -103,7 +103,8 @@ must exit 0 on corrected code. `copeca check-task` pre-verifies that the test
 passes on clean code and fails on mutated code, proving the mutation bites.
 
 No embedded Python. No eval. No LLM judge. Correctness is always strings or
-exit codes.
+exit codes. Task classification (type, category, and the type × category
+invariant) is documented in [task-taxonomy.md](task-taxonomy.md).
 
 ---
 

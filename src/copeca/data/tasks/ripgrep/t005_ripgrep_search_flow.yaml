@@ -1,5 +1,5 @@
 name: t005_ripgrep_search_flow
-description: "Trace the search execution flow from main() to the first line match in ripgrep."
+description: "Trace ripgrep's execution from main() to a first line match, covering file opening, Worker coordination, and matcher/printer handoff; tests deep call-chain tracing across concurrent code."
 source: "SWE-QA (Apache-2.0)"
 repo: ripgrep
 type: comprehension

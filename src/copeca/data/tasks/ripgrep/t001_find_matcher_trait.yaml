@@ -1,5 +1,5 @@
 name: t001_find_matcher_trait
-description: "Find the Matcher trait definition in the ripgrep codebase and list all structs that implement it."
+description: "Map ripgrep's Matcher trait to every implementing struct across crates, noting each crate and its provided methods; tests cross-crate relationship tracing."
 source: "SWE-QA (Apache-2.0)"
 repo: ripgrep
 type: comprehension

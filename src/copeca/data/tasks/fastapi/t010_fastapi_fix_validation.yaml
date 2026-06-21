@@ -1,5 +1,5 @@
 name: t010_fastapi_fix_validation
-description: "Fix the Pydantic validation that doesn't check for empty string fields in the Item model."
+description: "Add min_length=1 to FastAPI's Item model so empty name strings are rejected with a validation error; tests constraint restoration in a Pydantic field definition."
 source: "SWE-QA (Apache-2.0)"
 repo: fastapi
 type: edit

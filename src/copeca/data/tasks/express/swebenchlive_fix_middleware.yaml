@@ -1,5 +1,5 @@
 name: swebenchlive_fix_middleware
-description: "Fix Express error-handling middleware invocation when next(err) passes an Error object."
+description: "Restore correct error-handler dispatch in Express so next(err) reaches 4-arity middleware; tests error-routing repair under middleware chain traversal."
 source: "SWE-bench-Live (MIT)"
 repo: express
 type: edit

@@ -1,5 +1,5 @@
 name: t002_fastapi_routing
-description: "Find the APIRouter class in FastAPI and describe how route handlers are registered."
+description: "Map how FastAPI's APIRouter registers route handlers via add_api_route and the HTTP-method decorators it exposes; tests class-level relationship tracing across Route and APIRouter."
 source: "SWE-QA (Apache-2.0)"
 repo: fastapi
 type: comprehension

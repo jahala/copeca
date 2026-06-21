@@ -1,5 +1,5 @@
 name: t003_gin_middleware
-description: "Locate the middleware chain implementation in Gin. How does c.Next() work?"
+description: "Trace Gin's middleware chain through c.Next() showing how HandlersChain is stored, invoked, and short-circuited by Abort(); tests sequential execution flow tracing."
 source: "SWE-QA (Apache-2.0)"
 repo: gin
 type: comprehension

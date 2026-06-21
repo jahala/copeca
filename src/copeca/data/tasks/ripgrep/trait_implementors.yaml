@@ -1,5 +1,5 @@
 name: rg_trait_implementors
-description: "Find all implementors of the Matcher trait across crates"
+description: "Map ripgrep's Matcher trait required methods to every implementing type across crates, with crate location for each; tests exhaustive implementor discovery across a multi-crate workspace."
 source: "SWE-QA (Apache-2.0)"
 repo: ripgrep
 type: comprehension

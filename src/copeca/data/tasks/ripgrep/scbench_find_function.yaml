@@ -1,5 +1,5 @@
 name: scbench_find_function
-description: "Find the function handling case-insensitive pattern matching in ripgrep."
+description: "Report the function, file, and signature that controls case-insensitive matching in ripgrep and how it selects between modes; tests single-function localization with decision-logic explanation."
 source: "SCBench (MIT)"
 repo: ripgrep
 type: comprehension

@@ -99,6 +99,30 @@ class TestValidateCommand:
             f"Clean dir should pass provenance check: stdout={result.stdout} stderr={result.stderr}"
         )
 
+    def test_validate_flags_tool_coupled_task(self, tmp_path):
+        """validate fails a task whose prompt prescribes a tool/method (not agnostic)."""
+        task = {
+            "name": "coupled_task",
+            "description": "Find the Matcher trait; tests trait location.",
+            "source": "test",
+            "repo": "ripgrep",
+            "type": "comprehension",
+            "category": "trace",
+            "language": "rust",
+            "difficulty": "easy",
+            "version": 1,
+            # the exact grok-style coupling: primes a single-shot aggregator
+            "prompt": "Find the Matcher trait. One structured answer beats several searches.",
+            "ground_truth": {"required_strings": ["Matcher"]},
+        }
+        d = tmp_path / "coupled"
+        d.mkdir()
+        (d / "coupled_task.yaml").write_text(yaml.dump(task))
+        result = copeca("validate", str(d))
+        combined = (result.stdout + result.stderr).lower()
+        assert result.returncode != 0, f"expected non-zero exit, got {result.returncode}: {combined}"
+        assert "tool-coupling" in combined or "agnostic" in combined, combined
+
     def test_validate_flags_blocked_source_from_arbitrary_cwd(self):
         """validate flags a blocked source task even when run from a tmp cwd with no local blocklist.
 

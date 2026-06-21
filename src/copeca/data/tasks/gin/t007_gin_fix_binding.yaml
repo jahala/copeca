@@ -1,5 +1,5 @@
 name: t007_gin_fix_binding
-description: "Fix the JSON binding validation that skips required fields due to a missing binding tag."
+description: "Restore the required binding tag on a Gin struct's email field so ShouldBindJSON rejects missing values; tests tag-level repair in a JSON validation struct."
 source: "SWE-QA (Apache-2.0)"
 repo: gin
 type: edit

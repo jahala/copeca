@@ -1,5 +1,5 @@
 name: t009_ripgrep_fix_pattern
-description: "Fix the regex pattern compilation that panics on invalid UTF-8 byte sequences."
+description: "Replace a panic on invalid UTF-8 in ripgrep's pattern compilation with clean error handling; tests safe-error-path restoration in UTF-8 boundary code."
 source: "SWE-QA (Apache-2.0)"
 repo: ripgrep
 type: edit

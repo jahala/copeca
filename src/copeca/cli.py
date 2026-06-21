@@ -55,6 +55,22 @@ def _find_blocked_source_tasks(
     return findings
 
 
+def _find_tool_coupled_tasks(tasks: list[Any]) -> list[tuple[str, str]]:
+    """Return (task_name, reason) for every task whose text prescribes a tool/method.
+
+    Pure function — no I/O. A task must name the information it requires, not how to
+    retrieve it (see agnosticism.py), so the A/B stays method-neutral.
+    """
+    from copeca.agnosticism import check_tool_agnostic
+
+    findings: list[tuple[str, str]] = []
+    for task in tasks:
+        description = getattr(task, "description", "") or ""
+        for reason in check_tool_agnostic(task.name, task.prompt, description):
+            findings.append((task.name, reason))
+    return findings
+
+
 # ── Cost-safeguard helpers (pure logic + thin I/O) ─────────────────────────
 
 
@@ -236,6 +252,19 @@ def validate(
         for task_name, reason in blocked_findings:
             typer.echo(
                 f"Contamination: task '{task_name}' blocked — {reason}",
+                err=True,
+            )
+        raise typer.Exit(code=1)
+
+    # ── Tool-agnosticism check ──────────────────────────────────────────────
+    # A task must name the information it requires, never the retrieval method:
+    # tool names / "search for" / single-shot-aggregator cues would bias the A/B
+    # (the method is the variable under test). See agnosticism.py.
+    coupled_findings = _find_tool_coupled_tasks(tasks)
+    if coupled_findings:
+        for task_name, reason in coupled_findings:
+            typer.echo(
+                f"Tool-coupling: task '{task_name}' is not tool-agnostic — {reason}",
                 err=True,
             )
         raise typer.Exit(code=1)

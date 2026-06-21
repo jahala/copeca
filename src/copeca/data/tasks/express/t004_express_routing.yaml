@@ -1,5 +1,5 @@
 name: t004_express_routing
-description: "Find the Router class in Express and trace how app.use() registers middleware."
+description: "Map how app.use() builds Express's layer stack and routes requests through multiple middleware; tests framework internals tracing across Router and Layer."
 source: "SWE-QA (Apache-2.0)"
 repo: express
 type: comprehension
