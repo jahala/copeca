@@ -2803,32 +2803,40 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
   "audit": {
     "ran_at": "2026-06-21T00:00:00Z",
     "result": "pass",
-    "verified_at_commit": "401b7bce56a9e6f8146c72ec9a1d335ed3d5f0c6",
-    "drift": [],
+    "verified_at_commit": "51d44c262a8e90906e0a2e1af4ad3568b39dc621",
+    "drift": [
+      {
+        "finding": "Test count increased from 44 to 46 at HEAD (51d44c2). Two SD-B tests added: TestReportExcludesFailedRuns::test_failed_run_excluded_from_accuracy_and_noted (report.py shows 'Failed Runs' section, excludes crashed runs from accuracy denominator) and TestCostPerCorrectExcludesFailures::test_errored_record_excluded (stats.py cost_per_correct excludes errored records). Both pass. The SD-B failure-surfacing behavior is now verified in the analysis layer."
+      }
+    ],
     "verdicts": [
       {
         "check_id": "c001",
         "verdict": "pass",
-        "evidence_path": "src/copeca/analysis/stats.py (compute_stats, bootstrap_ci, ascii_sparkline) + src/copeca/analysis/report.py (generate_report, delta-headline). tests/analysis/ 44/44 pass at 401b7bc (incl. delta-headline, CI-in-headline, per-task table, per-language/per-difficulty aggregation). Run: PATH=$PWD/.venv/bin:$PATH python -m pytest tests/analysis/ -q -> 44 passed.",
-        "evidence_sha": "b0a098759eca65e1fa278e21b8c852a7c69e872a"
+        "evidence_path": "src/copeca/analysis/stats.py (compute_stats, bootstrap_ci, ascii_sparkline) + src/copeca/analysis/report.py (generate_report, delta-headline). SD-B: crashed runs (error set, non-zero exit_code) are excluded from accuracy denominator and surfaced in report.py 'Failed Runs' section. tests/analysis/ 46/46 pass at 51d44c2 (incl. delta-headline, CI-in-headline, per-task table, per-language/per-difficulty aggregation, TestReportExcludesFailedRuns::test_failed_run_excluded_from_accuracy_and_noted). Run: PATH=$PWD/.venv/bin:$PATH python -m pytest tests/analysis/ -q -> 46 passed.",
+        "evidence_sha": "54a9fb10c82152fc1423dd513b47826dc2251bb9",
+        "validates_job_satisfied": true
       },
       {
         "check_id": "c002",
         "verdict": "pass",
-        "evidence_path": "src/copeca/analysis/report.py (adversarial summary, sparklines, tool adoption sections). test_report.py adversarial/sparkline/tool_adoption assertions pass (within the 44). Run: PATH=$PWD/.venv/bin:$PATH python -m pytest tests/analysis/ -q -> 44 passed.",
-        "evidence_sha": "5fa2d370dffb8af5bac1295d4ab845d6b1f490df"
+        "evidence_path": "src/copeca/analysis/report.py (adversarial summary, sparklines, tool adoption sections). SD-D: token sparklines now use deduplicated per-message-id usage counts (fixed 2-3x over-count). test_report.py adversarial/sparkline/tool_adoption assertions pass (within the 46). Run: PATH=$PWD/.venv/bin:$PATH python -m pytest tests/analysis/ -q -> 46 passed.",
+        "evidence_sha": "ed629f9c03f687fa326f64e7fc006f0bbecc549e",
+        "validates_job_satisfied": true
       },
       {
         "check_id": "c003",
         "verdict": "pass",
-        "evidence_path": "src/copeca/analysis/compare.py (compare_runs, per-task delta, >10% flagging). tests/analysis/test_compare.py 5/5 pass. test_compare_flags_large_changes now DISCRIMINATES the threshold in both directions: with task_a at 50% change and task_b at 5%, it asserts task_a IS in the 'Flagged Tasks (>10% Change)' section and carries the '**>10%**' row marker, and task_b is NOT. Mutation-verified at 401b7bc: threshold '> 1e9' (flag nothing) fails the section assertion; threshold '>= 0' (flag everything) fails the task_b assertion. The prior trivially-true \"'**' in result\" assertion is removed. Run: PATH=$PWD/.venv/bin:$PATH python -m pytest tests/analysis/test_compare.py -q -> 5 passed.",
-        "evidence_sha": "305b0796716c1b5b2c3b2ff12db678f3a8b92631"
+        "evidence_path": "src/copeca/analysis/compare.py (compare_runs, per-task delta, >10% flagging). tests/analysis/test_compare.py 5/5 pass. test_compare_flags_large_changes discriminates the threshold in both directions. Run: PATH=$PWD/.venv/bin:$PATH python -m pytest tests/analysis/test_compare.py -q -> 5 passed.",
+        "evidence_sha": "305b0796716c1b5b2c3b2ff12db678f3a8b92631",
+        "validates_job_satisfied": true
       },
       {
         "check_id": "c004",
         "verdict": "pass",
-        "evidence_path": "src/copeca/analysis/stats.py::cost_per_correct (returns None when correct=0) + src/copeca/analysis/report.py (renders 'n/a (0 correct)', excludes None from delta+bootstrap, accuracy co-headline). Now traced by step i007 (orphan closed). tests/analysis/ -k 'zero_correct or accuracy' -> 4 passed: test_cost_per_correct_zero_correct_returns_none, test_report_zero_correct_experimental_shows_na, test_report_zero_correct_headline_describes_situation, test_report_accuracy_shown_alongside_cost_per_correct.",
-        "evidence_sha": "b0a098759eca65e1fa278e21b8c852a7c69e872a"
+        "evidence_path": "src/copeca/analysis/stats.py::cost_per_correct (returns None when correct=0, excludes errored records per SD-B) + src/copeca/analysis/report.py (renders 'n/a (0 correct)', excludes None from delta+bootstrap, accuracy co-headline, 'Failed Runs' section for error!=None records). tests/analysis/ -k 'zero_correct or accuracy or errored or failed' -> 5 passed: test_cost_per_correct_zero_correct_returns_none, test_report_zero_correct_experimental_shows_na, test_report_zero_correct_headline_describes_situation, test_report_accuracy_shown_alongside_cost_per_correct, test_errored_record_excluded. Run: PATH=$PWD/.venv/bin:$PATH python -m pytest tests/analysis/ -q -> 46 passed.",
+        "evidence_sha": "54a9fb10c82152fc1423dd513b47826dc2251bb9",
+        "validates_job_satisfied": true
       }
     ]
   }

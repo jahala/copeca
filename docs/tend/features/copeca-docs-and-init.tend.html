@@ -2744,29 +2744,32 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
   "audit": {
     "ran_at": "2026-06-21T00:00:00Z",
     "result": "pass",
-    "verified_at_commit": "401b7bce56a9e6f8146c72ec9a1d335ed3d5f0c6",
+    "verified_at_commit": "51d44c262a8e90906e0a2e1af4ad3568b39dc621",
     "drift": [
       {
-        "finding": "Corpus is 16 tasks at HEAD vs the ~85 roadmap target. As of 401b7bc this is disclosed consistently across the impact slot, check c003, narrative, thumbnail, and docs/known-limitations.md, and tracked as roadmap — no longer an overclaim."
+        "finding": "Corpus is 16 tasks at HEAD vs the ~85 roadmap target. As of 401b7bc this is disclosed consistently across the impact slot, check c003, narrative, thumbnail, and docs/known-limitations.md, and tracked as roadmap — no longer an overclaim. No change at SD-A/B/C/D commits."
       }
     ],
     "verdicts": [
       {
         "check_id": "c001",
         "verdict": "pass",
-        "evidence_path": "src/copeca/cli.py (copeca init) + src/copeca/data/ seed corpus. tests/cli/test_init.py 7/7 pass (within the 21 init+docs tests). Smoke: copeca init /tmp/copeca-reaudit && copeca validate .../tasks/ -> 'Validated 16 task(s) successfully.' Run at 401b7bc: PATH=$PWD/.venv/bin:$PATH python -m pytest tests/cli/test_init.py tests/docs/test_docs_exist.py -q -> 21 passed.",
-        "evidence_sha": "b07a35c787327e856bb9cd57396f352b230dc53b"
+        "evidence_path": "src/copeca/cli.py (copeca init) + src/copeca/data/ seed corpus (16 tasks). tests/cli/test_init.py 7/7 pass + tests/docs/test_docs_exist.py pass (within the 30 init+docs+check_task tests). Run: PATH=$PWD/.venv/bin:$PATH python -m pytest tests/cli/test_init.py tests/docs/test_docs_exist.py tests/cli/test_check_task.py -q -> 30 passed.",
+        "evidence_sha": "9d3ff547b85a73ba355c56a3f74cca2403da3bae",
+        "validates_job_satisfied": true
       },
       {
         "check_id": "c002",
         "verdict": "pass",
-        "evidence_path": "README.md + docs/*.md. tests/docs/test_docs_exist.py passes (within the 21). method=user-report: no human <5-minute onboarding trial has been conducted; automated structural checks pass, real-user timing remains unverified by design.",
-        "evidence_sha": "e1cc122bf9078146af3ec80e1e5601c04e2b5ff6"
+        "evidence_path": "README.md + docs/*.md. tests/docs/test_docs_exist.py passes (within the 30). method=user-report: no human <5-minute onboarding trial has been conducted; automated structural checks pass, real-user timing remains unverified by design.",
+        "evidence_sha": "4c2557ea33fe8cafe5132fd6470fc8a4f76cef5d",
+        "validates_job_satisfied": true
       },
       {
         "check_id": "c003",
         "verdict": "pass",
-        "evidence_path": "copeca validate src/copeca/data/tasks/ -> 'Validated 16 task(s) successfully.' (zero blocked sources). Check c003 + impact slot corrected at 401b7bc to 'All bundled tasks validate (16 at HEAD; ~85 targeted)' — the ~85 overclaim is resolved across slot, check, narrative, thumbnail, and docs/known-limitations.md. `copeca check-task` exists and is fixture-tested (tests/cli/test_check_task.py, 9 pass with absolute venv on PATH); full-corpus check-task needs cloned repos and is operator-deferred (step i003). The 16 bundled tasks are clean and non-blocked."
+        "evidence_path": "copeca validate src/copeca/data/tasks/ -> 'Validated 16 task(s) successfully.' (zero blocked sources). Check c003 + impact slot discloses '16 at HEAD; ~85 targeted'. copeca check-task exists and is fixture-tested (tests/cli/test_check_task.py, 9 pass with absolute venv on PATH). The 16 bundled tasks are clean and non-blocked. Run: PATH=$PWD/.venv/bin:$PATH python -m pytest tests/cli/test_init.py tests/docs/test_docs_exist.py tests/cli/test_check_task.py -q -> 30 passed.",
+        "validates_job_satisfied": true
       }
     ]
   }

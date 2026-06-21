@@ -2758,32 +2758,36 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
   "audit": {
     "ran_at": "2026-06-21T00:00:00Z",
     "result": "pass",
-    "verified_at_commit": "401b7bce56a9e6f8146c72ec9a1d335ed3d5f0c6",
+    "verified_at_commit": "51d44c262a8e90906e0a2e1af4ad3568b39dc621",
     "drift": [],
     "verdicts": [
       {
         "check_id": "c004",
         "verdict": "pass",
-        "evidence_path": "src/copeca/orchestration/run.py (run_matrix populates work-item mode_obj + threads through _run_one_work_item -> run_single -> provision_arm) + src/copeca/orchestration/state.py (provision_arm writes arms_dir/mcp.json) + src/copeca/runners/subprocess.py (build_command consumes config_dir_env + the mcp arg via the runner arg_map). Now traced by step i006 (orphan closed) and anchored to job tool-builder:1. Full mode-mechanism evidence re-run at 401b7bc: PATH=$PWD/.venv/bin:$PATH python -m pytest tests/config/test_mode_models.py tests/config/test_mode_yaml.py tests/orchestration/test_mode_isolation.py tests/orchestration/test_provision_arm_wiring.py tests/orchestration/test_config_dir_delivery.py tests/orchestration/test_mcp_materialization.py tests/runners/test_mcp_command_wiring.py tests/config/test_loader.py -q -> 71 passed (covers c001-c004).",
-        "evidence_sha": "61c7a21325cc9f3cea9bd20b383c18a051e95941"
+        "evidence_path": "src/copeca/orchestration/run.py (run_matrix populates work-item mode_obj + threads through _run_one_work_item -> run_single -> provision_arm) + src/copeca/orchestration/state.py + src/copeca/runners/subprocess.py (build_command consumes config_dir_env + mcp arg via runner arg_map). SD-B: exit_code and stderr now captured; crashed runs excluded from cost_per_correct and report accuracy. SD-C: keep_worktrees param added to run_matrix. Full mode-mechanism run at 51d44c2: PATH=$PWD/.venv/bin:$PATH python -m pytest tests/config/test_mode_models.py tests/config/test_mode_yaml.py tests/orchestration/test_mode_isolation.py tests/orchestration/test_provision_arm_wiring.py tests/orchestration/test_config_dir_delivery.py tests/orchestration/test_mcp_materialization.py tests/runners/test_mcp_command_wiring.py tests/config/test_loader.py -q -> 71 passed.",
+        "evidence_sha": "f24ed47cff2d6ab5ffb7bf131513432d8980c2db",
+        "validates_job_satisfied": true
       },
       {
         "check_id": "c001",
         "verdict": "pass",
-        "evidence_path": "src/copeca/config/models.py (Mode Pydantic model, 5 integration paths) + src/copeca/data/defaults/modes/ (5 YAML files). tests/config/test_mode_models.py 9/9 pass (all 5 paths, tools-only, multi-path, name pattern). tests/config/test_mode_yaml.py 11/11 pass (all 5 YAMLs load as valid Mode, content assertions per path). Re-verified at 401b7bc within the 71-test mode-mechanism run.",
-        "evidence_sha": "c9738cbb29c5275b94bd5b7608b09ecbba252c2b"
+        "evidence_path": "src/copeca/config/models.py (Mode Pydantic model, 5 integration paths) + src/copeca/data/defaults/modes/ (5 YAML files). SD-A: repos_dir is now resolved to absolute path in GitWorktreeManager so mcp.json and config-dir paths written per-arm are absolute (fixes --mcp-config failing). tests/config/test_mode_models.py 9/9 pass + tests/config/test_mode_yaml.py 11/11 pass. Run: PATH=$PWD/.venv/bin:$PATH python -m pytest tests/config/test_mode_models.py tests/config/test_mode_yaml.py tests/config/test_mode_yaml.py tests/config/test_loader.py -q -> 31 passed (within the 71-test mode-mechanism run).",
+        "evidence_sha": "c9738cbb29c5275b94bd5b7608b09ecbba252c2b",
+        "validates_job_satisfied": true
       },
       {
         "check_id": "c002",
         "verdict": "pass",
-        "evidence_path": "src/copeca/orchestration/state.py (provision_arm, ArmHarness) + src/copeca/orchestration/run.py (run_matrix). tests/orchestration/test_mode_isolation.py 16 pass (baseline clean, env isolation, wrapper prefix, agent_config copy, setup run, per-arm isolation). tests/orchestration/test_provision_arm_wiring.py::TestMatrixPathModeWiring PASS — experimental mode env reaches the runner while baseline stays clean, through the real run_matrix path. Re-verified at 401b7bc within the 71-test run.",
-        "evidence_sha": "ce37d5c5791d294e6d1839b4ee2b7e45096d5734"
+        "evidence_path": "src/copeca/orchestration/state.py (provision_arm, ArmHarness) + src/copeca/orchestration/run.py (run_matrix). SD-A: worktree + per-arm mcp.json/config-dir paths now absolute (GitWorktreeManager.repos_dir resolved). SD-C: --keep-worktrees flag added (run_single/run_matrix keep_worktree param; guards worktree reset; prints preserved path). tests/orchestration/test_mode_isolation.py 16 pass + tests/orchestration/test_provision_arm_wiring.py::TestMatrixPathModeWiring PASS. Run: PATH=$PWD/.venv/bin:$PATH python -m pytest tests/config/test_mode_models.py tests/config/test_mode_yaml.py tests/orchestration/test_mode_isolation.py tests/orchestration/test_provision_arm_wiring.py tests/orchestration/test_config_dir_delivery.py tests/orchestration/test_mcp_materialization.py tests/runners/test_mcp_command_wiring.py tests/config/test_loader.py -q -> 71 passed.",
+        "evidence_sha": "ce37d5c5791d294e6d1839b4ee2b7e45096d5734",
+        "validates_job_satisfied": true
       },
       {
         "check_id": "c003",
         "verdict": "pass",
-        "evidence_path": "src/copeca/orchestration/state.py (provision_arm env isolation). tests/orchestration/test_mode_isolation.py — env dict copied per arm, baseline gets no overrides, experimental gets ANTHROPIC_BASE_URL; no cross-arm contamination. Re-verified at 401b7bc within the 71-test run.",
-        "evidence_sha": "ce37d5c5791d294e6d1839b4ee2b7e45096d5734"
+        "evidence_path": "src/copeca/orchestration/state.py (provision_arm env isolation). SD-A: absolute paths prevent cross-arm path collisions when worktrees share a relative base. tests/orchestration/test_mode_isolation.py — env dict copied per arm, baseline gets no overrides, experimental gets ANTHROPIC_BASE_URL; no cross-arm contamination. Run: PATH=$PWD/.venv/bin:$PATH python -m pytest tests/orchestration/test_mode_isolation.py -q -> 16 passed.",
+        "evidence_sha": "ce37d5c5791d294e6d1839b4ee2b7e45096d5734",
+        "validates_job_satisfied": true
       }
     ]
   }
