@@ -20,6 +20,10 @@ runner:
   # codex exec has NO --system-prompt flag, so fold the system prompt into the
   # positional prompt rather than silently dropping a mode's instructions.
   prepend_system_prompt: true
+  # codex has no --mcp-config flag — MCP is injected via repeated -c overrides:
+  #   -c mcp_servers.<name>.command=<cmd>  -c mcp_servers.<name>.args=[...]
+  # build_command reads the mcp_config JSON file and translates it into this shape.
+  mcp_via_config_overrides: true
   parser: codex_json
 
 # codex `exec --json` emits no total_cost_usd, so cost is computed from these

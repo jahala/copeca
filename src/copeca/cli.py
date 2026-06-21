@@ -135,6 +135,7 @@ def build_runner(
         arg_map=cfg.arg_map,
         invoke_template=cfg.invoke_template,
         prepend_system_prompt=cfg.prepend_system_prompt,
+        mcp_via_config_overrides=cfg.mcp_via_config_overrides,
         parser=get_parser(cfg.parser),
         config_dir_env=cfg.config_dir_env,
     )
@@ -319,6 +320,8 @@ def run(
     or a filename containing 'scenario'), all tasks x modes x reps are run.
     Otherwise, the file is treated as a single task.
     """
+    import yaml
+
     from copeca.config.loader import (
         load_modes,
         load_repos,
@@ -326,11 +329,10 @@ def run(
         load_task,
         load_tasks_from_dir,
     )
-    from copeca.orchestration.run import run_matrix, run_single as run_single_task
+    from copeca.orchestration.run import run_matrix
+    from copeca.orchestration.run import run_single as run_single_task
     from copeca.orchestration.validation import validate_scenario
     from copeca.repos.manager import GitWorktreeManager
-
-    import yaml
 
     # ── Detect: scenario or single task? ────────────────────────────────
     lookup_text = task.read_text()
@@ -690,8 +692,8 @@ def analyze(
     """Analyze benchmark results and produce a report."""
     import json
 
-    from copeca.analysis.stats import bootstrap_ci, compute_stats, cost_per_correct
     from copeca.analysis.report import generate_report
+    from copeca.analysis.stats import cost_per_correct
 
     if not results.exists():
         typer.echo(f"Error: file not found: {results}", err=True)

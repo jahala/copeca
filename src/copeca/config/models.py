@@ -228,6 +228,10 @@ class RunnerConfig(BaseModel):
     # Fold the system prompt into the positional prompt for CLIs with no
     # system-prompt flag (e.g. codex exec). Default off — claude uses --system-prompt.
     prepend_system_prompt: bool = False
+    # When True, MCP is delivered as repeated -c mcp_servers.<name>.command/args
+    # overrides instead of a --mcp-config flag. codex has no --mcp-config; it
+    # reads MCP config through its -c config-override mechanism.
+    mcp_via_config_overrides: bool = False
     config_dir_env: str | None = None
     parser: str = ""
     # Raw pricing as authored: each model -> {input, output, cache_*: float,
