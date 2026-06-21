@@ -2510,7 +2510,7 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
 {
   "id": "copeca-docs-and-init",
   "title": "copeca-docs-and-init",
-  "status": "verified",
+  "status": "in-progress",
   "priority": "medium",
   "dependencies": [
     "copeca-validate-tasks",
@@ -2532,7 +2532,7 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
   "solves": [],
   "what": "Production-ready documentation and project scaffolding — `copeca init ./my-benchmark` bootstraps a working suite in one command. Docs cover task authoring, runner configuration, metrics, methodology, known limitations, and the artifact model.",
   "why": "A benchmark that requires reading source code to use has no users. The best benchmark in the world is useless if a new tool author can't get from zero to running their first scenario in under 10 minutes.",
-  "impact": "Phase 1a proved the format. Phase 4 makes copeca a product — not a design doc and a dream. All ~85 tasks validate; edit tasks pass check-task; copeca init bootstraps a working directory; integration tests pass.",
+  "impact": "Phase 1a proved the format. Phase 4 makes copeca a product — not a design doc and a dream. All 16 bundled tasks validate; edit tasks pass check-task; copeca init bootstraps a working directory; integration tests pass. (16 tasks ship at HEAD; ~85 is the roadmap target — see docs/known-limitations.md.)",
   "fit": "Phase 4. Final gate. The README shows a complete worked example; every CLI flag is documented; the security warning about --dangerously-skip-permissions is prominent.",
   "where": "README.md, docs/task-authoring.md, docs/runner-configuration.md, docs/metrics.md, docs/methodology.md, docs/known-limitations.md, src/copeca/cli.py, scripts/migrate_from_tilth.py, tests/test_orchestrator.py",
   "how": "Documentation written from the independent-source corpus perspective. README leads with a concrete example. Task authoring guide covers all mutation actions and completeness verification. Methodology guide covers delta-not-absolute, per-task transparency, independent governance. Security warning prominent in README and runner docs.",
@@ -2561,7 +2561,7 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
     },
     {
       "id": "c003",
-      "description": "All 85 tasks validate and edit tasks pass check-task",
+      "description": "All bundled tasks validate and edit tasks pass check-task (16 at HEAD; ~85 targeted)",
       "validates": "how",
       "method": "synthetic-test",
       "validates_job": "skeptical-evaluator:2",
@@ -2573,7 +2573,7 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
   },
   "progress": {
     "implementation": 100,
-    "verification": 100
+    "verification": 0
   },
   "personas_resolved": [
     {
@@ -2604,10 +2604,10 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
       ]
     }
   ],
-  "narrative": "## The first 10 minutes\n\nA tool builder who just read about copeca on a colleague's blog opens a terminal. They have their MCP server ready and want to benchmark it. They type:\n\n```\ncopeca init ./my-benchmark\ncd ./my-benchmark\ncopeca run scenarios/example.yaml\ncopeca analyze results/*.jsonl\n```\n\nTotal time from zero to first number: under 10 minutes. The directory contains a bundled seed corpus, a `repos.yaml` with clone URLs for every referenced repository, an example scenario file, and default mode declarations. Every file is commented. The tool builder changes `mode: mcp` to `mode: my-tool`, adds their MCP server path, and runs. The [validate-tasks](copeca-validate-tasks.tend.html) gate runs silently before any agent launches — malformed tasks are caught before they waste a run.\n\n## What the docs cover\n\n**README** — 3-command quickstart with a complete worked example: benchmarking a caching MCP server against a baseline, with the full report output shown. Every CLI flag documented. `--dangerously-skip-permissions` carries a prominent security warning.\n\n**Task authoring guide** — YAML schema, mutation actions, completeness verification, and provenance requirements (every task needs a `source:` field).\n\n**Methodology guide** — Cost-per-correct math, delta-not-absolute, per-task transparency, independent corpus governance, and known limitations.\n\n**Runner configuration** — YAML runner config, git-worktree isolation, parallel execution limits, adversarial thresholds, and the artifact model.\n\n**Known limitations** — Every limitation collected in one place with severity and impact: bootstrap CI assumptions, adversarial flag heuristics, pricing freshness, corpus size.\n\n## Why a single command matters\n\nMost benchmarks fail at onboarding. The tool author opens the README, sees 15 pages of configuration, and closes the tab. `copeca init` is the entire argument: if you can't get from zero to a number in 10 minutes, the benchmark is architecture, not software.\n\nThe bundled tasks make this possible. Without a seed corpus, `copeca init` would produce an empty directory. With 85 provenance-tracked tasks baked in, the user's first `copeca run` actually produces output — which means they see a report, which means they understand what copeca does from experience, not from documentation.",
+  "narrative": "## The first 10 minutes\n\nA tool builder who just read about copeca on a colleague's blog opens a terminal. They have their MCP server ready and want to benchmark it. They type:\n\n```\ncopeca init ./my-benchmark\ncd ./my-benchmark\ncopeca run scenarios/example.yaml\ncopeca analyze results/*.jsonl\n```\n\nTotal time from zero to first number: under 10 minutes. The directory contains a bundled seed corpus, a `repos.yaml` with clone URLs for every referenced repository, an example scenario file, and default mode declarations. Every file is commented. The tool builder changes `mode: mcp` to `mode: my-tool`, adds their MCP server path, and runs. The [validate-tasks](copeca-validate-tasks.tend.html) gate runs silently before any agent launches — malformed tasks are caught before they waste a run.\n\n## What the docs cover\n\n**README** — 3-command quickstart with a complete worked example: benchmarking a caching MCP server against a baseline, with the full report output shown. Every CLI flag documented. `--dangerously-skip-permissions` carries a prominent security warning.\n\n**Task authoring guide** — YAML schema, mutation actions, completeness verification, and provenance requirements (every task needs a `source:` field).\n\n**Methodology guide** — Cost-per-correct math, delta-not-absolute, per-task transparency, independent corpus governance, and known limitations.\n\n**Runner configuration** — YAML runner config, git-worktree isolation, parallel execution limits, adversarial thresholds, and the artifact model.\n\n**Known limitations** — Every limitation collected in one place with severity and impact: bootstrap CI assumptions, adversarial flag heuristics, pricing freshness, corpus size.\n\n## Why a single command matters\n\nMost benchmarks fail at onboarding. The tool author opens the README, sees 15 pages of configuration, and closes the tab. `copeca init` is the entire argument: if you can't get from zero to a number in 10 minutes, the benchmark is architecture, not software.\n\nThe bundled tasks make this possible. Without a seed corpus, `copeca init` would produce an empty directory. With a provenance-tracked seed corpus baked in (16 tasks at HEAD, ~85 targeted), the user's first `copeca run` actually produces output — which means they see a report, which means they understand what copeca does from experience, not from documentation.",
   "thumbnail": {
     "kind": "svg",
-    "content": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"200\" height=\"120\" viewBox=\"0 0 200 120\">\n  <rect width=\"200\" height=\"120\" fill=\"#FAF5E9\"/>\n  <rect x=\"100\" y=\"15\" width=\"80\" height=\"90\" rx=\"4\" fill=\"#3A2718\" opacity=\"0.08\"/>\n  <rect x=\"108\" y=\"23\" width=\"64\" height=\"5\" rx=\"1\" fill=\"#3A2718\" opacity=\"0.15\"/>\n  <rect x=\"108\" y=\"32\" width=\"52\" height=\"5\" rx=\"1\" fill=\"#3A2718\" opacity=\"0.12\"/>\n  <rect x=\"108\" y=\"41\" width=\"58\" height=\"5\" rx=\"1\" fill=\"#3A2718\" opacity=\"0.15\"/>\n  <rect x=\"108\" y=\"50\" width=\"40\" height=\"5\" rx=\"1\" fill=\"#3A2718\" opacity=\"0.1\"/>\n  <rect x=\"108\" y=\"59\" width=\"48\" height=\"5\" rx=\"1\" fill=\"#3A2718\" opacity=\"0.12\"/>\n  <rect x=\"108\" y=\"68\" width=\"56\" height=\"5\" rx=\"1\" fill=\"#3A2718\" opacity=\"0.15\"/>\n  <rect x=\"108\" y=\"77\" width=\"35\" height=\"5\" rx=\"1\" fill=\"#3A2718\" opacity=\"0.1\"/>\n  <rect x=\"108\" y=\"86\" width=\"44\" height=\"5\" rx=\"1\" fill=\"#3A2718\" opacity=\"0.12\"/>\n  <path d=\"M35,90 Q35,60 50,55 L55,55 M50,55 L45,50 M50,55 L45,60\" stroke=\"#357E2C\" stroke-width=\"2\" fill=\"none\"/>\n  <circle cx=\"35\" cy=\"94\" r=\"5\" fill=\"#3A2718\"/>\n  <text x=\"35\" y=\"108\" text-anchor=\"middle\" font-family=\"sans-serif\" font-size=\"7\" fill=\"#3A2718\" opacity=\"0.6\">seed</text>\n  <circle cx=\"25\" cy=\"30\" r=\"3\" fill=\"#E89227\" opacity=\"0.8\"/>\n  <text x=\"32\" y=\"30\" font-family=\"monospace\" font-size=\"7\" fill=\"#3A2718\">copeca init</text>\n  <text x=\"32\" y=\"42\" font-family=\"monospace\" font-size=\"7\" fill=\"#3A2718\">/benchmark</text>\n  <rect x=\"25\" y=\"52\" width=\"4\" height=\"7\" fill=\"#357E2C\" opacity=\"0.6\"/>\n  <text x=\"34\" y=\"58\" font-family=\"monospace\" font-size=\"7\" fill=\"#3A2718\">tasks/ *85</text>\n  <rect x=\"25\" y=\"66\" width=\"4\" height=\"7\" fill=\"#357E2C\" opacity=\"0.6\"/>\n  <text x=\"34\" y=\"72\" font-family=\"monospace\" font-size=\"7\" fill=\"#3A2718\">repos.yaml</text>\n  <rect x=\"25\" y=\"80\" width=\"4\" height=\"7\" fill=\"#357E2C\" opacity=\"0.6\"/>\n  <text x=\"34\" y=\"86\" font-family=\"monospace\" font-size=\"7\" fill=\"#3A2718\">scenarios/</text>\n</svg>"
+    "content": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"200\" height=\"120\" viewBox=\"0 0 200 120\">\n  <rect width=\"200\" height=\"120\" fill=\"#FAF5E9\"/>\n  <rect x=\"100\" y=\"15\" width=\"80\" height=\"90\" rx=\"4\" fill=\"#3A2718\" opacity=\"0.08\"/>\n  <rect x=\"108\" y=\"23\" width=\"64\" height=\"5\" rx=\"1\" fill=\"#3A2718\" opacity=\"0.15\"/>\n  <rect x=\"108\" y=\"32\" width=\"52\" height=\"5\" rx=\"1\" fill=\"#3A2718\" opacity=\"0.12\"/>\n  <rect x=\"108\" y=\"41\" width=\"58\" height=\"5\" rx=\"1\" fill=\"#3A2718\" opacity=\"0.15\"/>\n  <rect x=\"108\" y=\"50\" width=\"40\" height=\"5\" rx=\"1\" fill=\"#3A2718\" opacity=\"0.1\"/>\n  <rect x=\"108\" y=\"59\" width=\"48\" height=\"5\" rx=\"1\" fill=\"#3A2718\" opacity=\"0.12\"/>\n  <rect x=\"108\" y=\"68\" width=\"56\" height=\"5\" rx=\"1\" fill=\"#3A2718\" opacity=\"0.15\"/>\n  <rect x=\"108\" y=\"77\" width=\"35\" height=\"5\" rx=\"1\" fill=\"#3A2718\" opacity=\"0.1\"/>\n  <rect x=\"108\" y=\"86\" width=\"44\" height=\"5\" rx=\"1\" fill=\"#3A2718\" opacity=\"0.12\"/>\n  <path d=\"M35,90 Q35,60 50,55 L55,55 M50,55 L45,50 M50,55 L45,60\" stroke=\"#357E2C\" stroke-width=\"2\" fill=\"none\"/>\n  <circle cx=\"35\" cy=\"94\" r=\"5\" fill=\"#3A2718\"/>\n  <text x=\"35\" y=\"108\" text-anchor=\"middle\" font-family=\"sans-serif\" font-size=\"7\" fill=\"#3A2718\" opacity=\"0.6\">seed</text>\n  <circle cx=\"25\" cy=\"30\" r=\"3\" fill=\"#E89227\" opacity=\"0.8\"/>\n  <text x=\"32\" y=\"30\" font-family=\"monospace\" font-size=\"7\" fill=\"#3A2718\">copeca init</text>\n  <text x=\"32\" y=\"42\" font-family=\"monospace\" font-size=\"7\" fill=\"#3A2718\">/benchmark</text>\n  <rect x=\"25\" y=\"52\" width=\"4\" height=\"7\" fill=\"#357E2C\" opacity=\"0.6\"/>\n  <text x=\"34\" y=\"58\" font-family=\"monospace\" font-size=\"7\" fill=\"#3A2718\">tasks/ *16</text>\n  <rect x=\"25\" y=\"66\" width=\"4\" height=\"7\" fill=\"#357E2C\" opacity=\"0.6\"/>\n  <text x=\"34\" y=\"72\" font-family=\"monospace\" font-size=\"7\" fill=\"#3A2718\">repos.yaml</text>\n  <rect x=\"25\" y=\"80\" width=\"4\" height=\"7\" fill=\"#357E2C\" opacity=\"0.6\"/>\n  <text x=\"34\" y=\"86\" font-family=\"monospace\" font-size=\"7\" fill=\"#3A2718\">scenarios/</text>\n</svg>"
   },
   "steps": [
     {
@@ -2740,40 +2740,7 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
       "rationale": "negctrl for init CLI not applicable (integration_level=unit but it's a CLI end-to-end pattern). Verified via actual smoke test: copeca init runs, validate passes.",
       "judged_sha": "5b1b803de1a54ea6b01763eb8ffa7de4c62193c6"
     }
-  ],
-  "audit": {
-    "ran_at": "2026-06-21T00:00:00Z",
-    "result": "pass",
-    "verified_at_commit": "778f9b44cd7136a7717e721a07975270893395a3",
-    "verdicts": [
-      {
-        "check_id": "c001",
-        "verdict": "pass",
-        "evidence_path": "src/copeca/cli.py (copeca init command) + src/copeca/data/ (bundled seed corpus). tests/cli/test_init.py 7/7 pass (directory structure, seed tasks, repos.yaml, validate-after-init, existing-dir, summary output, chain). Smoke: copeca init /tmp/test-benchmark-audit && copeca validate /tmp/test-benchmark-audit/tasks/ -> 'Validated 16 task(s) successfully.' exit 0. Run: PATH=.venv/bin:$PATH python -m pytest tests/cli/test_init.py -q -> 7 passed.",
-        "validates_job_satisfied": null,
-        "evidence_sha": "b07a35c787327e856bb9cd57396f352b230dc53b"
-      },
-      {
-        "check_id": "c002",
-        "verdict": "pass",
-        "evidence_path": "README.md + docs/task-authoring.md + docs/runner-configuration.md + docs/metrics.md + docs/methodology.md + docs/known-limitations.md. tests/docs/test_docs_exist.py 14/14 pass (structural checks: all docs exist, README quickstart, metrics defines cost-per-correct, methodology mentions delta, task-authoring and runner-config keywords). NOTE: c002 is method=user-report; no human under-5-minutes trial has been conducted. Automated structural checks pass; real user timing remains unverified by design.",
-        "validates_job_satisfied": null,
-        "evidence_sha": "e1cc122bf9078146af3ec80e1e5601c04e2b5ff6"
-      },
-      {
-        "check_id": "c003",
-        "verdict": "pass",
-        "evidence_path": "copeca validate src/copeca/data/tasks/ -> 'Validated 16 task(s) successfully.' (zero blocked-source errors). HONEST LIMITATION: impact slot claimed ~85 tasks; only 16 bundled tasks exist at HEAD. check-task requires cloned repos not available in CI; check-task validation deferred to operator provisioning. The 16 that exist are clean and non-blocked.",
-        "validates_job_satisfied": null,
-        "evidence_sha": "3996834cae1f40b975889de4f256216b66744d42"
-      }
-    ],
-    "drift": [
-      {
-        "finding": "Impact slot claimed ~85 bundled tasks; 16 exist at HEAD. The 85-task number was aspirational. Audit passes c003 for the 16 tasks that validate cleanly, with gap disclosed in evidence_path."
-      }
-    ]
-  }
+  ]
 }
 </script>
 <!-- OO:DATA:END -->

@@ -2510,7 +2510,7 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
 {
   "id": "copeca-analysis-reporting",
   "title": "copeca-analysis-reporting",
-  "status": "verified",
+  "status": "in-progress",
   "priority": "high",
   "dependencies": [
     "copeca-scenario-matrix",
@@ -2580,7 +2580,7 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
   },
   "progress": {
     "implementation": 100,
-    "verification": 100
+    "verification": 0
   },
   "personas_resolved": [
     {
@@ -2746,6 +2746,28 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
           "text": "Smoke verified: copeca analyze produces delta-headline markdown report from JSONL. copeca compare shows per-task deltas. JSON format output produces valid JSON with cost_per_correct field."
         }
       ]
+    },
+    {
+      "id": "i007",
+      "title": "F-C1: zero-correct cost-per-correct returns None and renders 'n/a (0 correct)' — never inverts",
+      "dependencies": [
+        "i001",
+        "i003"
+      ],
+      "status": "done",
+      "step_type": "agent",
+      "traces_to": [
+        "c004"
+      ],
+      "description": "Test: tests/analysis/test_stats.py::test_cost_per_correct_zero_correct_returns_none + tests/analysis/test_report.py::{test_report_zero_correct_experimental_shows_na, test_report_zero_correct_headline_describes_situation, test_report_accuracy_shown_alongside_cost_per_correct}\nAsserts: cost_per_correct returns None (not 0.0) when correct=0; the report renders 'n/a (0 correct)' for a 0-correct mode; NO negative '-100%' delta is emitted from the zero denominator; accuracy (correct/total) is shown alongside cost-per-correct.\nBoundary: pure functions (stats.py, report.py, compare.py). No I/O.\nRun: PATH=.venv/bin:$PATH python -m pytest tests/analysis/ -k 'zero_correct or accuracy' -q\n\nImplement: src/copeca/analysis/stats.py cost_per_correct returns None at 0 correct; src/copeca/analysis/report.py + compare.py render 'n/a (0 correct)', exclude None from the headline delta and bootstrap, and show accuracy as a co-headline. This is the F-C1 audit remediation (2026-06-20): a worse tool at 0 correct can no longer appear cheaper than a working one. Recorded as a discrete step so check c004 is no longer an orphan (it now traces to an implementation step).",
+      "verification_profile": "standard",
+      "log": [
+        {
+          "at": "2026-06-21T00:00:00Z",
+          "type": "note",
+          "text": "F-C1 fix recorded as a discrete step linking the zero-correct behavior to check c004 (previously an orphan). cost_per_correct returns None at 0-correct; report/compare render 'n/a (0 correct)'; excluded from delta + bootstrap; accuracy co-headline."
+        }
+      ]
     }
   ],
   "judgments": [
@@ -2777,43 +2799,7 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
       "rationale": "test_compare_flags_large_changes DOES NOT DISCRIMINATE — assertion '>' in result is trivially true in any markdown table. The check has no mechanical proof that >10% flagging works.",
       "judged_sha": "393e16a8faa73db3f3a677ae80a5b124b1090127"
     }
-  ],
-  "audit": {
-    "ran_at": "2026-06-21T00:00:00Z",
-    "result": "pass",
-    "verified_at_commit": "778f9b44cd7136a7717e721a07975270893395a3",
-    "verdicts": [
-      {
-        "check_id": "c001",
-        "verdict": "pass",
-        "evidence_path": "src/copeca/analysis/stats.py (compute_stats, bootstrap_ci, ascii_sparkline) + src/copeca/analysis/report.py (generate_report with delta-headline). tests/analysis/test_stats.py 15/15 pass. tests/analysis/test_bootstrap.py 5/5 pass (CI contains mean, seed reproducibility). tests/analysis/test_report.py 19/19 pass (delta-headline, per-task table, cost breakdown, CI in headline, per-language, per-difficulty). Smoke: copeca analyze /tmp/bench_test.jsonl --format json -> valid JSON with cost_per_correct field exit 0. Multi-mode delta smoke declined (no pre-run JSONL at HEAD); delta-headline + CI paths verified through test_report_contains_ci_in_headline and test_report_contains_cost_per_correct_headline. Run: PATH=.venv/bin:$PATH python -m pytest tests/analysis/ -q -> 44 passed.",
-        "validates_job_satisfied": null,
-        "evidence_sha": "b0a098759eca65e1fa278e21b8c852a7c69e872a"
-      },
-      {
-        "check_id": "c002",
-        "verdict": "pass",
-        "evidence_path": "src/copeca/analysis/report.py (generate_report: adversarial summary, sparklines, tool adoption sections). tests/analysis/test_report.py: test_report_contains_adversarial_summary PASS, test_report_contains_token_usage_sparklines PASS, test_report_contains_tool_adoption PASS. Run: PATH=.venv/bin:$PATH python -m pytest tests/analysis/test_report.py -k 'adversarial or sparkline or tool_adoption' -q -> 3 passed.",
-        "validates_job_satisfied": null,
-        "evidence_sha": "5fa2d370dffb8af5bac1295d4ab845d6b1f490df"
-      },
-      {
-        "check_id": "c003",
-        "verdict": "pass",
-        "evidence_path": "src/copeca/analysis/compare.py (compare_runs, per-task delta, >10% flagging). tests/analysis/test_compare.py 5/5 pass. HONEST LIMITATION: test_compare_flags_large_changes asserts '\">\".in result or ...' which is trivially true in any markdown output; the test does not verify that only task_a (50% change) is flagged and task_b (5% change) is not. The >10% threshold logic exists in compare.py but is not independently discriminated by this test. Feature code correct; test coverage of the selectivity is weak. Run: PATH=.venv/bin:$PATH python -m pytest tests/analysis/test_compare.py -q -> 5 passed.",
-        "validates_job_satisfied": null,
-        "evidence_sha": "305b0796716c1b5b2c3b2ff12db678f3a8b92631"
-      },
-      {
-        "check_id": "c004",
-        "verdict": "pass",
-        "evidence_path": "src/copeca/analysis/stats.py::cost_per_correct (returns None when correct=0) + src/copeca/analysis/report.py (zero-correct renders 'n/a (0 correct)'). tests/analysis/test_stats.py::test_cost_per_correct_zero_correct_returns_none PASS. tests/analysis/test_report.py::test_report_zero_correct_experimental_shows_na PASS. tests/analysis/test_report.py::test_report_zero_correct_headline_describes_situation PASS. tests/analysis/test_report.py::test_report_accuracy_shown_alongside_cost_per_correct PASS. Run: PATH=.venv/bin:$PATH python -m pytest tests/analysis/ -k 'zero_correct or accuracy' -q -> 3 passed.",
-        "validates_job_satisfied": null,
-        "evidence_sha": "b0a098759eca65e1fa278e21b8c852a7c69e872a"
-      }
-    ],
-    "drift": []
-  }
+  ]
 }
 </script>
 <!-- OO:DATA:END -->
