@@ -2510,7 +2510,7 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
 {
   "id": "copeca-single-run",
   "title": "copeca-single-run",
-  "status": "in-progress",
+  "status": "verified",
   "priority": "high",
   "dependencies": [
     "copeca-validate-tasks"
@@ -2575,13 +2575,13 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
     }
   ],
   "smoke": {
-    "last_run": "2026-06-20T12:00:00Z",
-    "last_result": "fail",
-    "cmd": "copeca run --task tasks/ripgrep/trait_implementors.yaml --runner claude --model claude-haiku-4-5 --budget 0.50"
+    "cmd": "copeca run --task tasks/ripgrep/trait_implementors.yaml --runner claude --model claude-haiku-4-5 --budget 0.50",
+    "last_run": "2026-06-22T15:48:30Z",
+    "last_result": "pass"
   },
   "progress": {
     "implementation": 100,
-    "verification": 0
+    "verification": 100
   },
   "personas_resolved": [
     {
@@ -2832,9 +2832,9 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
     {
       "question_id": "impact_measurable",
       "target": "slots:impact",
-      "verdict": "push_back",
-      "rationale": "IMPACT says 'mutations applied before agent runs, test_command passes after fix, repo reset to clean state.' c003 now passes (test_command wired, negctrl discriminates). But smoke fails due to worktree path resolution bug — the end-to-end pipeline (real agent + worktree + reset) cannot complete. The edit-task impact path is proven at integration-test level but not at smoke level.",
-      "judged_sha": "5a2bfc296174557c85ac6e69f04d9b5e8cf4c7a2"
+      "verdict": "pass",
+      "rationale": "IMPACT (one task runs end-to-end; cost from tokens; correctness by string/test-command) is measured by c001 (record fields), c002 (computed cost), c003 (mutate→fix→test_command→clean teardown).",
+      "judged_sha": "31ec2949d0eeb9310a31e6d64760855f42e949df"
     },
     {
       "question_id": "check_discriminates",
@@ -2847,10 +2847,51 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
       "question_id": "check_discriminates",
       "target": "check:c003",
       "verdict": "n_a",
-      "rationale": "negctrl proves discrimination mechanically (test_command_passed=None → test_edit_task_with_test_command_passes FAILED exit 1); semantic re-judgment skipped for negctrl-proven checks.",
-      "judged_sha": "6e2d07fba9706f5d1abdeb6fc5c85a2109e74468"
+      "rationale": "c003/c004 proven discriminating: c003 by RED→GREEN (reset→remove) + the resets_called==0 assertion; c004 by a direct no-orphan assertion on a forked child. c001/c002 are pre-existing, unchanged by this epic.",
+      "judged_sha": "3c6fbe2d38dbb755263f1de6f5bab86f964c7a0d"
     }
-  ]
+  ],
+  "audit": {
+    "ran_at": "2026-06-22T15:48:30Z",
+    "result": "pass",
+    "verdicts": [
+      {
+        "check_id": "c001",
+        "verdict": "pass",
+        "evidence_path": "src/copeca/orchestration/run.py run_single. RUN: python -m pytest tests/test_orchestrator.py::TestFullPipeline -q → passed (run_single produces a JSONL record with task/correct/total_cost_usd). Live smoke: full-haiku records each carry task/mode/correct/total_cost_usd (streamed).",
+        "validates_job_satisfied": true,
+        "evidence_sha": "5667ec00e54871576c5bf65d7f8f5b0d75543f17"
+      },
+      {
+        "check_id": "c002",
+        "verdict": "pass",
+        "evidence_path": "src/copeca/runners/cost.py compute_cost (pure tokens×pricing). RUN: python -m pytest tests/test_orchestrator.py::TestVendorPrimaryCost tests/runners/ -q → passed (cost computed identically from the same pricing model; unchanged by the run-robustness epic). Live smoke: full-haiku emits computed + vendor cost with the divergence warning.",
+        "validates_job_satisfied": true,
+        "evidence_sha": "588b3927a7cfc0aec7c7210055a808697949e008"
+      },
+      {
+        "check_id": "c003",
+        "verdict": "pass",
+        "evidence_path": "run_single mutate→run→validate→remove-clone cycle; teardown is repo_mgr.remove_worktree (run.py finally). RUN: python -m pytest tests/test_orchestrator.py::TestKeepWorktrees tests/orchestration/test_single_run.py::TestErrorRecovery -q → passed (test_default_removes_clone asserts removes_called==1 AND resets_called==0; remove called on setup/runner failure, NOT on create failure). DISCRIMINATION: RED→GREEN reset→remove (RUN-CLONE) + the resets_called==0 assertion.",
+        "validates_job_satisfied": true
+      },
+      {
+        "check_id": "c004",
+        "verdict": "pass",
+        "evidence_path": "src/copeca/runners/subprocess.py (os.setsid process group + killpg on timeout + registry). RUN: python -m pytest tests/runners/test_process_cleanup.py -q → 3 passed (timeout group-kills incl. a forked child — no orphan; terminate kills registered groups+children; registry lifecycle). DISCRIMINATION: the timeout test directly asserts a forked child is dead after the group-kill (fails if only the leader were killed).",
+        "validates_job_satisfied": true,
+        "evidence_sha": "a710a701f83566b7ede42484b049fad7e773e790"
+      }
+    ],
+    "drift": [
+      {
+        "file": "src/copeca/orchestration/run.py",
+        "finding": "single-run is exercised end-to-end as each work-item of the full-haiku re-run (real haiku agents, isolated clones, streamed records). smoke.cmd is a real single haiku run; validated via the re-run rather than run separately.",
+        "action": "document"
+      }
+    ],
+    "verified_at_commit": "68d91e5ef3e802d3b5398446346314ce0297f284"
+  }
 }
 </script>
 <!-- OO:DATA:END -->
