@@ -1,0 +1,17 @@
+name: check-tilth-sonnet
+description: Small baseline-vs-tilth run on ripgrep (2 comprehension capability tasks + 2 controls) to validate the report/scoreboard pipeline with real data.
+tasks:
+  - rg_trait_implementors
+  - rg_flag_definition
+  - ctrl_rust_greet
+  - ctrl_rust_repeat2
+modes:
+  - baseline
+  - tilth
+models:
+  - claude-sonnet-4-6
+repetitions: 1
+budget_usd: 0.50
+timeout_seconds: 300
+max_workers: 2
+output_dir: results
