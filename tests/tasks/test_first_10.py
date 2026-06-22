@@ -24,6 +24,7 @@ APPROVED_SOURCE_PREFIXES = (
     "SWE-bench-Live",  # MIT — time-gated edits
     "Terminal-Bench 2.0",  # Apache-2.0 — CLI tasks
     "tilth-benchmark",  # MIT — migrated tasks
+    "copeca-control",  # MIT — first-party tool-neutral control tasks (#52)
 )
 # Sources that are explicitly disallowed (NWC/NC/ND, contaminated, deprecated).
 BLOCKED_SOURCE_PREFIXES = (

@@ -1,0 +1,21 @@
+name: ctrl_js_join_kv
+description: Reason about a self-contained JavaScript function — control task answerable from the prompt alone.
+source: copeca-control (MIT)
+repo: express
+type: comprehension
+category: reason
+control: true
+language: javascript
+difficulty: easy
+version: 1
+prompt: |
+  Given only this self-contained JavaScript function:
+
+      function joinKv(k, v) {
+        return k + "=" + v;
+      }
+
+  What does joinKv("a", "1") return? Answer with the value only.
+ground_truth:
+  required_strings:
+    - "a=1"

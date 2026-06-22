@@ -188,6 +188,63 @@ def _per_category_section(
     return lines
 
 
+def _control_section(
+    records: list[dict[str, Any]],
+    by_mode: dict[Any, list[dict[str, Any]]],
+    modes: list[str],
+) -> list[str]:
+    """Control / non-regression (#52): the tool's cost-per-correct delta on
+    control=True tasks — tasks where a codebase tool should not help. Lower
+    cost-per-correct is better, so a significantly POSITIVE delta means the
+    tool degraded neutral work (a regression); a near-zero delta is healthy.
+    """
+    control_records = [r for r in records if r.get("control") is True]
+    if not control_records or len(modes) != 2:
+        return []
+
+    m0, m1 = modes
+    n_tasks = len({r.get("task") for r in control_records})
+    by_mode_ctrl = group_by(control_records, key="mode")
+    cpc0 = cost_per_correct(by_mode_ctrl.get(m0, []))
+    cpc1 = cost_per_correct(by_mode_ctrl.get(m1, []))
+    deltas = _compute_per_task_deltas(control_records, modes)
+
+    lines: list[str] = []
+    lines.append("### Control (Non-Regression)")
+    lines.append("")
+    lines.append(
+        f"Tasks where the tool should not help (n={n_tasks}: answer-in-context, "
+        "single-file, or pure reasoning). Lower cost-per-correct is better, so a "
+        "near-zero delta is healthy; a significantly positive delta means the tool "
+        "made neutral tasks costlier per correct answer."
+    )
+    lines.append("")
+
+    if cpc0 is None or cpc1 is None or not deltas:
+        lines.append("**Control delta:** n/a — too few correct control runs to measure.")
+        lines.append("")
+        return lines
+
+    delta_pct = ((cpc1 - cpc0) / cpc0) * 100 if cpc0 > 0 else 0.0
+    ci_lo, ci_hi, _, _ = bootstrap_ci(deltas)
+    band = f"{delta_pct:+.1f}% [95% CI: {ci_lo:+.1f}%, {ci_hi:+.1f}%]"
+    if ci_lo > 0:
+        lines.append(
+            f"**⚠ Regression:** the tool **degraded** neutral tasks — control delta {band}."
+        )
+    elif ci_hi < 0:
+        lines.append(
+            f"**Note:** the tool also improved neutral tasks — control delta {band}. "
+            "Verify these controls are genuinely tool-neutral."
+        )
+    else:
+        lines.append(
+            f"**✓ No significant effect** on neutral tasks — control delta {band} (healthy)."
+        )
+    lines.append("")
+    return lines
+
+
 def generate_report(records: list[dict[str, Any]]) -> str:
     """Generate a markdown report from JSONL records.
 
@@ -454,4 +511,6 @@ def generate_report(records: list[dict[str, Any]]) -> str:
         _per_category_section(records, by_mode, modes, "category", "Per-Capability Breakdown")
     )
 
+    # ── 11. Control / non-regression (if records carry control tasks) ───────
+    lines.extend(_control_section(records, by_mode, modes))
     return "\n".join(lines)

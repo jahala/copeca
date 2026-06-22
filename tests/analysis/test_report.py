@@ -18,6 +18,7 @@ def _make_record(
     language: str | None = None,
     difficulty: str | None = None,
     category: str | None = None,
+    control: bool | None = None,
 ) -> dict:
     """Helper to build a minimal JSONL record."""
     record: dict = {
@@ -42,6 +43,8 @@ def _make_record(
         record["difficulty"] = difficulty
     if category is not None:
         record["category"] = category
+    if control is not None:
+        record["control"] = control
     return record
 
 
@@ -515,3 +518,54 @@ class TestReportExcludesFailedRuns:
         assert "1/2" not in report
         # the failure stays visible, not hidden
         assert "Failed" in report
+
+
+class TestControlSection:
+    """Control / non-regression (#52): the tool's delta on control=True tasks.
+
+    Lower cost-per-correct is better, so a *positive* control-delta is a regression.
+    """
+
+    def _control_records(self, baseline_cost, tool_cost, n=5):
+        recs = []
+        for i in range(n):
+            recs.append(
+                _make_record(
+                    task=f"c{i}",
+                    mode="baseline",
+                    control=True,
+                    total_cost_usd=baseline_cost,
+                    correct=True,
+                )
+            )
+            recs.append(
+                _make_record(
+                    task=f"c{i}",
+                    mode="tool",
+                    control=True,
+                    total_cost_usd=tool_cost,
+                    correct=True,
+                )
+            )
+        return recs
+
+    def test_section_absent_without_control_tasks(self):
+        recs = [
+            _make_record(task="t", mode="baseline", total_cost_usd=0.1, correct=True),
+            _make_record(task="t", mode="tool", total_cost_usd=0.1, correct=True),
+        ]
+        assert "Control (Non-Regression)" not in generate_report(recs)
+
+    def test_section_present_with_control_tasks(self):
+        assert "Control (Non-Regression)" in generate_report(self._control_records(0.10, 0.10))
+
+    def test_regression_flagged_when_tool_worse_on_controls(self):
+        report = generate_report(self._control_records(0.01, 0.02))
+        assert "Control (Non-Regression)" in report
+        assert "degraded" in report.lower()
+
+    def test_no_regression_when_neutral(self):
+        report = generate_report(self._control_records(0.01, 0.01))
+        assert "Control (Non-Regression)" in report
+        assert "degraded" not in report.lower()
+        assert "no significant effect" in report.lower()

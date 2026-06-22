@@ -1,0 +1,21 @@
+name: ctrl_go_tag
+description: Reason about a self-contained Go function — control task; the result is fully determined by the snippet, so codebase tools cannot help.
+source: copeca-control (MIT)
+repo: gin
+type: comprehension
+category: reason
+control: true
+language: go
+difficulty: easy
+version: 1
+prompt: |
+  Given only this self-contained Go function:
+
+      func tag(s string) string {
+          return "go:" + s
+      }
+
+  What does tag("web") return? Answer with the value only.
+ground_truth:
+  required_strings:
+    - "go:web"

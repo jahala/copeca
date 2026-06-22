@@ -50,8 +50,12 @@
     },
     "category": {
       "type": "string",
-      "enum": ["locate", "trace", "fix", "debug"],
-      "description": "Capability axis (orthogonal to type): locate (report one named thing), trace (map a cross-file relationship), fix (change code until a test passes), debug (diagnose via git history then resolve/explain)."
+      "enum": ["locate", "trace", "fix", "debug", "reason"],
+      "description": "Capability axis (orthogonal to type): locate (report one named thing), trace (map a cross-file relationship), fix (change code until a test passes), debug (diagnose via git history then resolve/explain), reason (comprehend given code with no navigation)."
+    },
+    "control": {
+      "type": "boolean",
+      "description": "Tool-neutrality control (#52): true marks a non-regression task where a codebase tool should not help (answer-in-context / single-file / pure reasoning). Orthogonal to category."
     },
     "language": {
       "type": "string",

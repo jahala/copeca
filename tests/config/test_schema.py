@@ -144,6 +144,64 @@ ground_truth:
         validate(doc, task_schema)  # passes structural validation
 
 
+class TestCategoryAndControl:
+    """Schema accepts the `reason` category and the `control` flag (#52)."""
+
+    def test_reason_category_valid(self, task_schema):
+        doc = yaml.safe_load("""
+name: rg_reason_in_context
+source: tilth-benchmark (MIT)
+repo: ripgrep
+type: comprehension
+category: reason
+language: rust
+difficulty: easy
+version: 1
+prompt: What does this self-contained function return for an empty slice?
+ground_truth:
+  required_strings:
+    - None
+""")
+        validate(doc, task_schema)
+
+    def test_control_flag_valid(self, task_schema):
+        doc = yaml.safe_load("""
+name: rg_control_reason
+source: tilth-benchmark (MIT)
+repo: ripgrep
+type: comprehension
+category: reason
+control: true
+language: rust
+difficulty: easy
+version: 1
+prompt: What does this self-contained function return?
+ground_truth:
+  required_strings:
+    - None
+""")
+        validate(doc, task_schema)
+
+    def test_control_must_be_boolean(self, task_schema):
+        doc = yaml.safe_load("""
+name: rg_control_badtype
+source: tilth-benchmark (MIT)
+repo: ripgrep
+type: comprehension
+category: locate
+control: "yes"
+language: rust
+difficulty: easy
+version: 1
+prompt: test
+ground_truth:
+  required_strings:
+    - x
+""")
+        with pytest.raises(ValidationError):
+            validate(doc, task_schema)
+
+
 class TestSchemaMetadata:
     """Schema is well-formed and versionable."""
 

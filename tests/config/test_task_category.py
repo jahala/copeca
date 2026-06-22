@@ -41,8 +41,8 @@ def _task(**over):
 
 
 class TestCategoryEnum:
-    def test_has_exactly_four_values(self):
-        assert {c.value for c in Category} == {"locate", "trace", "fix", "debug"}
+    def test_has_five_values_including_reason(self):
+        assert {c.value for c in Category} == {"locate", "trace", "fix", "debug", "reason"}
 
 
 class TestCategoryRequired:
@@ -94,6 +94,21 @@ class TestTypeCategoryInvariant:
                 ground_truth=EditGroundTruth(test_command=["true"]),
             )
 
+    def test_comprehension_allows_reason(self):
+        _task(
+            type=TaskType.comprehension,
+            category=Category.reason,
+            ground_truth=ComprehensionGroundTruth(required_strings=["x"]),
+        )
+
+    def test_edit_rejects_reason(self):
+        with pytest.raises(ValidationError):
+            _task(
+                type=TaskType.edit,
+                category=Category.reason,
+                ground_truth=EditGroundTruth(test_command=["true"]),
+            )
+
 
 class TestPackagedTasksCategorized:
     def test_all_packaged_tasks_carry_a_valid_category(self):
@@ -103,3 +118,28 @@ class TestPackagedTasksCategorized:
         assert len(tasks) >= 16
         for t in tasks:
             assert isinstance(t.category, Category), f"{t.name} missing category"
+
+
+class TestControlFlag:
+    """`control: true` marks a tool-neutral non-regression task (#52)."""
+
+    def test_control_defaults_false(self):
+        assert _task().control is False
+
+    def test_control_true_on_comprehension(self):
+        t = _task(
+            type=TaskType.comprehension,
+            category=Category.reason,
+            control=True,
+            ground_truth=ComprehensionGroundTruth(required_strings=["x"]),
+        )
+        assert t.control is True
+
+    def test_control_true_on_single_file_edit(self):
+        t = _task(
+            type=TaskType.edit,
+            category=Category.fix,
+            control=True,
+            ground_truth=EditGroundTruth(test_command=["true"]),
+        )
+        assert t.control is True

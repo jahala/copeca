@@ -85,6 +85,7 @@ class TestRunSingle:
         assert result["correct"] is True
         assert result["task"] == "test_task"
         assert result["total_cost_usd"] == 0.05
+        assert result["control"] is False
 
     def test_edit_task_with_mutations(self, tmp_path, test_repo):
         task = Task(
@@ -234,6 +235,40 @@ class TestRunSingle:
         )
         assert result["task"] == "test_pin"
         assert result["correct"] is True
+
+    def test_control_flag_carried_into_record(self, tmp_path, test_repo):
+        """A control task's record carries control=True (#52 non-regression)."""
+        task = Task(
+            name="test_control",
+            source="test",
+            repo="test-repo",
+            type=TaskType.comprehension,
+            category=Category.reason,
+            language=Language.python,
+            difficulty=Difficulty.easy,
+            version=1,
+            prompt="answer: ok",
+            ground_truth=ComprehensionGroundTruth(required_strings=["ok"]),
+            control=True,
+        )
+        runner = SubprocessRunner(
+            name="echo-test",
+            cli="echo",
+            default_args=[],
+            arg_map={"prompt_separator": ""},
+            parser=EchoParser(),
+        )
+        repo_mgr = GitWorktreeManager(repos_dir=tmp_path / "repos")
+        result = run_single(
+            task=task,
+            mode_name="baseline",
+            model="test-model",
+            runner=runner,
+            repo_mgr=repo_mgr,
+            repo_uri=str(test_repo),
+            repo_commit=None,
+        )
+        assert result["control"] is True
 
 
 class TestEditTaskTestCommand:

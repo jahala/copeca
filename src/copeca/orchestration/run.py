@@ -240,6 +240,7 @@ def run_single(
             "task": task.name,
             "repo": task.repo,
             "category": task.category.value,
+            "control": task.control,
             "language": task.language.value,
             "difficulty": task.difficulty.value,
             "mode": mode_name,
