@@ -1,0 +1,82 @@
+name: New task proposal
+description: Propose a new benchmark task for the copeca corpus.
+labels: ["task-proposal"]
+body:
+  - type: input
+    id: target-repo
+    attributes:
+      label: Target repository
+      description: The OSS repository the task targets (must be in repos.yaml or you will add it).
+      placeholder: "e.g. ripgrep, fastapi, gin, express"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Capability category
+      description: Which cognitive skill does this task exercise?
+      options:
+        - locate — find a self-contained named thing
+        - trace — follow a relationship across files
+        - fix — change code until a test passes (edit task)
+        - debug — diagnose a defect via history, then explain or fix it
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-it-tests
+    attributes:
+      label: What the task tests
+      description: |
+        Describe the concrete information or skill under test.
+        Be specific — what must the agent find, explain, or fix?
+      placeholder: |
+        e.g. "Locate the `Matcher` trait in ripgrep and list all types that
+        implement it, including the file path of each impl."
+    validations:
+      required: true
+
+  - type: textarea
+    id: provenance
+    attributes:
+      label: Provenance
+      description: |
+        Source family and license. Must be Apache-2.0, MIT, or CC-BY.
+        Must NOT be on the contamination blocklist (SWE-bench Verified, HumanEval, etc.).
+      placeholder: |
+        Source family: tilth-benchmark (MIT)
+        Repo license: MIT
+        Repo URL: https://github.com/BurntSushi/ripgrep
+        Pinned commit: 82313cf95849bfe425109ad9506a52154879b1b1
+    validations:
+      required: true
+
+  - type: textarea
+    id: discrimination
+    attributes:
+      label: Why it discriminates
+      description: |
+        Explain why this task is neither trivial (all agents pass) nor impossible
+        (none pass). Target baseline pass-rate: ~40–70%. What makes it hard enough
+        to be interesting but not impossible?
+      placeholder: |
+        e.g. "The trait has three implementors spread across two crates. A baseline
+        agent without code search typically finds only one. Expected pass-rate ~50%."
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: pre-checks
+    attributes:
+      label: Pre-submission checks
+      description: Confirm you have reviewed the authoring guide before proposing.
+      options:
+        - label: I have read [docs/task-authoring.md](../docs/task-authoring.md)
+          required: true
+        - label: The target repo is (or will be) in `repos.yaml` at a pinned commit
+          required: true
+        - label: The proposed prompt is tool-agnostic (no tool names, no "search for", no method prescriptions)
+          required: true
+        - label: The source is Apache-2.0, MIT, or CC-BY and is NOT on the contamination blocklist
+          required: true
