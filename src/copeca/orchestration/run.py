@@ -8,6 +8,7 @@ The orchestrator returns a record dict; the CLI caller persists it.
 import importlib.metadata
 import logging
 import subprocess
+import threading
 from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
@@ -22,6 +23,29 @@ from copeca.tasks.mutations import apply_mutations
 from copeca.tasks.validator import check_correctness
 
 logger = logging.getLogger(__name__)
+
+
+# ── Run-abort flag ────────────────────────────────────────────────────────────
+#
+# Set by the CLI's SIGINT/SIGTERM handler so an interrupted run stops dispatching
+# new work items (already-running agents are killed separately via the subprocess
+# process-group registry). run_matrix clears it at the start of every run.
+_abort_event = threading.Event()
+
+
+def request_abort() -> None:
+    """Signal run_matrix to stop starting new work items (RUN-E interrupt)."""
+    _abort_event.set()
+
+
+def abort_requested() -> bool:
+    """True if an abort has been requested for the current run."""
+    return _abort_event.is_set()
+
+
+def clear_abort() -> None:
+    """Reset the abort flag (called at the start of every run_matrix)."""
+    _abort_event.clear()
 
 
 def run_single(
@@ -401,6 +425,9 @@ def run_matrix(
     """
     from concurrent.futures import ThreadPoolExecutor, as_completed
 
+    # Fresh run: clear any abort left set by a prior interrupted run in this process.
+    clear_abort()
+
     task_lookup = {t.name: t for t in tasks}
     repos_dict = repos or {}
 
@@ -503,6 +530,11 @@ def _run_one_work_item(
     Creates its own runner instance and delegates to run_single.
     This is the callable submitted to the thread pool.
     """
+    # Interrupt fast: if the run was aborted (CLI signal handler), don't start a
+    # new agent — surface it as an aborted record instead (RUN-E).
+    if abort_requested():
+        raise RuntimeError("run interrupted — work item skipped before start")
+
     runner = runner_factory(item["mode_name"], item["model"])
     model_pricing: dict[str, float] | None = None
     if pricing is not None:

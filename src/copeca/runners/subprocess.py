@@ -6,6 +6,7 @@ Architecture: adapter. Implements BaseRunner with real subprocess execution.
 import os
 import signal
 import subprocess
+import threading
 import time
 from dataclasses import dataclass, field
 
@@ -68,6 +69,54 @@ def _build_child_env(
     return env
 
 
+# ── Process-group registry ──────────────────────────────────────────────────
+#
+# Each agent runs in its own process group (os.setsid in run() below). While a
+# run is in flight its group id is registered here so the CLI's SIGINT/SIGTERM
+# handler can group-kill every live agent on interruption — leaving no orphaned
+# agent or MCP-server children (RUN-E). The registry is process-wide and
+# thread-safe because run_matrix dispatches runs across a thread pool.
+_active_pgids: set[int] = set()
+_active_pgids_lock = threading.Lock()
+
+
+def _register_pgid(pgid: int) -> None:
+    """Record a live agent process group."""
+    with _active_pgids_lock:
+        _active_pgids.add(pgid)
+
+
+def _unregister_pgid(pgid: int) -> None:
+    """Drop a process group once its run has finished."""
+    with _active_pgids_lock:
+        _active_pgids.discard(pgid)
+
+
+def terminate_active_process_groups(sig: int = signal.SIGTERM) -> list[int]:
+    """Signal every currently-registered agent process group (best-effort).
+
+    Called by the CLI interrupt handler so an aborted run leaves no orphaned
+    agent / MCP-server processes. Groups that already exited are skipped.
+
+    Args:
+        sig: Signal to send (SIGTERM by default; the interrupt handler uses
+             SIGKILL for an immediate, no-hang abort).
+
+    Returns:
+        The list of process-group ids that were signalled.
+    """
+    with _active_pgids_lock:
+        pgids = list(_active_pgids)
+    signalled: list[int] = []
+    for pgid in pgids:
+        try:
+            os.killpg(pgid, sig)
+            signalled.append(pgid)
+        except ProcessLookupError:
+            pass  # group already gone
+    return signalled
+
+
 @dataclass
 class SubprocessRunner(BaseRunner):
     """Run a CLI agent as a subprocess with process-group isolation."""
@@ -115,35 +164,53 @@ class SubprocessRunner(BaseRunner):
             preexec_fn=os.setsid,  # Create new process group
         )
 
+        # Register the group so the CLI interrupt handler can kill it if the run
+        # is aborted mid-flight (RUN-E). Captured once: a fast-exiting child may
+        # already be gone, in which case there is nothing to track or kill.
         try:
-            stdout, stderr = process.communicate(timeout=self.timeout)
-            duration_ms = int((time.perf_counter() - start) * 1000)
-        except subprocess.TimeoutExpired:
-            # Kill the entire process group
-            os.killpg(os.getpgid(process.pid), signal.SIGKILL)
-            process.wait()
-            raise
+            pgid: int | None = os.getpgid(process.pid)
+        except ProcessLookupError:
+            pgid = None
+        if pgid is not None:
+            _register_pgid(pgid)
 
-        returncode = process.returncode
+        try:
+            try:
+                stdout, stderr = process.communicate(timeout=self.timeout)
+                duration_ms = int((time.perf_counter() - start) * 1000)
+            except subprocess.TimeoutExpired:
+                # Kill the entire process group (agent + any children / MCP servers).
+                if pgid is not None:
+                    os.killpg(pgid, signal.SIGKILL)
+                process.wait()
+                raise
 
-        if self.parser:
-            result = self.parser.parse(stdout)
-        else:
-            result = RunResult(result_text=stdout)
-        result.duration_ms = duration_ms
-        result.exit_code = returncode
+            returncode = process.returncode
 
-        # Surface execution failures the parser can't see. A non-zero exit, or
-        # empty stdout with stderr diagnostics, means the agent did not run to
-        # completion — record it as an error so the run is never mistaken for a
-        # legitimate empty answer (shakedown SD-B). Don't clobber an error the
-        # parser already set.
-        if result.error is None and (returncode != 0 or (not stdout.strip() and stderr.strip())):
-            stderr_tail = stderr.strip()[-500:]
-            detail = f": {stderr_tail}" if stderr_tail else ""
-            result.error = f"runner exited with code {returncode}{detail}"
+            if self.parser:
+                result = self.parser.parse(stdout)
+            else:
+                result = RunResult(result_text=stdout)
+            result.duration_ms = duration_ms
+            result.exit_code = returncode
 
-        return result
+            # Surface execution failures the parser can't see. A non-zero exit, or
+            # empty stdout with stderr diagnostics, means the agent did not run to
+            # completion — record it as an error so the run is never mistaken for a
+            # legitimate empty answer (shakedown SD-B). Don't clobber an error the
+            # parser already set.
+            if result.error is None and (
+                returncode != 0 or (not stdout.strip() and stderr.strip())
+            ):
+                stderr_tail = stderr.strip()[-500:]
+                detail = f": {stderr_tail}" if stderr_tail else ""
+                result.error = f"runner exited with code {returncode}{detail}"
+
+            return result
+        finally:
+            # Run finished (or timed out + killed): the group is no longer live.
+            if pgid is not None:
+                _unregister_pgid(pgid)
 
     def parse(self, stdout: str, supported_events: list[str] | None = None) -> RunResult:
         """Not used directly — the parser is injected and called from run()."""

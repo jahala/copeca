@@ -491,3 +491,53 @@ class TestStreamingPersistence:
         lines = out.read_text().splitlines() if out.exists() else []
         assert len(lines) == 1  # exactly the pre-interrupt record persisted — nothing lost in a buffer
         assert json.loads(lines[0])["task"] == "task_a"  # the first completed record
+
+
+class TestInterruption:
+    """RUN-E: the abort flag stops new work items without spawning agents."""
+
+    def test_abort_flag_api(self):
+        from copeca.orchestration.run import abort_requested, clear_abort, request_abort
+
+        clear_abort()
+        assert abort_requested() is False
+        request_abort()
+        assert abort_requested() is True
+        clear_abort()
+        assert abort_requested() is False
+
+    def test_work_item_bails_before_spawning_when_aborted(self, tmp_path):
+        """When aborted, _run_one_work_item raises BEFORE building a runner — no agent spawns.
+
+        DISCRIMINATES: asserts runner_factory was never called, so an interrupted run
+        cannot launch new agents for queued work.
+        """
+        from copeca.orchestration.run import _run_one_work_item, clear_abort, request_abort
+
+        scenario = _make_scenario(tasks=["task_a"], modes=["baseline"], repetitions=1)
+        item = {
+            "task": _make_task("task_a"),
+            "task_name": "task_a",
+            "mode_name": "baseline",
+            "model": "test-model",
+            "rep": 0,
+            "repo_uri": None,
+            "repo_commit": None,
+            "mode_obj": None,
+        }
+        factory_calls: list[tuple] = []
+
+        def runner_factory(mode, model):
+            factory_calls.append((mode, model))
+            return _make_runner()
+
+        clear_abort()
+        request_abort()
+        try:
+            with pytest.raises(RuntimeError, match="interrupt"):
+                _run_one_work_item(
+                    item, runner_factory, StubRepoManager(tmp_path), scenario, None, False
+                )
+            assert factory_calls == []  # bailed before building a runner / spawning an agent
+        finally:
+            clear_abort()
