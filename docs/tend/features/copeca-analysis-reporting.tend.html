@@ -2576,7 +2576,9 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
     }
   ],
   "smoke": {
-    "cmd": "copeca analyze results/bench.jsonl --format json"
+    "cmd": "copeca analyze tests/fixtures/sample_report_records.jsonl --format json",
+    "last_run": "2026-06-22T11:27:04Z",
+    "last_result": "pass"
   },
   "progress": {
     "implementation": 100,
@@ -2775,14 +2777,14 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
       "question_id": "impact_measurable",
       "target": "slots:impact",
       "verdict": "push_back",
-      "rationale": "IMPACT says 'A tool builder sees exactly where their tool helps. A skeptical evaluator sees the CI on the delta and per-task breakdown.' CI on delta and per-task breakdown are measured by test_report_contains_ci_in_headline and the per-task table. But 'tool builder sees exactly where their tool helps' implies tool adoption metrics and per-task-type aggregation, which are not measured by any check.",
+      "rationale": "IMPACT 'a tool builder sees exactly where their tool helps' is now produced by the Per-Capability Breakdown (report.py:517-522, test_report_contains_per_capability_breakdown) plus Tool Adoption (c002), and 'CI on the delta + per-task breakdown' is measured by c001 — but no dedicated check binds the per-capability aggregation (it rides on c001 recipe clause c). Advisory: add a per-capability check so 'where the tool helps' is directly measured.",
       "judged_sha": "a8172065de01e42c1c34337c9c8d03f65ec70f36"
     },
     {
       "question_id": "check_discriminates",
       "target": "check:c001",
       "verdict": "n_a",
-      "rationale": "negctrl proves discrimination mechanically for CI headline; semantic re-judgment skipped for negctrl-proven checks.",
+      "rationale": "negctrl proves discrimination mechanically for c001–c004 (all DISCRIMINATES, exit 0, this audit 2026-06-22); semantic re-judgment skipped for negctrl-proven checks.",
       "judged_sha": "bb1ba5297e9ef797b40993a9044e2864515c3492"
     },
     {
@@ -2801,44 +2803,56 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
     }
   ],
   "audit": {
-    "ran_at": "2026-06-21T00:00:00Z",
+    "ran_at": "2026-06-22T11:27:04Z",
     "result": "pass",
-    "verified_at_commit": "51d44c262a8e90906e0a2e1af4ad3568b39dc621",
-    "drift": [
-      {
-        "finding": "Test count increased from 44 to 46 at HEAD (51d44c2). Two SD-B tests added: TestReportExcludesFailedRuns::test_failed_run_excluded_from_accuracy_and_noted (report.py shows 'Failed Runs' section, excludes crashed runs from accuracy denominator) and TestCostPerCorrectExcludesFailures::test_errored_record_excluded (stats.py cost_per_correct excludes errored records). Both pass. The SD-B failure-surfacing behavior is now verified in the analysis layer."
-      }
-    ],
     "verdicts": [
       {
         "check_id": "c001",
         "verdict": "pass",
-        "evidence_path": "src/copeca/analysis/stats.py (compute_stats, bootstrap_ci, ascii_sparkline) + src/copeca/analysis/report.py (generate_report, delta-headline). SD-B: crashed runs (error set, non-zero exit_code) are excluded from accuracy denominator and surfaced in report.py 'Failed Runs' section. tests/analysis/ 46/46 pass at 51d44c2 (incl. delta-headline, CI-in-headline, per-task table, per-language/per-difficulty aggregation, TestReportExcludesFailedRuns::test_failed_run_excluded_from_accuracy_and_noted). Run: PATH=$PWD/.venv/bin:$PATH python -m pytest tests/analysis/ -q -> 46 passed.",
-        "evidence_sha": "54a9fb10c82152fc1423dd513b47826dc2251bb9",
-        "validates_job_satisfied": true
+        "evidence_path": "src/copeca/analysis/report.py:312-372 (delta-headline: '### Cost Per Correct Answer' table + '**Delta:** … [95% CI …]') + per-task 'Delta%' column (374-419) + stats.bootstrap_ci. RUN: python -m pytest tests/analysis/test_report.py -k headline -q → passed (within 57 passed). NEGCTRL: report.py:388 'Delta% [95% CI]'→'XXBROKEN' vs test_report_contains_ci_in_headline → DISCRIMINATES (exit 0).",
+        "validates_job_satisfied": true,
+        "evidence_sha": "e22cb11dcefa823a148e5c80b0c0bb6254a916c0"
       },
       {
         "check_id": "c002",
         "verdict": "pass",
-        "evidence_path": "src/copeca/analysis/report.py (adversarial summary, sparklines, tool adoption sections). SD-D: token sparklines now use deduplicated per-message-id usage counts (fixed 2-3x over-count). test_report.py adversarial/sparkline/tool_adoption assertions pass (within the 46). Run: PATH=$PWD/.venv/bin:$PATH python -m pytest tests/analysis/ -q -> 46 passed.",
-        "evidence_sha": "ed629f9c03f687fa326f64e7fc006f0bbecc549e",
-        "validates_job_satisfied": true
+        "evidence_path": "src/copeca/analysis/report.py _tool_adoption_section (88-117, wired 505), Adversarial Flags (458-477), Token Usage Sparklines (479-502). RUN: python -m pytest tests/analysis/test_report.py -k 'tool_adoption or adversarial or sparkline' -q → passed (within 57). NEGCTRL: '### Tool Adoption'→'XXBROKEN' vs -k tool_adoption → DISCRIMINATES (exit 0).",
+        "validates_job_satisfied": true,
+        "evidence_sha": "e22cb11dcefa823a148e5c80b0c0bb6254a916c0"
       },
       {
         "check_id": "c003",
         "verdict": "pass",
-        "evidence_path": "src/copeca/analysis/compare.py (compare_runs, per-task delta, >10% flagging). tests/analysis/test_compare.py 5/5 pass. test_compare_flags_large_changes discriminates the threshold in both directions. Run: PATH=$PWD/.venv/bin:$PATH python -m pytest tests/analysis/test_compare.py -q -> 5 passed.",
-        "evidence_sha": "305b0796716c1b5b2c3b2ff12db678f3a8b92631",
-        "validates_job_satisfied": true
+        "evidence_path": "src/copeca/analysis/compare.py:72 'if abs(delta_pct) > 10' flag + 'Flagged Tasks (>10% Change)' (104-112). RUN: python -m pytest tests/analysis/test_compare.py -q → 5 passed. NEGCTRL: '> 10'→'> 100000' vs -k flags → DISCRIMINATES (exit 0).",
+        "validates_job_satisfied": true,
+        "evidence_sha": "b548ffaccfd0b93aecbf682fcb8ac77af55cbd51"
       },
       {
         "check_id": "c004",
         "verdict": "pass",
-        "evidence_path": "src/copeca/analysis/stats.py::cost_per_correct (returns None when correct=0, excludes errored records per SD-B) + src/copeca/analysis/report.py (renders 'n/a (0 correct)', excludes None from delta+bootstrap, accuracy co-headline, 'Failed Runs' section for error!=None records). tests/analysis/ -k 'zero_correct or accuracy or errored or failed' -> 5 passed: test_cost_per_correct_zero_correct_returns_none, test_report_zero_correct_experimental_shows_na, test_report_zero_correct_headline_describes_situation, test_report_accuracy_shown_alongside_cost_per_correct, test_errored_record_excluded. Run: PATH=$PWD/.venv/bin:$PATH python -m pytest tests/analysis/ -q -> 46 passed.",
-        "evidence_sha": "54a9fb10c82152fc1423dd513b47826dc2251bb9",
-        "validates_job_satisfied": true
+        "evidence_path": "src/copeca/analysis/stats.py:81-82 cost_per_correct returns None at 0 correct; report.py renders 'n/a (0 correct)' (328/406), excludes None from delta+bootstrap (343-350), accuracy co-headline (315/327). RUN: python -m pytest tests/analysis -k zero_correct -q → passed (test_cost_per_correct_zero_correct_returns_none, test_report_zero_correct_experimental_shows_na, test_report_accuracy_shown_alongside_cost_per_correct). NEGCTRL: stats.py 'if correct_count == 0:'→'< 0:' vs zero_correct → DISCRIMINATES (exit 0).",
+        "validates_job_satisfied": true,
+        "evidence_sha": "54a9fb10c82152fc1423dd513b47826dc2251bb9"
       }
-    ]
+    ],
+    "drift": [
+      {
+        "file": "tests/analysis/test_report.py",
+        "finding": "Headline checks (test_report_contains_cost_per_correct_headline, test_report_contains_ci_in_headline) assert loose multi-source substrings — 'cost per correct'/'95% CI'/'delta' each occur in ≥2 sites (section heading AND table header), so they don't pin the headline section itself. c001 discrimination holds only via the single-source per-task 'Delta%' column (negctrl-proven this audit). Tighten the headline assertions to verify the headline section specifically.",
+        "action": "investigate"
+      },
+      {
+        "file": "src/copeca/analysis/report.py",
+        "finding": "New behavior from #52/#13 is not claimed by any check: _control_section (191-255, '### Control (Non-Regression)') and _tool_validity_section (530-577, '### Tool Validity'). Both are tested (TestControlSection + TestToolValidity, 10 tests) and exercised by the smoke, but no check binds them — the feature under-claims its current behavior. Resolve by adding checks c005 (control-delta regression flag) + c006 (tool-validity adoption) via /tend change, OR by representing the non-regression control set as its own feature (copeca-non-regression-controls).",
+        "action": "investigate"
+      },
+      {
+        "file": "tests/fixtures/sample_report_records.jsonl",
+        "finding": "smoke.cmd repointed from 'copeca analyze results/bench.jsonl' (results/ is gitignored — the file was never committable and was absent; prior audit left smoke.last_result=null, i.e. never run green) to this new committed 8-record fixture (2 modes × 2 tasks; exercises headline/per-task/tool-adoption/sparklines/per-capability/tool-validity). Smoke now passes (exit 0).",
+        "action": "document"
+      }
+    ],
+    "verified_at_commit": "0ec83fa2babe114a7136890edd1d3d1f252ee2c0"
   }
 }
 </script>

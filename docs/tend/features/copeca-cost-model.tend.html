@@ -2567,7 +2567,9 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
     }
   ],
   "smoke": {
-    "cmd": "PATH=\"$PWD/.venv/bin:$PATH\" python -m pytest tests/runners/test_cost_computation.py tests/orchestration/test_cost_in_pipeline.py -q"
+    "cmd": "PATH=\"$PWD/.venv/bin:$PATH\" python -m pytest tests/runners/test_cost_computation.py tests/orchestration/test_cost_in_pipeline.py -q",
+    "last_run": "2026-06-22T11:31:44Z",
+    "last_result": "pass"
   },
   "progress": {
     "implementation": 100,
@@ -2719,44 +2721,54 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
       "question_id": "impact_measurable",
       "target": "slots:impact",
       "verdict": "pass",
-      "rationale": "IMPACT: 'Every copeca report carries a single, auditable cost basis.' Cost computation is pure function tested with negctrl; divergence check >5% catches stale pricing. total_cost_usd (computed) and vendor_cost_usd (cross-check) both recorded. Staleness warning fires on >30 day old pricing. The cost-per-correct metric is derivable from these primitives.",
-      "judged_sha": "d4c147df7ac64dd31abf20b29932250a059c7dd6"
+      "rationale": "IMPACT: 'Every report carries the real billed cost as the headline plus a reproducible computed cross-check.' c001 (vendor-primary pipeline) and c003 (pure compute_cost) directly measure the two cost quantities named. c002 (staleness >30d) guards the cross-check accuracy. All three discriminate. Impact claim is measurable and measured.",
+      "judged_sha": "35066d18c24758fff2b39cfdb4e8454e9af9f02c"
     },
     {
       "question_id": "check_discriminates",
       "target": "check:c001",
       "verdict": "n_a",
-      "rationale": "negctrl proves cost divergence check mechanically; semantic re-judgment skipped.",
-      "judged_sha": "ea3d3073ab841a953674477d0da52a30602a2f55"
+      "rationale": "negctrl proves discrimination mechanically for c001, c002, c003; semantic re-judgment skipped for all negctrl-proven checks.",
+      "judged_sha": "5d3dbe73cfa348278aa626ee6ca934aff1ef3eb9"
     }
   ],
   "audit": {
-    "ran_at": "2026-06-21T00:00:00Z",
+    "ran_at": "2026-06-22T11:31:44Z",
     "result": "pass",
-    "verified_at_commit": "51d44c262a8e90906e0a2e1af4ad3568b39dc621",
+    "verified_at_commit": "0ec83fa2babe114a7136890edd1d3d1f252ee2c0",
     "drift": [
       {
-        "finding": "c001 was rewritten from a false 'computed cost matches vendor within 5%' claim — real runs diverge ~30% (cache TTL), now documented as expected/informational. SD-D: vendor billed cost is authoritative (total_cost_usd=vendor, cost_source, computed_cost_usd), and per-message-id usage dedup fixed a 2-3x token over-count. coverage_files corrected (defaults/runners/ -> src/copeca/data/defaults/runners/; added cost.py + run.py) and the stale smoke.cmd (referenced non-existent tests/test_runner_parsers.py) replaced with a runnable pytest."
+        "file": "src/copeca/orchestration/run.py:243",
+        "finding": "#52 added 'control': task.control to the JSONL record dict. This is a bool field (default False, indicating a tool-neutrality non-regression task). It is additive and completely orthogonal to cost logic — cost computation runs at lines 174-289 with no dependency on task.control. No check covers the control field; it belongs to copeca-non-regression-control-set, not this feature. No action needed here.",
+        "action": "document"
+      },
+      {
+        "file": "src/copeca/data/defaults/runners/",
+        "finding": "coverage_files lists 'src/copeca/data/defaults/runners/' but tend_validate reports it is not under any configured source root. This is a config/claim fix (path prefix mismatch), not an evidence failure — the files exist and staleness tests pass. Route to /tend change to correct the coverage_files entry.",
+        "action": "investigate"
       }
     ],
     "verdicts": [
       {
         "check_id": "c001",
         "verdict": "pass",
-        "evidence_path": "src/copeca/orchestration/run.py (vendor-primary: total_cost_usd=vendor when reported, cost_source, computed_cost_usd) + src/copeca/runners/cost.py (compute_cost). tests/orchestration/test_cost_in_pipeline.py 9/9 pass incl TestVendorPrimaryCost (vendor authoritative; modeled fallback) and the divergence tests (>5% -> informational warning). Run at 51d44c2: PATH=$PWD/.venv/bin:$PATH python -m pytest tests/orchestration/test_cost_in_pipeline.py -q -> 9 passed.",
-        "evidence_sha": "f24ed47cff2d6ab5ffb7bf131513432d8980c2db"
+        "evidence_path": "src/copeca/orchestration/run.py:194-209 (vendor-primary: total_cost_usd=vendor_cost_usd when vendor_cost_usd is not None and > 0, cost_source='vendor'; else total_cost_usd=computed_cost, cost_source='modeled') + src/copeca/runners/cost.py (compute_cost pure fn). Tests: ran 'PYTHONPATH=src python -m pytest tests/orchestration/test_cost_in_pipeline.py -q' -> 14 passed. negctrl: --file src/copeca/orchestration/run.py --find 'if vendor_cost_usd is not None and vendor_cost_usd > 0:' --replace 'if False:' -> DISCRIMINATES (exit 0). #52 control field (run.py:243) is additive/orthogonal — cost logic at lines 174-289 unaffected.",
+        "evidence_sha": "832e38cc551b7207c07afb80c874f82db3c77059",
+        "validates_job_satisfied": true
       },
       {
         "check_id": "c002",
         "verdict": "pass",
-        "evidence_path": "src/copeca/orchestration/validation.py (check_pricing_staleness — per-model, >30d warns, never blocks) + src/copeca/data/defaults/runners/ pricing tables. tests/orchestration/test_staleness.py 6/6 + tests/runners/test_pricing.py pass at 51d44c2.",
-        "evidence_sha": "4302b6e4f2d2e163e9abbe665bf374fe3dd53bf4"
+        "evidence_path": "src/copeca/orchestration/validation.py:56-60 (check_pricing_staleness — per-model >30d threshold, never blocks). Tests: ran 'PYTHONPATH=src python -m pytest tests/orchestration/test_staleness.py -q' -> 6 passed. negctrl: --file src/copeca/orchestration/validation.py --find 'if age > threshold:' --replace 'if False:' -> DISCRIMINATES (exit 0).",
+        "evidence_sha": "dfca444a00d9a8c2b18dedfcda6ec3c9ba9bb40f",
+        "validates_job_satisfied": true
       },
       {
         "check_id": "c003",
         "verdict": "pass",
-        "evidence_path": "src/copeca/runners/cost.py compute_cost (pure Σ tokens × pricing). tests/runners/test_cost_computation.py 5/5 pass (hand-calc, zero, differential cache, fp). Token counts feeding compute_cost are de-duplicated per message.id — tests/runners/test_stream_json.py::TestStreamJsonDedup 2/2 pass. Run at 51d44c2: 37 passed across cost-model's cited tests.",
-        "evidence_sha": "588b3927a7cfc0aec7c7210055a808697949e008"
+        "evidence_path": "src/copeca/runners/cost.py:25-31 (pure Σ tokens × pricing / 1_000_000). Tests: ran 'PYTHONPATH=src python -m pytest tests/runners/test_cost_computation.py -q' -> 5 passed (hand-calc, zero, input-only, differential cache rates, fp precision). negctrl: --file src/copeca/runners/cost.py --find '+ tokens[\"cache_read_tokens\"] * pricing[\"cache_read\"]' --replace '+ 0' -> DISCRIMINATES (exit 0).",
+        "evidence_sha": "588b3927a7cfc0aec7c7210055a808697949e008",
+        "validates_job_satisfied": true
       }
     ]
   }

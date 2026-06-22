@@ -2564,7 +2564,9 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
     }
   ],
   "smoke": {
-    "cmd": "copeca verify --batch results/ --scenario scenarios/smoke_test.yaml"
+    "cmd": "copeca verify tests/fixtures/sample_artifact.copeca.zip",
+    "last_run": "2026-06-22T11:40:11Z",
+    "last_result": "pass"
   },
   "progress": {
     "implementation": 100,
@@ -2720,52 +2722,63 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
       "question_id": "impact_measurable",
       "target": "slots:impact",
       "verdict": "pass",
-      "rationale": "IMPACT claims 'skeptic can check every claim', 'reviewer can verify batch against scenario — 185/200 artifacts means 15 runs dropped', 'failed runs reported separately from tampered ones'. C001 proves single artifact tamper detection. C002 proves batch completeness against scenario (missing count computed from expected). C003 proves hash is independently recomputable. All claims measured.",
-      "judged_sha": "b20709113a1f22a78217553b4188bd7a66d7beb2"
+      "rationale": "IMPACT claims: skeptic can check every claim (c001), reviewer can verify batch against scenario with missing runs named (c002 missing_ids), failed runs reported separately from corrupt (c002 tampered vs missing). All measurable outcomes covered by passing discriminating tests.",
+      "judged_sha": "429fce8cf62b09d6d14446f9e14124cac3bdac04"
     },
     {
       "question_id": "check_discriminates",
       "target": "check:c001",
       "verdict": "n_a",
-      "rationale": "negctrl proves discrimination mechanically; semantic re-judgment skipped for negctrl-proven checks.",
-      "judged_sha": "8b5c196e921b584c4df4e272b4977b255708abe5"
+      "rationale": "negctrl proves discrimination mechanically for c001–c003 (all DISCRIMINATES, exit 0, this audit 2026-06-22, delegated auditor); semantic re-judgment skipped for negctrl-proven checks.",
+      "judged_sha": "d09c46ef205de229d03087ab37b1c18836a8479a"
     },
     {
       "question_id": "check_discriminates",
       "target": "feature",
       "verdict": "n_a",
-      "rationale": "negctrl proves discrimination mechanically for all 3 checks; semantic re-judgment skipped.",
-      "judged_sha": "6f08435040848a6b1815646653056058551aa3bc"
+      "rationale": "negctrl proves discrimination mechanically for all 3 checks (c001, c002, c003 each DISCRIMINATES exit 0); semantic re-judgment skipped for negctrl-proven checks.",
+      "judged_sha": "332dc3cee17b4f16c706ee4517c5db0f268ac5da"
     }
   ],
   "audit": {
-    "ran_at": "2026-06-21T00:00:00Z",
+    "ran_at": "2026-06-22T11:40:11Z",
     "result": "pass",
-    "verified_at_commit": "778f9b44cd7136a7717e721a07975270893395a3",
+    "verified_at_commit": "0ec83fa2babe114a7136890edd1d3d1f252ee2c0",
     "verdicts": [
       {
         "check_id": "c001",
         "verdict": "pass",
-        "evidence_path": "src/copeca/results/artifact.py (build_artifact SHA-256 hash-chained zip) + src/copeca/results/verification.py (verify_artifact). tests/results/test_artifact.py 10/10 pass. tests/results/test_verify_single.py 8/8 pass (authentic exits 0, tampered exits 1 naming file). tests/results/test_verify_signature.py 5/5 pass. Smoke (single artifact): PATH=.venv/bin:$PATH copeca verify results/artifact_test__baseline__test-model.copeca.zip -> 'Artifact valid: content_hash matches all files' exit 0. Batch smoke (copeca verify --batch results/ --scenario scenarios/smoke_test.yaml) declined — no pre-run batch present at HEAD; batch logic verified through test_verify_batch.py 12/12. Run: PATH=.venv/bin:$PATH python -m pytest tests/results/ -q -> 50 passed.",
+        "evidence_path": "src/copeca/results/artifact.py (build_artifact, SHA-256 hash-chained zip) + src/copeca/results/verification.py (verify_artifact). RUN: python -m pytest tests/results/ -q → 50 passed (incl. test_artifact.py, test_verify_single.py). NEGCTRL: verification.py 'return False, f\"Artifact tampered: hash mismatch in {' → 'return True, …' vs test_verify_tampered_zip_returns_invalid → DISCRIMINATES (exit 0). No TODOs/stubs.",
         "validates_job_satisfied": null,
-        "evidence_sha": "ed5504f2770cce786de815adecc78c6c31296cc6"
+        "evidence_sha": "e0243875f01812156780148471e3678223080fb3"
       },
       {
         "check_id": "c002",
         "verdict": "pass",
-        "evidence_path": "src/copeca/results/verification.py (verify_batch). tests/results/test_verify_batch.py 12/12 pass — all authentic, tampered reported, empty dir, ignores non-zips, scenario completeness with missing IDs named, unexpected extras reported. Run: PATH=.venv/bin:$PATH python -m pytest tests/results/test_verify_batch.py -q -> 12 passed.",
+        "evidence_path": "src/copeca/results/verification.py (verify_batch). RUN: python -m pytest tests/results/ -q → 50 passed (incl. test_verify_batch.py). NEGCTRL: verification.py 'missing_keys = expected_set - found_set' → 'missing_keys = set()' vs test_batch_with_scenario_does_not_hardcode_missing → DISCRIMINATES (exit 0). CLI wired at src/copeca/cli.py:559-684.",
         "validates_job_satisfied": null,
-        "evidence_sha": "0e1b4fb278728e5fe6d4504a537f8f986e0ce781"
+        "evidence_sha": "fb8fc1575a681736f8d15920c07546c9850e437d"
       },
       {
         "check_id": "c003",
         "verdict": "pass",
-        "evidence_path": "src/copeca/results/artifact.py (content_hash = SHA-256 of sorted per-file hashes). tests/results/test_artifact.py::test_content_hash_is_sha256_of_sorted_hashes PASS — extracts files from zip, recomputes SHA-256 independently, asserts match. Run: PATH=.venv/bin:$PATH python -m pytest tests/results/test_artifact.py -k test_content_hash -q -> 1 passed.",
+        "evidence_path": "src/copeca/results/artifact.py:100 (content_hash = SHA-256 of sorted per-file hashes). RUN: python -m pytest tests/results/ -q → 50 passed (incl. test_content_hash_is_sha256_of_sorted_hashes). NEGCTRL: artifact.py 'content_hash = hashlib.sha256(…)' → '\"0\"*64' → DISCRIMINATES (exit 0).",
         "validates_job_satisfied": null,
-        "evidence_sha": "ed5504f2770cce786de815adecc78c6c31296cc6"
+        "evidence_sha": "e0243875f01812156780148471e3678223080fb3"
       }
     ],
-    "drift": []
+    "drift": [
+      {
+        "file": "src/copeca/results/signing.py",
+        "finding": "Ed25519 detached-signature path is fully implemented and tested (test_verify_signature.py + test_artifact_signing.py + test_signing.py, 11+ discriminating tests: forge-and-recompute rejection, signed/unsigned distinction, wrong-key rejection, copeca verify --pubkey) but NO check in this feature covers it, and the narrative still frames signing as 'planned/roadmap' while the code is SHIPPED (and the README correctly documents it as shipped). Add a c004 check for sign/verify behavior via /tend change AND correct the narrative to 'shipped'.",
+        "action": "investigate"
+      },
+      {
+        "file": "tests/fixtures/sample_artifact.copeca.zip",
+        "finding": "RESOLVED: smoke.cmd repointed from 'copeca verify --batch results/ --scenario scenarios/smoke_test.yaml' (scenarios/smoke_test.yaml never existed and results/ is gitignored, so the smoke had never run green) to 'copeca verify tests/fixtures/sample_artifact.copeca.zip' against a new committed 573-byte sample artifact (built via build_artifact). Smoke now passes: 'Artifact valid: content_hash matches all files', exit 0.",
+        "action": "document"
+      }
+    ]
   }
 }
 </script>

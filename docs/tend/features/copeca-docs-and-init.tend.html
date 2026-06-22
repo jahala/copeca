@@ -2510,7 +2510,7 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
 {
   "id": "copeca-docs-and-init",
   "title": "copeca-docs-and-init",
-  "status": "verified",
+  "status": "in-progress",
   "priority": "medium",
   "dependencies": [
     "copeca-validate-tasks",
@@ -2573,7 +2573,7 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
   },
   "progress": {
     "implementation": 100,
-    "verification": 100
+    "verification": 33
   },
   "personas_resolved": [
     {
@@ -2730,46 +2730,75 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
       "question_id": "impact_measurable",
       "target": "slots:impact",
       "verdict": "push_back",
-      "rationale": "Impact slot corrected at 401b7bc to '16 at HEAD; ~85 targeted' — the ~85 overclaim is resolved. copeca init verified (test_init.py 7/7); all 16 bundled tasks validate (zero blocked); `copeca check-task` exists and is fixture-tested (tests/cli/test_check_task.py). Residual (why still push_back): full-corpus check-task needs cloned repos and is operator-deferred (step i003), so that one clause stays unmeasured in CI by design.",
+      "rationale": "Impact slot states '16 bundled tasks validate' — now stale (corpus is 58). The '10 minutes from zero to running' claim is implied by c001 but not timed in any test. c002 (user-report) is unsatisfied (no human trial conducted). Impact remains partially unmeasured.",
       "judged_sha": "ac9cae04f1cb5bb7a856a64a1b1f3cc4a78b9a93"
     },
     {
       "question_id": "check_discriminates",
       "target": "check:c001",
       "verdict": "n_a",
-      "rationale": "negctrl for init CLI not applicable (integration_level=unit but it's a CLI end-to-end pattern). Verified via actual smoke test: copeca init runs, validate passes.",
+      "rationale": "negctrl proves discrimination mechanically for c001 (exit 0, DISCRIMINATES). Semantic re-judgment skipped for negctrl-proven checks.",
       "judged_sha": "5b1b803de1a54ea6b01763eb8ffa7de4c62193c6"
+    },
+    {
+      "question_id": "check_discriminates",
+      "target": "check:c003",
+      "verdict": "push_back",
+      "rationale": "c003 tests use subprocess copeca CLI calls and yaml.safe_load, both bypassing the mutated worktree source. negctrl cannot run against any src mutation (DOES NOT DISCRIMINATE). CLI-level integration check — no unit to break. Evidence is real but discrimination is unproven by negctrl.",
+      "judged_sha": "6f17eab0bc07967fb8aeef94a30c188e3372ae10"
     }
   ],
   "audit": {
-    "ran_at": "2026-06-21T00:00:00Z",
-    "result": "pass",
-    "verified_at_commit": "51d44c262a8e90906e0a2e1af4ad3568b39dc621",
+    "ran_at": "2026-06-22T11:32:36Z",
+    "result": "partial",
+    "verified_at_commit": "0ec83fa2babe114a7136890edd1d3d1f252ee2c0",
     "drift": [
       {
-        "finding": "Corpus is 16 tasks at HEAD vs the ~85 roadmap target. As of 401b7bc this is disclosed consistently across the impact slot, check c003, narrative, thumbnail, and docs/known-limitations.md, and tracked as roadmap — no longer an overclaim. No change at SD-A/B/C/D commits."
+        "file": "docs/known-limitations.md:32-40",
+        "finding": "Section heading 'Seed corpus is 16 tasks' and body '16 tasks spanning six source families, but 11 of 16 are from SWE-QA' is stale — corpus is now 58 tasks (52 + 6 control set).",
+        "action": "document"
+      },
+      {
+        "file": "docs/methodology.md:40-54",
+        "finding": "Paragraph 'The seed corpus is 16 tasks... weighted toward SWE-QA (11 of 16)' and table with fixed 'Tasks (current)' column values (11/1/1/1/1/1) are stale — corpus is 58 tasks.",
+        "action": "document"
+      },
+      {
+        "file": "docs/methodology.md:142",
+        "finding": "'The corpus is 16 tasks today' in known-limitations cross-ref section is stale — corpus is 58.",
+        "action": "document"
+      },
+      {
+        "file": "tests/tasks/test_contamination_check.py:249-256",
+        "finding": "Comment 'All 16 real tasks have non-blocked sources' and assertion 'len(all_tasks) >= 16' — comment is stale (corpus is 58). Assertion still passes but comment misleads.",
+        "action": "document"
+      },
+      {
+        "file": "src/copeca/cli.py:794-873",
+        "finding": "copeca new-task command added in #54 (post-last-audit). Feature is complete and functional (scaffolds task YAML skeleton with all required fields). Not covered by any check in this feature's spec. tests/cli/test_new_task.py covers it.",
+        "action": "document"
       }
     ],
     "verdicts": [
       {
         "check_id": "c001",
         "verdict": "pass",
-        "evidence_path": "src/copeca/cli.py (copeca init) + src/copeca/data/ seed corpus (16 tasks). tests/cli/test_init.py 7/7 pass + tests/docs/test_docs_exist.py pass (within the 30 init+docs+check_task tests). Run: PATH=$PWD/.venv/bin:$PATH python -m pytest tests/cli/test_init.py tests/docs/test_docs_exist.py tests/cli/test_check_task.py -q -> 30 passed.",
-        "evidence_sha": "9d3ff547b85a73ba355c56a3f74cca2403da3bae",
+        "evidence_path": "src/copeca/cli.py:732-767 (init command — no TODOs/stubs, complete). tests/cli/test_init.py 7/7 pass. Run: PATH=$PWD/.venv/bin:$PATH python -m pytest tests/cli/test_init.py -v → 7 passed in 3.15s. negctrl: --file src/copeca/cli.py --find 'shutil.copytree(package_tasks, dest_tasks)' --replace 'pass  # broken' --test 'PYTHONPATH=src python -m pytest tests/cli/test_init.py -q' → DISCRIMINATES (exit 0). Smoke: 'copeca init /tmp/test-benchmark && copeca validate /tmp/test-benchmark/tasks/' → 'Validated 58 task(s) successfully.'",
+        "evidence_sha": "c3794675a4f88d4ee92674dc54df56af96934622",
         "validates_job_satisfied": true
       },
       {
         "check_id": "c002",
-        "verdict": "pass",
-        "evidence_path": "README.md + docs/*.md. tests/docs/test_docs_exist.py passes (within the 30). method=user-report: no human <5-minute onboarding trial has been conducted; automated structural checks pass, real-user timing remains unverified by design.",
-        "evidence_sha": "4c2557ea33fe8cafe5132fd6470fc8a4f76cef5d",
-        "validates_job_satisfied": true
+        "verdict": "partial",
+        "evidence_path": "README.md + docs/task-authoring.md + docs/runner-configuration.md + docs/metrics.md + docs/methodology.md + docs/known-limitations.md all exist and pass tests/docs/test_docs_exist.py 11/11. Run: PATH=$PWD/.venv/bin:$PATH python -m pytest tests/docs/test_docs_exist.py -v → 11 passed. method=user-report: no human <5-minute onboarding trial has been conducted; structural checks pass. c002 integration_level is implicitly manual (user-report) — no auto-run can satisfy it. Verdict capped at partial per evidence rules (no human sign-off).",
+        "evidence_sha": "2be5621afd71183576cb88f559bad83a1da1b7e4",
+        "validates_job_satisfied": false
       },
       {
         "check_id": "c003",
-        "verdict": "pass",
-        "evidence_path": "copeca validate src/copeca/data/tasks/ -> 'Validated 16 task(s) successfully.' (zero blocked sources). Check c003 + impact slot discloses '16 at HEAD; ~85 targeted'. copeca check-task exists and is fixture-tested (tests/cli/test_check_task.py, 9 pass with absolute venv on PATH). The 16 bundled tasks are clean and non-blocked. Run: PATH=$PWD/.venv/bin:$PATH python -m pytest tests/cli/test_init.py tests/docs/test_docs_exist.py tests/cli/test_check_task.py -q -> 30 passed.",
-        "validates_job_satisfied": true
+        "verdict": "partial",
+        "evidence_path": "copeca validate src/copeca/data/tasks/ → 'Validated 58 task(s) successfully.' (zero blocked sources). tests/cli/test_validate.py 11/11 pass + tests/tasks/test_full_corpus.py 9/9 pass + tests/tasks/test_contamination_check.py 18/18 pass. Run: PATH=$PWD/.venv/bin:$PATH python -m pytest tests/cli/test_validate.py tests/tasks/test_full_corpus.py -v → 20 passed. negctrl: test suite uses subprocess('copeca', ...) and yaml.safe_load bypasses — DOES NOT DISCRIMINATE against src mutations (CLI subprocess uses installed binary). Integration-level check — no unit to break via negctrl. check description says '16 at HEAD' but corpus is now 58 (52 + 6 control set). Count is stale in this check's description. copeca check-task over all edit tasks requires cloned repos (operator-deferred, not CI). Verdict partial: corpus count stale in check description; check-task full-corpus path unverifiable in CI.",
+        "validates_job_satisfied": false
       }
     ]
   }

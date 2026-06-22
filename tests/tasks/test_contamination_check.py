@@ -246,14 +246,15 @@ class TestLoadBlockedSources:
         assert expected.issubset(sources), f"Missing blocked sources: {expected - sources}"
 
     def test_real_corpus_tasks_all_pass_provenance_check(self):
-        """All 16 real tasks have non-blocked sources and pass provenance check."""
+        """All corpus tasks (52 measured + 6 control = 58 total) have non-blocked
+        sources and pass the provenance check."""
         blocked = load_blocked_sources(BLOCKLIST_FILE)
         all_tasks: list[dict] = []
         for path in sorted(TASKS_DIR.rglob("*.yaml")):
             with open(path) as f:
                 all_tasks.append(yaml.safe_load(f))
 
-        assert len(all_tasks) >= 16, f"Expected at least 16 tasks, found {len(all_tasks)}"
+        assert len(all_tasks) >= 58, f"Expected at least 58 tasks, found {len(all_tasks)}"
 
         for task in all_tasks:
             source = task.get("source", "")

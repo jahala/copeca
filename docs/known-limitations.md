@@ -29,15 +29,15 @@ pricing table is older than 30 days but does not block runs. A pricing change
 between two runs of the same scenario breaks comparability — use the same
 pricing table version for all modes in a comparison.
 
-## Seed corpus is 16 tasks, heavily skewed toward one source family
+## Corpus is 52 measured tasks, heavily skewed toward one source family
 
-The current seed corpus contains 16 tasks spanning six source families, but
-11 of 16 are from `SWE-QA (Apache-2.0)` and all target just four repositories
-(express, fastapi, gin, ripgrep). The roadmap targets approximately 85 tasks
-balanced across the six families (SWE-QA, SCBench, Long Code Arena,
-CrossCodeEval, SWE-bench-Live, Terminal-Bench 2.0). A corpus this small and
+The current corpus contains 52 measured tasks (plus a 6-task non-regression
+control set, 58 total) spanning eight source families, but 36 of 52 measured
+tasks are migrated from the tilth benchmark (MIT) and all target just four
+repositories (express, fastapi, gin, ripgrep). The roadmap targets
+approximately 85 tasks balanced across all families. A corpus this small and
 this dominated by one source risks overfitting — a tool that performs well on
-SWE-QA tasks may not generalize.
+tilth-benchmark tasks may not generalize.
 
 ## Repo cross-validation is skipped when no repos.yaml is present
 
