@@ -6,7 +6,7 @@ type: comprehension
 category: trace
 language: rust
 difficulty: hard
-version: 1
+version: 2
 prompt: |
   Find the `Matcher` trait definition in the matcher crate, and list
   its required methods. Then find all types that implement this trait.
@@ -17,8 +17,6 @@ ground_truth:
     - find_at
     - RegexMatcher
   all_of:
-    - RegexMatcher
-    - GlobMatcher
-    - MultiMatcher
+    - pcre2
   forbidden_strings:
     - I cannot
