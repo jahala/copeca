@@ -19,7 +19,6 @@ import pytest
 
 from copeca.repos.manager import GitWorktreeManager
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -98,9 +97,7 @@ def mgr(tmp_path: Path, local_bare: Path) -> GitWorktreeManager:
 class TestCloneIsolation:
     """Each clone has an independent object store — cross-task git leak guard."""
 
-    def test_commit_in_clone_a_invisible_to_clone_b(
-        self, mgr: GitWorktreeManager
-    ) -> None:
+    def test_commit_in_clone_a_invisible_to_clone_b(self, mgr: GitWorktreeManager) -> None:
         """A commit authored in clone A must NOT appear in clone B's --all log.
 
         This is the critical cross-task-leak guard for debug tasks: an agent
@@ -119,7 +116,7 @@ class TestCloneIsolation:
         (clone_a / "secret.txt").write_text("clone-A-only\n")
         env = {**os.environ, **_GIT_ENV_BASE}
         subprocess.run(["git", "add", "secret.txt"], cwd=clone_a, env=env, check=True)
-        result = subprocess.run(
+        subprocess.run(
             ["git", "commit", "-m", "clone-A-commit"],
             cwd=clone_a,
             env=env,
@@ -203,9 +200,7 @@ class TestLocklessConcurrency:
 
         def worker(idx: int) -> None:
             try:
-                path = mgr.create_worktree(
-                    "testrepo", worktree_id=f"concurrent-{idx}"
-                )
+                path = mgr.create_worktree("testrepo", worktree_id=f"concurrent-{idx}")
                 results[idx] = path
             except Exception as exc:  # noqa: BLE001
                 results[idx] = exc
