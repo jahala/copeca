@@ -37,24 +37,27 @@ Copeca reports:
 
 ## Corpus governance
 
-The seed corpus is 16 tasks spanning six source families, but it is heavily
-weighted toward SWE-QA (11 of 16) and draws on only four repositories
-(express, fastapi, gin, ripgrep). The methodology targets balanced coverage
-across these families to avoid the contamination and provenance problems that
-forced the deprecation of other benchmarks:
+The corpus contains 52 measured tasks (plus a 6-task non-regression control
+set, 58 total) spanning eight source families, but it is heavily weighted
+toward the tilth benchmark (36 of 52 measured tasks, MIT) and draws on only
+four repositories (express, fastapi, gin, ripgrep). The methodology targets
+balanced coverage across these families to avoid the contamination and
+provenance problems that forced the deprecation of other benchmarks:
 
 | Source family | License | Tasks (current) |
 |---|---|---|
+| tilth-benchmark | MIT | 36 |
 | SWE-QA | Apache-2.0 | 11 |
 | Long Code Arena | Apache-2.0 | 1 |
 | CrossCodeEval | Apache-2.0 | 1 |
 | SWE-bench-Live | MIT | 1 |
 | SCBench | MIT | 1 |
 | Terminal-Bench 2.0 | Apache-2.0 | 1 |
+| copeca-control | — | 6 (non-regression) |
 
 A corpus this small and this skewed toward one source risks overfitting — a
-tool that performs well on SWE-QA tasks may not generalize. Balancing the
-families and growing to ~85 tasks is the primary corpus roadmap item (see
+tool that performs well on tilth-benchmark tasks may not generalize. Balancing
+the families and growing to ~85 tasks is the primary corpus roadmap item (see
 `known-limitations.md`).
 
 ---
@@ -139,10 +142,10 @@ same model from the same runner. Cross-provider comparison (Claude vs
 Codex) requires separate scenarios with identical task sets. Cost
 normalization uses one pricing table per runner.
 
-6. **Task corpus is a small, uneven sample.** — The corpus is 16 tasks today
-(roadmap: ~85), weighted toward SWE-QA and four repos, so it cannot represent every coding
-domain. Results may not generalize to tasks unlike those in the corpus.
-This is inherent to all benchmarks and not a copeca-specific limitation,
+6. **Task corpus is a small, uneven sample.** — The corpus is 52 measured tasks today
+(roadmap: ~85), weighted toward the tilth benchmark and four repos, so wide confidence
+intervals are expected and results may not generalize to tasks unlike those in the
+corpus. This is inherent to all benchmarks and not a copeca-specific limitation,
 but it is worth stating.
 
 ---

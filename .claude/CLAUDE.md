@@ -34,3 +34,53 @@ When asked to implement multi-file changes, check tend first:
 - `npx tend-cli ui` — generate web dashboard and open in browser
 
 For reads of a single feature, use the polyglot: `bash docs/tend/<id>.tend.html data | jq`.
+
+---
+
+## Running a benchmark (copeca's core operation)
+
+copeca A/B-compares a CLI agent **with a tool/mode** vs a **clean baseline**, holding
+agent + model + corpus + baseline fixed and varying ONE thing. Output is
+cost-per-correct + a delta report.
+
+```bash
+PATH="$PWD/.venv/bin:$PATH"                                  # or installed `copeca` / `python -m copeca`
+copeca run --task scenarios/<name>.yaml --runner claude      # → results/<name>.jsonl  (gitignored)
+copeca analyze results/<name>.jsonl                          # delta + per-task + per-capability + control + tool-validity
+copeca analyze results/<name>.jsonl --format json
+```
+
+### Scenario file (`scenarios/*.yaml`)
+```yaml
+name: my-run               # ^[a-z][a-z0-9_-]*$ ; output goes to results/<name>.jsonl
+tasks: [task_a, task_b]    # explicit list of task NAMEs — Scenario.tasks is list[str], NO glob.
+                           #   "all tasks" = list every one; names via parsing src/copeca/data/tasks/**/*.yaml `name:`
+modes: [baseline, tilth]   # the ONE variable; modes are YAML in src/copeca/data/defaults/modes/
+models: [claude-haiku-4-5] # MUST equal a pricing key in the runner YAML
+repetitions: 1             # 5+ for tight CIs (validate_scenario warns under 5)
+budget_usd: 1.00           # per-run cap, passed to the agent CLI
+timeout_seconds: 600       # per-run; raise it for edit tasks (Rust/Go/npm compiles)
+max_workers: 1             # KEEP AT 1 — concurrency is unsafe (see below)
+output_dir: results
+```
+
+### Knobs that bite
+- **Model id = pricing key.** Claude models: `claude-sonnet-4-6`, `claude-haiku-4-5`,
+  `claude-opus-4-8` (keys in `src/copeca/data/defaults/runners/claude.yaml`; the `claude`
+  CLI accepts them as `--model`). No pricing entry → cost warnings/failure.
+- **Modes** live in `src/copeca/data/defaults/modes/` (baseline, hook, indexed, proxy,
+  wrapper, **tilth**). `tilth.yaml` is **local/untracked** (points at a local `tilth`
+  binary via mcp_config) — recreate it if missing.
+- **Repos auto-clone** into `repos/_bare/` + `repos/_worktrees/` (both gitignored).
+  **Edit tasks run real `test_command`s** → need `cargo`/`go`/`node`/`npm`/`python3`
+  on PATH; comprehension tasks only need the checkout.
+- **`results/` is gitignored** — runs aren't committed; commit a small fixture (e.g.
+  `tests/fixtures/sample_report_records.jsonl`) if you need a runnable artifact.
+- **`max_workers` MUST be 1** for now: `run_matrix` uses ThreadPoolExecutor but the
+  worktree manager only locks `create_worktree`, so concurrent git reset/mutation across
+  worktrees of the *same* bare repo collide on `index.lock` and corrupt the run. (Tracked
+  fix: per-repo lock.)
+- **Editable-install hijack** (the `.venv` repoint gotcha): if `import copeca` resolves
+  outside `cancun`, fix with `pip install -e . --no-deps` from cancun.
+- **Controls** (`ctrl_*`, `control: true`) should show ~no tool effect — the report's
+  Control + Tool Validity sections key off them.
