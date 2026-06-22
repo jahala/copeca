@@ -1,0 +1,20 @@
+name: ctrl_py_palindrome
+description: Reason about a self-contained Python function — control task with a deterministic answer derivable from the prompt.
+source: copeca-control (MIT)
+repo: fastapi
+type: comprehension
+category: reason
+control: true
+language: python
+difficulty: easy
+version: 1
+prompt: |
+  Given only this self-contained Python function:
+
+      def is_palindrome(s: str) -> bool:
+          return s == s[::-1]
+
+  Does is_palindrome("level") return True or False? Answer with True or False.
+ground_truth:
+  required_strings:
+    - "True"

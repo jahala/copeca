@@ -1,0 +1,21 @@
+name: ctrl_rust_greet
+description: Reason about a self-contained Rust function — control task; the answer is computed from the snippet in the prompt, so codebase tools cannot help.
+source: copeca-control (MIT)
+repo: ripgrep
+type: comprehension
+category: reason
+control: true
+language: rust
+difficulty: easy
+version: 1
+prompt: |
+  Given only this self-contained Rust function:
+
+      fn greet(name: &str) -> String {
+          format!("hi_{}", name)
+      }
+
+  What does greet("rust") return? Answer with the value only.
+ground_truth:
+  required_strings:
+    - hi_rust

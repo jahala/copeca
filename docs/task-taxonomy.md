@@ -1,6 +1,7 @@
 # Task taxonomy
 
-Every copeca task has two orthogonal classification axes: `type` and `category`.
+Every copeca task has two orthogonal classification axes — `type` and `category` —
+plus an optional `control` flag (the non-regression marker, described below).
 They answer different questions and must not be conflated with each other or with
 `source` (which records provenance and contamination status, not capability).
 
@@ -29,7 +30,7 @@ by how much overall.
 
 `category` is NOT the grading mechanism, and it is NOT `source`.
 
-### The four categories
+### The five categories
 
 **`locate`** — Report one self-contained, named thing (a function, a constant, a
 file, a configuration value). The answer is bounded and unambiguous.
@@ -53,6 +54,12 @@ just across files.
 Expected tool-delta: HIGH. Cross-commit diagnosis is painful without tooling;
 an agent that can query history structurally has a real advantage.
 
+**`reason`** — Comprehend code that is given *in full in the prompt* (a
+self-contained snippet); the answer needs no navigation, search, or history.
+Expected tool-delta: ~zero by design — these are the **non-regression controls**
+(see below). A codebase tool that changes the outcome here is adding overhead,
+not earning its cost.
+
 ### Boundary rule
 
 When in doubt between `locate` and `trace`: **one self-contained thing →
@@ -67,12 +74,37 @@ in `src/copeca/config/models.py` and checked by `copeca validate`:
 
 | type | allowed categories |
 |---|---|
-| `comprehension` | `locate`, `trace`, `debug` |
+| `comprehension` | `locate`, `trace`, `debug`, `reason` |
 | `edit` | `fix`, `debug` |
 
 `debug` spans both types deliberately: explaining what a commit broke is
 `comprehension + debug`; finding and correcting a regression so its test passes
 is `edit + debug`.
+
+---
+
+## The `control` flag — the non-regression set
+
+Orthogonal to both axes, a task may set **`control: true`**. This marks a
+*tool-neutral* task — one where a codebase tool (search, context-compression,
+memory, indexing) **should not** change the outcome, because the work needs no
+codebase interaction. Controls are typically `reason` (answer-in-context) or a
+single-file `fix`.
+
+The report measures the tool's cost-per-correct delta **on the control tasks
+only** and surfaces it as a separate *Control (Non-Regression)* section. Because
+lower cost-per-correct is better, the reading is:
+
+- **near-zero delta (CI includes 0)** — healthy: the tool is neutral where it
+  should be.
+- **significantly positive delta** — ⚠ regression: the tool made neutral work
+  *cost more per correct answer* (latency, token tax, or distraction). The tool
+  is not free.
+- **significantly negative delta** — the tool also helped on supposedly neutral
+  tasks; verify the controls are genuinely tool-neutral.
+
+Controls are what let a headline gain be trusted: a tool that lifts `trace` (+)
+while staying neutral on controls (~0) earned a real, non-specialised win.
 
 ---
 

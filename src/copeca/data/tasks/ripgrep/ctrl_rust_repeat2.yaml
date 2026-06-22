@@ -1,0 +1,21 @@
+name: ctrl_rust_repeat2
+description: Reason about a self-contained Rust function — control task; the output is computed from the snippet, not present verbatim.
+source: copeca-control (MIT)
+repo: ripgrep
+type: comprehension
+category: reason
+control: true
+language: rust
+difficulty: easy
+version: 1
+prompt: |
+  Given only this self-contained Rust function:
+
+      fn repeat2(s: &str) -> String {
+          format!("{}{}", s, s)
+      }
+
+  What does repeat2("ab") return? Answer with the value only.
+ground_truth:
+  required_strings:
+    - abab

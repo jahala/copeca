@@ -37,12 +37,14 @@ class Category(str, Enum):
     trace  — map a relationship spanning files (callers, implementors, control-flow).
     fix    — change code until a stated test passes.
     debug  — diagnose a defect via git history, then resolve or explain it.
+    reason — comprehend given code with no navigation (a self-contained snippet).
     """
 
     locate = "locate"
     trace = "trace"
     fix = "fix"
     debug = "debug"
+    reason = "reason"
 
 
 class MutationAction(Enum):
@@ -146,6 +148,11 @@ class Task(BaseModel):
     # mutations to the worktree then `git commit`s them, building real history
     # for the agent to navigate. Applied BEFORE working-tree `mutations`.
     mutation_sequence: list[MutationStep] = Field(default_factory=list)
+    # Tool-neutrality control (#52): True marks a non-regression task where a
+    # codebase tool should not help (answer-in-context / single-file / pure
+    # reasoning). The report measures the tool's delta on these to catch
+    # regression or over-specialization. Orthogonal to category.
+    control: bool = False
 
     @model_validator(mode="after")
     def _category_consistent_with_type(self) -> "Task":
@@ -154,12 +161,12 @@ class Task(BaseModel):
         comprehension ⟹ locate/trace/debug; edit ⟹ fix/debug. `debug` spans both:
         explain-a-diff is comprehension+debug, find+fix-a-regression is edit+debug.
         """
-        comprehension_ok = {Category.locate, Category.trace, Category.debug}
+        comprehension_ok = {Category.locate, Category.trace, Category.debug, Category.reason}
         edit_ok = {Category.fix, Category.debug}
         if self.type == TaskType.comprehension and self.category not in comprehension_ok:
             raise ValueError(
                 f"comprehension task '{self.name}': category '{self.category.value}' "
-                "invalid (allowed: locate, trace, debug)"
+                "invalid (allowed: locate, trace, debug, reason)"
             )
         if self.type == TaskType.edit and self.category not in edit_ok:
             raise ValueError(
