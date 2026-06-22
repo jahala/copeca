@@ -424,6 +424,17 @@ def run(
             f"{scenario.repetitions} rep(s) = {total_runs} total runs"
         )
 
+        # Fresh results file per run — truncate so re-running the same scenario name does
+        # not append onto (and mix with) a previous run's records.
+        results_dir.mkdir(parents=True, exist_ok=True)
+        results_path.write_text("")
+
+        # Stream each record to disk AS it completes — crash-safe + live partial stats.
+        # I/O lives here at the CLI boundary; run_matrix stays I/O-free (architecture.md §7.8).
+        def _persist(record: dict) -> None:
+            append_jsonl(record, results_path)
+            emit_vendor_divergence_warning(extract_vendor_divergence_warning(record))
+
         records = run_matrix(
             scenario=scenario,
             tasks=loaded_tasks,
@@ -433,16 +444,12 @@ def run(
             ),
             repo_mgr=repo_mgr,
             repos=repos,
-            results_path=results_path,
+            on_record=_persist,
             max_workers=scenario.max_workers,
             pricing=pricing,
             mode_defs=mode_defs,
             keep_worktrees=keep_worktrees,
         )
-
-        for record in records:
-            append_jsonl(record, results_path)
-            emit_vendor_divergence_warning(extract_vendor_divergence_warning(record))
 
         if artifacts:
             task_by_name = {t.name: t for t in loaded_tasks}

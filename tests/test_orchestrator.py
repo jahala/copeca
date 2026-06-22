@@ -142,14 +142,12 @@ class TestFullPipeline:
         runner_factory = _runner_factory
         repo_mgr = StubRepoManager(tmp_path / "worktrees")
 
-        results_path = tmp_path / "results.jsonl"
         records = run_matrix(
             scenario=scenario,
             tasks=list(tasks.values()),
             modes=scenario.modes,
             runner_factory=runner_factory,
             repo_mgr=repo_mgr,
-            results_path=results_path,
             max_workers=1,
         )
 
@@ -164,10 +162,10 @@ class TestFullPipeline:
             assert "model" in r
             assert "repetition" in r
 
-        # Verify JSONL was NOT written by run_matrix — the orchestrator returns
-        # records but the CLI caller persists them (arch §5: "The orchestrator
-        # returns a record dict; the CLI caller persists it.")
-        assert not results_path.exists()
+        # run_matrix performs no persistence itself — the orchestrator returns records and
+        # the caller injects an on_record sink (arch §5: "the orchestrator returns a record
+        # dict; the CLI caller persists it"). Streaming persistence is covered by
+        # tests/orchestration/test_worker_pool.py::TestStreamingPersistence.
 
     def test_single_run_pipeline_integration(self, tmp_path, test_repo):
         """run_single produces correct record with all required fields."""

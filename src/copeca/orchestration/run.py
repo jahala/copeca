@@ -8,6 +8,7 @@ The orchestrator returns a record dict; the CLI caller persists it.
 import importlib.metadata
 import logging
 import subprocess
+from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -367,7 +368,7 @@ def run_matrix(
     runner_factory: Any,
     repo_mgr: Any,
     repos: dict[str, Any] | None = None,
-    results_path: Path | None = None,
+    on_record: Callable[[dict[str, Any]], None] | None = None,
     max_workers: int = 1,
     pricing: dict[str, dict[str, float]] | None = None,
     mode_defs: dict[str, Mode] | None = None,
@@ -386,7 +387,9 @@ def run_matrix(
         runner_factory: Callable(mode, model) -> BaseRunner.
         repo_mgr: Repo manager providing worktree operations.
         repos: Dict mapping repo keys to Repo models (for URIs and commits).
-        results_path: Path to the JSONL output file.
+        on_record: Optional sink invoked with each record AS it completes (success or
+                   error). Persistence is injected here so I/O stays at the edge —
+                   run_matrix itself never writes to disk (architecture.md §7.8).
         max_workers: Maximum concurrent workers (default 1 = sequential).
         mode_defs: Dict mapping mode names to Mode models. Each work item's
                    mode_obj is resolved from here so provision_arm applies the
@@ -458,7 +461,6 @@ def run_matrix(
             item = future_to_item[future]
             try:
                 record = future.result()
-                records.append(record)
             except Exception as exc:
                 logger.error(
                     "Run failed: task=%s mode=%s model=%s rep=%d: %s",
@@ -468,7 +470,7 @@ def run_matrix(
                     item["rep"],
                     exc,
                 )
-                error_record: dict[str, Any] = {
+                record = {
                     "task": item["task"].name,
                     "repo": item["task"].repo,
                     "mode": item["mode_name"],
@@ -479,7 +481,11 @@ def run_matrix(
                     "correct": False,
                     "error": str(exc),
                 }
-                records.append(error_record)
+            # Persist as we go (sink injected by the caller — I/O at the edge), so a crash
+            # mid-matrix keeps completed records instead of losing the whole batch.
+            records.append(record)
+            if on_record is not None:
+                on_record(record)
 
     return records
 
