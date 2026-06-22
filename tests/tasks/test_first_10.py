@@ -5,6 +5,7 @@ as a subprocess and verifies YAML content directly.
 """
 
 import subprocess
+import sys
 from pathlib import Path
 
 import yaml
@@ -12,8 +13,6 @@ import yaml
 from copeca.config.resources import data_path
 
 TASKS_DIR = data_path("tasks")
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-COPECA = PROJECT_ROOT / ".venv" / "bin" / "copeca"
 
 # Approved source families — sources that tasks may draw from.
 # Each entry is a prefix that task.source must start with.
@@ -58,10 +57,9 @@ class TestValidation:
 
         for task_dir in sorted({f.parent for f in task_files}):
             result = subprocess.run(
-                [str(COPECA), "validate", str(task_dir)],
+                [sys.executable, "-m", "copeca", "validate", str(task_dir)],
                 capture_output=True,
                 text=True,
-                env={"PATH": f"{PROJECT_ROOT / '.venv' / 'bin'}"},
                 timeout=30,
             )
             assert result.returncode == 0, (
