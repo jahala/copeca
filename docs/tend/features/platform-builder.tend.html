@@ -2632,7 +2632,7 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
       {
         "id": "copeca-scenario-matrix",
         "title": "copeca-scenario-matrix",
-        "status": "verified",
+        "status": "in-progress",
         "priority": "high",
         "dependencies": [
           "copeca-single-run",
@@ -2647,7 +2647,7 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
           "platform-builder"
         ],
         "journey_phase": "calibrate",
-        "what": "Full matrix runner — `copeca run scenarios/my.yaml` executes tasks × modes × models × repetitions with parallel git-worktree-isolated workers, configurable adversarial thresholds, and scenario-level v",
+        "what": "Full matrix runner — `copeca run scenarios/my.yaml` executes the tasks × modes × models × repetitions matrix, each work-item in its OWN isolated clone, streaming every result to disk as it completes, ",
         "thumbnail": {
           "kind": "svg",
           "content": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 200 120\" fill=\"none\">\n  <rect width=\"200\" height=\"120\" rx=\"8\" fill=\"#FAF5E9\"/>\n  <g transform=\"translate(35,25)\">\n    <rect x=\"0\" y=\"0\" width=\"36\" height=\"18\" rx=\"2\" fill=\"#357E2C\" opacity=\"0.12\"/>\n    <rect x=\"42\" y=\"0\" width=\"36\" height=\"18\" rx=\"2\" fill=\"#357E2C\" opacity=\"0.12\"/>\n    <rect x=\"84\" y=\"0\" width=\"36\" height=\"18\" rx=\"2\" fill=\"#357E2C\" opacity=\"0.12\"/>\n    <rect x=\"0\" y=\"24\" width=\"36\" height=\"18\" rx=\"2\" fill=\"#E89227\" opacity=\"0.18\"/>\n    <rect x=\"42\" y=\"24\" width=\"36\" height=\"18\" rx=\"2\" fill=\"#E89227\" opacity=\"0.18\"/>\n    <rect x=\"84\" y=\"24\" width=\"36\" height=\"18\" rx=\"2\" fill=\"#E89227\" opacity=\"0.18\"/>\n    <rect x=\"0\" y=\"48\" width=\"36\" height=\"18\" rx=\"2\" fill=\"#3F7186\" opacity=\"0.12\"/>\n    <rect x=\"42\" y=\"48\" width=\"36\" height=\"18\" rx=\"2\" fill=\"#3F7186\" opacity=\"0.12\"/>\n    <rect x=\"84\" y=\"48\" width=\"36\" height=\"18\" rx=\"2\" fill=\"#3F7186\" opacity=\"0.12\"/>\n  </g>\n  <text x=\"100\" y=\"100\" text-anchor=\"middle\" font-family=\"system-ui, sans-serif\" font-size=\"9\" fill=\"#3A2718\" font-weight=\"600\">SCENARIO</text>\n</svg>"
@@ -2656,7 +2656,7 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
       {
         "id": "copeca-single-run",
         "title": "copeca-single-run",
-        "status": "verified",
+        "status": "in-progress",
         "priority": "high",
         "dependencies": [
           "copeca-validate-tasks"
@@ -2706,8 +2706,18 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
         "job_index": 1
       },
       {
+        "feature_id": "copeca-scenario-matrix",
+        "check_id": "c004",
+        "job_index": 1
+      },
+      {
         "feature_id": "copeca-single-run",
         "check_id": "c002",
+        "job_index": 0
+      },
+      {
+        "feature_id": "copeca-single-run",
+        "check_id": "c004",
         "job_index": 0
       }
     ],
