@@ -70,7 +70,9 @@ output_dir: results
   CLI accepts them as `--model`). No pricing entry → cost warnings/failure.
 - **Modes** live in `src/copeca/data/defaults/modes/` (baseline, hook, indexed, proxy,
   wrapper, **tilth**). `tilth.yaml` is **local/untracked** (points at a local `tilth`
-  binary via mcp_config) — recreate it if missing.
+  binary via mcp_config) — recreate it if missing. Point the `tilth` mcp server command
+  at the absolute `~/.cargo/bin/tilth` (1.0.0) path so PATH order cannot pick up
+  homebrew 0.9.0 instead. copeca warns at run time when multiple versions are installed.
 - **Repos auto-clone** into `repos/_bare/` + `repos/_worktrees/` (both gitignored).
   **Edit tasks run real `test_command`s** → need `cargo`/`go`/`node`/`npm`/`python3`
   on PATH; comprehension tasks only need the checkout.
