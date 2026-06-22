@@ -55,12 +55,15 @@ budget_usd: 1.00
 The report leads with the cost-per-correct delta between your tool and the
 baseline, with 95% bootstrapped confidence intervals, per-task and
 **per-capability** breakdowns (locate / trace / fix / debug — *where* the tool
-helps, not just an overall number), and adversarial flags that catch token
-snowballing and expensive failures.
+helps, not just an overall number), a **control delta** on tool-neutral tasks (so a
+win can't be a regression or mere specialization in disguise), and adversarial flags
+that catch token snowballing and expensive failures.
 
 **Current corpus: 52 tasks** across four real repos (ripgrep, gin, express,
 fastapi — Rust, Go, JavaScript, Python), each tagged by capability so the report
-shows where a tool helps. Broader coverage is on the roadmap; small N still means
+shows where a tool helps — plus a 6-task non-regression **control set** (tool-neutral
+tasks where a tool should not help, used to catch regression or over-specialization).
+Broader coverage is on the roadmap; small N still means
 wide confidence intervals — see
 [docs/known-limitations.md](docs/known-limitations.md).
 
