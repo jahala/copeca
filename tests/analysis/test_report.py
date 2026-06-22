@@ -19,6 +19,7 @@ def _make_record(
     difficulty: str | None = None,
     category: str | None = None,
     control: bool | None = None,
+    tool_adopted: bool | None = None,
 ) -> dict:
     """Helper to build a minimal JSONL record."""
     record: dict = {
@@ -45,6 +46,8 @@ def _make_record(
         record["category"] = category
     if control is not None:
         record["control"] = control
+    if tool_adopted is not None:
+        record["tool_adopted"] = tool_adopted
     return record
 
 
@@ -569,3 +572,60 @@ class TestControlSection:
         assert "Control (Non-Regression)" in report
         assert "degraded" not in report.lower()
         assert "no significant effect" in report.lower()
+
+    def test_low_n_control_not_flagged_as_regression(self):
+        # n=2 control tasks, tiny positive delta — too few for a confident CI;
+        # must NOT false-flag a regression (the check-tilth run bug).
+        report = generate_report(self._control_records(0.0100, 0.0101, n=2))
+        assert "Control (Non-Regression)" in report
+        assert "degraded" not in report.lower()
+        assert "too few" in report.lower()
+
+    def test_small_delta_within_negligible_not_flagged(self):
+        # n=3 with a ~1% delta (below the practical threshold) — no regression.
+        report = generate_report(self._control_records(0.0100, 0.0101, n=3))
+        assert "degraded" not in report.lower()
+        assert "no significant effect" in report.lower()
+
+
+class TestToolValidity:
+    """NR-FIX-2: surface whether the tool-under-test was actually invoked
+    (tool_adopted), distinct from generic tool use; control tasks excluded."""
+
+    def test_absent_when_no_tool_declared(self):
+        recs = [
+            _make_record(task="t", mode="baseline", correct=True),
+            _make_record(task="t", mode="exp", correct=True),
+        ]
+        assert "Tool Validity" not in generate_report(recs)
+
+    def test_present_and_shows_adoption(self):
+        recs = [
+            _make_record(task="cap1", mode="baseline", correct=True),
+            _make_record(task="cap1", mode="tilth", correct=True, tool_adopted=True),
+        ]
+        report = generate_report(recs)
+        assert "Tool Validity" in report
+        assert "Tool used" in report
+
+    def test_flags_unused_tool_on_noncontrol(self):
+        recs = [
+            _make_record(task="cap1", mode="baseline", correct=False),
+            _make_record(task="cap1", mode="tilth", correct=False, tool_adopted=False),
+        ]
+        report = generate_report(recs)
+        assert "Tool Validity" in report
+        assert "false null" in report.lower()
+
+    def test_controls_excluded_from_adoption(self):
+        recs = [
+            _make_record(task="cap1", mode="baseline", correct=True),
+            _make_record(task="cap1", mode="tilth", correct=True, tool_adopted=True),
+            _make_record(task="ctrl1", mode="baseline", control=True, correct=True),
+            _make_record(
+                task="ctrl1", mode="tilth", control=True, correct=True, tool_adopted=False
+            ),
+        ]
+        report = generate_report(recs)
+        assert "Tool Validity" in report
+        assert "false null" not in report.lower()

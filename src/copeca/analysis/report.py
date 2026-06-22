@@ -226,21 +226,31 @@ def _control_section(
         return lines
 
     delta_pct = ((cpc1 - cpc0) / cpc0) * 100 if cpc0 > 0 else 0.0
-    ci_lo, ci_hi, _, _ = bootstrap_ci(deltas)
-    band = f"{delta_pct:+.1f}% [95% CI: {ci_lo:+.1f}%, {ci_hi:+.1f}%]"
-    if ci_lo > 0:
+    # A regression claim needs BOTH statistical and practical significance: a
+    # sub-threshold delta is noise, and a tiny control set (n<3 or zero variance)
+    # gives a degenerate CI that would false-flag. Negligible band = ±2%.
+    negligible_pct = 2.0
+    if len(deltas) < 3:
         lines.append(
-            f"**⚠ Regression:** the tool **degraded** neutral tasks — control delta {band}."
-        )
-    elif ci_hi < 0:
-        lines.append(
-            f"**Note:** the tool also improved neutral tasks — control delta {band}. "
-            "Verify these controls are genuinely tool-neutral."
+            f"**Control delta:** {delta_pct:+.1f}% (only {len(deltas)} control task(s) with a "
+            "measurable delta — too few for a confident regression check; add more controls)."
         )
     else:
-        lines.append(
-            f"**✓ No significant effect** on neutral tasks — control delta {band} (healthy)."
-        )
+        ci_lo, ci_hi, _, _ = bootstrap_ci(deltas)
+        band = f"{delta_pct:+.1f}% [95% CI: {ci_lo:+.1f}%, {ci_hi:+.1f}%]"
+        if ci_lo > negligible_pct:
+            lines.append(
+                f"**⚠ Regression:** the tool **degraded** neutral tasks — control delta {band}."
+            )
+        elif ci_hi < -negligible_pct:
+            lines.append(
+                f"**Note:** the tool also improved neutral tasks — control delta {band}. "
+                "Verify these controls are genuinely tool-neutral."
+            )
+        else:
+            lines.append(
+                f"**✓ No significant effect** on neutral tasks — control delta {band} (healthy)."
+            )
     lines.append("")
     return lines
 
@@ -513,4 +523,55 @@ def generate_report(records: list[dict[str, Any]]) -> str:
 
     # ── 11. Control / non-regression (if records carry control tasks) ───────
     lines.extend(_control_section(records, by_mode, modes))
+    lines.extend(_tool_validity_section(records, by_mode, modes))
     return "\n".join(lines)
+
+
+def _tool_validity_section(
+    records: list[dict[str, Any]],
+    by_mode: dict[Any, list[dict[str, Any]]],
+    modes: list[str],
+) -> list[str]:
+    """Did the experimental arm actually invoke its declared tool? (validity gate)
+
+    ``tool_adopted`` is True only when the agent called the mode's declared MCP
+    tool; None means the mode declares no such tool (e.g. the baseline). Control
+    tasks are excluded — a tool *should* be unused there, so not using it is correct.
+    """
+    if not any(r.get("tool_adopted") is not None for r in records):
+        return []
+
+    lines: list[str] = []
+    lines.append("### Tool Validity")
+    lines.append("")
+    lines.append(
+        "Whether the experimental arm actually invoked its declared tool on the tasks "
+        "where it could help (control tasks excluded). A tool that is declared but never "
+        "invoked cannot have helped, so any miss is flagged below."
+    )
+    lines.append("")
+    lines.append("| Mode | Tool used (non-control tasks) |")
+    lines.append("|------|------------------------------:|")
+    flagged = False
+    for mode in modes:
+        recs = [
+            r
+            for r in by_mode.get(mode, [])
+            if r.get("tool_adopted") is not None and not r.get("control")
+        ]
+        if not recs:
+            continue
+        used = sum(1 for r in recs if r.get("tool_adopted") is True)
+        cell = f"{used}/{len(recs)}"
+        if used < len(recs):
+            cell += " ⚠"
+            flagged = True
+        lines.append(f"| {mode} | {cell} |")
+    lines.append("")
+    if flagged:
+        lines.append(
+            "⚠ A non-control task where the tool was never invoked is a possible "
+            "**false null** — exclude it or investigate before trusting the delta."
+        )
+        lines.append("")
+    return lines
