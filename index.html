@@ -559,7 +559,7 @@ footer h4 { color: #FAF5E9; font-size: 1.05rem; margin-bottom: 16px; }
       <div class="beat">
         <div class="step">step 02</div>
         <div class="verb">run<span class="seq">&rarr;</span></div>
-        <p>copeca runs each arm in an isolated git worktree &mdash; a clean baseline vs the tool under test, with real tool-restriction enforced per arm. No cross-contamination.</p>
+        <p>copeca runs each arm in an isolated git worktree &mdash; a clean baseline vs the tool under test, tool-restriction enforced per arm. A validity gate then confirms the tool was actually used, so no result claims a win the tool never produced.</p>
       </div>
       <div class="beat">
         <div class="step">step 03</div>
@@ -569,7 +569,7 @@ footer h4 { color: #FAF5E9; font-size: 1.05rem; margin-bottom: 16px; }
       <div class="beat">
         <div class="step">step 04</div>
         <div class="verb">read</div>
-        <p>A per-capability cost-per-correct delta with bootstrap confidence intervals. See exactly where the tool helps &mdash; and where it does not justify its cost.</p>
+        <p>A per-capability cost-per-correct delta with bootstrap confidence intervals &mdash; and when the interval crosses zero, copeca says so plainly: no significant effect. See exactly where the tool helps, and where it doesn&rsquo;t justify its cost.</p>
       </div>
     </div>
   </div>
@@ -632,7 +632,7 @@ footer h4 { color: #FAF5E9; font-size: 1.05rem; margin-bottom: 16px; }
     <div class="reveal" style="margin-top:48px">
       <div class="card" style="max-width:640px">
         <div class="num">the corpus</div>
-        <h4 style="margin-top:8px">48 tasks &middot; four codebases</h4>
+        <h4 style="margin-top:8px">52 tasks &middot; four codebases</h4>
         <p style="margin-top:8px">ripgrep (Rust) &middot; gin (Go) &middot; express (JavaScript) &middot; fastapi (Python) &mdash; provenance-tracked and contamination-screened. Each codebase contributes tasks across all four capability tags.</p>
       </div>
     </div>

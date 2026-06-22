@@ -104,7 +104,9 @@ Copeca launches a CLI coding agent as a subprocess against a real open-source
 repo pinned at a known commit. The agent answers a question or fixes a bug.
 Copeca parses the agent's output, checks correctness, computes cost from token
 counts, and writes a JSONL record. A scenario runs the matrix of tasks × modes
-× models × repetitions with parallel git-worktree-isolated workers.
+× models × repetitions with parallel git-worktree-isolated workers. A validity
+gate confirms the experimental arm actually used its tool before its result
+counts — so a win can't be credited to a tool that never ran.
 
 **Modes** express the *one variable* that changes between baseline and
 experimental. They cover all five integration types real tools use:
