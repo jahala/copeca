@@ -141,3 +141,25 @@ class TestBaseEnvAllowlist:
         child_env: dict[str, str] = json.loads(result.result_text)
         assert child_env.get("LC_ALL") == "en_US.UTF-8"
         assert child_env.get("LC_CTYPE") == "en_US.UTF-8"
+
+    def test_arm_env_home_overrides_host_home(self) -> None:
+        """ISO-2: an arm env HOME=/tmp/foo must override the allowlisted host HOME.
+
+        _build_child_env copies HOST HOME from the allowlist, then merges *extra*
+        on top — so the arm-env HOME must win (extra is merged last).
+        """
+        host_home = "/home/real-user"
+        arm_home = "/tmp/copeca-home-abc123"
+        base_env = {
+            "PATH": "/usr/bin:/bin",
+            "HOME": host_home,
+        }
+        runner = _make_runner()
+
+        with patch.dict("os.environ", base_env, clear=True):
+            result = runner.run(_CMD, env={"HOME": arm_home})
+
+        child_env: dict[str, str] = json.loads(result.result_text)
+        assert child_env.get("HOME") == arm_home, (
+            "Arm env HOME must override the allowlisted host HOME in the child env"
+        )

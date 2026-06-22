@@ -7,6 +7,7 @@ The orchestrator returns a record dict; the CLI caller persists it.
 
 import importlib.metadata
 import logging
+import shutil
 import subprocess
 import threading
 from collections.abc import Callable
@@ -16,7 +17,13 @@ from typing import Any
 
 from copeca.config.models import AdversarialThresholds, EditGroundTruth, Mode, Scenario, Task
 from copeca.orchestration.state import provision_arm
-from copeca.orchestration.validation import check_tool_availability
+from copeca.orchestration.validation import (
+    check_tool_availability,
+    detect_multi_version_installs,
+    resolve_cli_version,
+    resolve_tool_version,
+    scan_worktree_for_ambient_files,
+)
 from copeca.runners.base import BaseRunner
 from copeca.runners.cost import compute_cost
 from copeca.tasks.mutations import apply_mutations
@@ -115,19 +122,37 @@ def run_single(
         task.repo, commit=repo_commit, uri=repo_uri, worktree_id=worktree_id
     )
 
+    # harness is initialised to None so the finally block can check whether
+    # provision_arm was called and a private_home was created.
+    harness = None
     try:
+        # 2.5. Workdir ambient-file scan — refuse if the cloned repo contains
+        #      ambient instruction files that would contaminate the agent (Lock 2a,
+        #      §13.3). Inside the try so the finally removes the clone on refusal;
+        #      skip when isolation is absent or ambient_files=[].
+        _ambient_names = getattr(getattr(runner, "isolation", None), "ambient_files", None) or []
+        if _ambient_names:
+            _contaminated = scan_worktree_for_ambient_files(Path(worktree), _ambient_names)
+            if _contaminated:
+                raise RuntimeError(
+                    f"CONTAMINATED_WORKDIR: worktree contains ambient instruction file(s) "
+                    f"{_contaminated} that would contaminate the agent; remove them from "
+                    f"the repo/clone or exclude this task. (Lock 2a, architecture §13.3)"
+                )
+
         # 3. Run setup
         repo_mgr.setup(worktree)
 
-        # 3.5. Provision arm harness — applies mode.env, config_dir, wrapper.
-        # Baseline (mode=None) → harness.env is empty → child gets allowlist only.
-        # Experimental mode → harness.env carries mode.env merged on top.
-        if mode is not None:
-            harness = provision_arm(mode, worktree=Path(worktree), arm_name=mode_name)
-        else:
-            from copeca.orchestration.state import ArmHarness
-
-            harness = ArmHarness()
+        # 3.5. Provision arm harness — every arm (baseline AND experimental)
+        # gets a private throwaway HOME + the isolation env vars so no host
+        # CLI config leaks in or out (architecture §13.2).
+        _isolation = getattr(runner, "isolation", None)
+        harness = provision_arm(
+            mode,
+            worktree=Path(worktree),
+            arm_name=mode_name,
+            isolation=_isolation,
+        )
 
         # 4. Build committed mutation history (debug tasks only) — must run
         #    BEFORE working-tree mutations so the agent sees real git history.
@@ -145,15 +170,17 @@ def run_single(
             budget=budget_usd,
             tools=mode.tools if mode is not None else None,
             mcp_config=harness.mcp_config_path,
+            isolation=_isolation,
         )
         if harness.wrapper:
             command = list(harness.wrapper) + command
-        # Build run env: start from mode.env overrides, then inject config dir if
-        # the runner declares a config_dir_env name (runner-config-driven, not hardcoded).
-        run_env = dict(harness.env or {})
+        # Build run env: start from harness.env (HOME + isolation vars + mode.env),
+        # then inject the per-arm config dir if the runner declares a config_dir_env
+        # name (runner-config-driven, not hardcoded).
+        run_env = dict(harness.env)
         if harness.config_dir and getattr(runner, "config_dir_env", None):
             run_env[runner.config_dir_env] = str(harness.config_dir)
-        parsed = runner.run(command, cwd=str(worktree), env=run_env or None)
+        parsed = runner.run(command, cwd=str(worktree), env=run_env)
 
         # 5.5. Run test_command for edit tasks (P0 bug fix)
         test_command_passed: bool | None = None
@@ -260,6 +287,43 @@ def run_single(
             _names = [tc.name for tc in parsed.tool_calls]
             tool_adopted = any(n.startswith(f"mcp__{srv}__") for n in _names for srv in _servers)
 
+        # 6.8 ISO-8: Version provenance — resolve tool + CLI versions at the I/O edge.
+        #     Best-effort: failures log a warning and record None; never crash the run.
+        #
+        #     tool_version / tool_path: the first MCP server command in this mode's
+        #     mcp_config (the tool under test). None for baseline / no mcp_config.
+        #
+        #     tool_under_test: declared identity list — ["mcp__<srv>__", ...] for each
+        #     server in mcp_config.  Used by the trace gate so it can flag a contaminated
+        #     baseline even when the experimental arm never called the tool (ISO-8 Part 4).
+        #
+        #     cli_version: runner CLI version from isolation.version_cmd. None when absent.
+        tool_version: str | None = None
+        tool_path: str | None = None
+        tool_under_test: list[str] | None = None
+        if _servers:
+            # Resolve version from the first declared MCP server command
+            _first_cmd = next(
+                (
+                    spec.get("command")
+                    for spec in _servers.values()
+                    if isinstance(spec, dict) and spec.get("command")
+                ),
+                None,
+            )
+            if _first_cmd:
+                tool_version, tool_path = resolve_tool_version(_first_cmd)
+                # Multi-version preflight: warn when multiple copies are installed
+                _binary_name = Path(_first_cmd).name
+                detect_multi_version_installs(
+                    configured_command=_first_cmd,
+                    binary_name=_binary_name,
+                )
+            # Declared identity: ["mcp__<srv>__", ...] for every server
+            tool_under_test = [f"mcp__{srv}__" for srv in _servers]
+
+        cli_version = resolve_cli_version(_isolation)
+
         # 7. Build JSONL record
         record: dict[str, Any] = {
             "task": task.name,
@@ -283,6 +347,10 @@ def run_single(
             "num_turns": parsed.num_turns,
             "num_tool_calls": parsed.num_tool_calls,
             "tool_adopted": tool_adopted,
+            "tool_version": tool_version,
+            "tool_path": tool_path,
+            "tool_under_test": tool_under_test,
+            "cli_version": cli_version,
             "total_cost_usd": total_cost_usd,
             "cost_source": cost_source,
             "duration_ms": parsed.duration_ms,
@@ -322,6 +390,14 @@ def run_single(
             logger.info("Keeping clone for inspection: %s", worktree)
         else:
             repo_mgr.remove_worktree(worktree)
+
+        # 9.5. Remove the per-arm private HOME — zero host footprint
+        # (architecture §13.2). Always removed regardless of keep_worktree so
+        # no temp dirs accumulate across repeated runs.
+        if harness is not None and harness.private_home is not None:
+            _private_home = Path(harness.private_home)
+            if _private_home.exists():
+                shutil.rmtree(_private_home, ignore_errors=True)
 
 
 def _compute_adversarial_flags(

@@ -19,8 +19,20 @@ runner:
     system_prompt: --system-prompt
     mcp_config: --mcp-config
     prompt_separator: --
+  # config_dir_env delivers the per-arm agent_config overlay (hook modes).
+  # isolation.config_home_env names the same var but serves a different role:
+  # it sets the private-home pointer for baseline + MCP modes (ISO-2 lock 1).
   config_dir_env: CLAUDE_CONFIG_DIR
   parser: stream_json
+  isolation:
+    config_home_env: CLAUDE_CONFIG_DIR
+    strict_mcp_flags: [--strict-mcp-config]
+    disable_session_flags: [--no-session-persistence]
+    disable_ambient_env: { CLAUDE_CODE_DISABLE_CLAUDE_MDS: "1" }
+    disable_telemetry_env: { CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: "1" }
+    ambient_files: [CLAUDE.md, CLAUDE.local.md]
+    requires_api_key_env: ANTHROPIC_API_KEY
+    version_cmd: [claude, --version]
 
 pricing:
   claude-sonnet-4-6:

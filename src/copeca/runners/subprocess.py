@@ -10,6 +10,7 @@ import threading
 import time
 from dataclasses import dataclass, field
 
+from copeca.config.models import IsolationSpec
 from copeca.runners.base import BaseRunner
 from copeca.runners.parsers.base import Parser, RunResult
 
@@ -126,6 +127,7 @@ class SubprocessRunner(BaseRunner):
     config_dir_env: str | None = (
         None  # env var name to deliver per-arm config dir (e.g. "CLAUDE_CONFIG_DIR")
     )
+    isolation: IsolationSpec | None = field(default=None)  # per-CLI clean-room descriptor
 
     def run(
         self,

@@ -1,0 +1,25 @@
+{
+  "response": "The `add` function in `src/utils.py` (line 12) sums two integers and returns the result. It handles both positive and negative values correctly.",
+  "stats": {
+    "models": {
+      "gemini-2.5-flash": {
+        "tokens": {
+          "prompt": 4210,
+          "candidates": 87,
+          "cached": 1024,
+          "thoughts": 32,
+          "tool": 0,
+          "total": 5353
+        }
+      }
+    },
+    "tools": {
+      "totalCalls": 2,
+      "byName": {
+        "read_file": 1,
+        "search_code": 1
+      }
+    }
+  },
+  "error": {}
+}

@@ -489,7 +489,9 @@ class TestStreamingPersistence:
             )
 
         lines = out.read_text().splitlines() if out.exists() else []
-        assert len(lines) == 1  # exactly the pre-interrupt record persisted — nothing lost in a buffer
+        assert (
+            len(lines) == 1
+        )  # exactly the pre-interrupt record persisted — nothing lost in a buffer
         assert json.loads(lines[0])["task"] == "task_a"  # the first completed record
 
 

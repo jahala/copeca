@@ -487,9 +487,7 @@ class TestTokenSnowball:
 class TestErrorRecovery:
     """Discriminate tests for error-recovery paths in run_single."""
 
-    def test_create_worktree_failure_does_not_call_remove_worktree(
-        self, tmp_path: Path
-    ) -> None:
+    def test_create_worktree_failure_does_not_call_remove_worktree(self, tmp_path: Path) -> None:
         """When create_worktree raises, remove_worktree must NOT be called.
 
         create_worktree runs BEFORE the try block, so the finally clause never
@@ -540,8 +538,7 @@ class TestErrorRecovery:
                 repo_mgr=mgr,
             )
         assert not mgr.remove_called, (
-            "remove_worktree must not be called if create_worktree failed "
-            "(no clone was created)"
+            "remove_worktree must not be called if create_worktree failed (no clone was created)"
         )
 
     def test_setup_failure_still_calls_remove_worktree(self, tmp_path: Path) -> None:
@@ -598,9 +595,7 @@ class TestErrorRecovery:
             "remove_worktree MUST be called after setup failure (finally block)"
         )
 
-    def test_runner_failure_propagates_and_remove_worktree_called(
-        self, tmp_path: Path
-    ) -> None:
+    def test_runner_failure_propagates_and_remove_worktree_called(self, tmp_path: Path) -> None:
         """Runner.run() failure propagates exception; remove_worktree is still called."""
         task = Task(
             name="err_test",
@@ -650,6 +645,4 @@ class TestErrorRecovery:
                 runner=FailingRunner(),
                 repo_mgr=mgr,
             )
-        assert mgr.remove_called, (
-            "remove_worktree MUST be called even when runner.run() raises"
-        )
+        assert mgr.remove_called, "remove_worktree MUST be called even when runner.run() raises"

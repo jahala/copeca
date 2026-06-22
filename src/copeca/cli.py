@@ -138,6 +138,7 @@ def build_runner(
         mcp_via_config_overrides=cfg.mcp_via_config_overrides,
         parser=get_parser(cfg.parser),
         config_dir_env=cfg.config_dir_env,
+        isolation=cfg.isolation,
     )
 
 

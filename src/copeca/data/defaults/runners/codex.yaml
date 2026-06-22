@@ -14,6 +14,12 @@ runner:
     - workspace-write        # 0.133.0: --full-auto is deprecated; select sandbox
     - --ephemeral            # don't persist session files
     - --skip-git-repo-check  # worktrees vary; don't refuse non-git dirs
+  isolation:
+    config_home_env: CODEX_HOME
+    strict_mcp_flags: [--ignore-user-config]
+    requires_api_key_env: OPENAI_API_KEY
+    ambient_files: [AGENTS.md]
+    version_cmd: [codex, --version]
   arg_map:
     model: -m
     prompt_separator: --

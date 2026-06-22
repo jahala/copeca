@@ -9,6 +9,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from copeca.config.models import IsolationSpec
 from copeca.runners.parsers.base import RunResult
 
 
@@ -72,12 +73,17 @@ class BaseRunner(ABC):
         system_prompt: str | None = None,
         tools: list[str] | None = None,
         mcp_config: str | None = None,
+        isolation: IsolationSpec | None = None,
     ) -> list[str]:
         """Build the CLI command for this runner.
 
         Uses invoke_template if present (escape hatch for non-standard CLI
         argument conventions). Otherwise uses arg_map to construct flag-style
         arguments. If neither is present, raises InvokeError.
+
+        Appends isolation.strict_mcp_flags and isolation.disable_session_flags
+        for EVERY run (baseline included) so the clean-room contract holds
+        across CLIs without per-CLI branches (architecture §13.4).
 
         Args:
             model: Full model ID from runner pricing keys.
@@ -86,6 +92,8 @@ class BaseRunner(ABC):
             system_prompt: Optional system prompt override.
             tools: Optional list of allowed tool names.
             mcp_config: Optional path to MCP config JSON.
+            isolation: Per-CLI clean-room descriptor (architecture §13.4).
+                       When None, no isolation flags are appended.
 
         Returns:
             List of CLI argument strings ready for subprocess.
@@ -135,6 +143,14 @@ class BaseRunner(ABC):
                 # When mcp_via_config_overrides is set, the file was already translated
                 # into -c pairs above — skip the flag-path form here.
                 cmd.extend([flag, mcp_config])
+
+        # ── Isolation flags (architecture §13.2) ─────────────────────
+        # Appended BEFORE the positional prompt for every run — baseline
+        # included. Static flags from the descriptor are appended verbatim;
+        # dynamic per-server flags (Gemini) are ISO-5's concern.
+        if isolation is not None:
+            cmd.extend(isolation.strict_mcp_flags)
+            cmd.extend(isolation.disable_session_flags)
 
         # prompt_separator + positional prompt always comes last. A runner with
         # no system-prompt flag (codex) folds the system prompt into the positional

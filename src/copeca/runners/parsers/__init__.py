@@ -11,6 +11,7 @@ from collections.abc import Callable
 
 from copeca.runners.parsers.base import Parser
 from copeca.runners.parsers.codex_json import CodexJsonParser
+from copeca.runners.parsers.gemini_json import GeminiJsonParser
 from copeca.runners.parsers.stream_json import StreamJsonParser
 
 
@@ -23,6 +24,7 @@ class ParserNotFoundError(Exception):
 _PARSERS: dict[str, Callable[[], Parser]] = {
     "stream_json": StreamJsonParser,
     "codex_json": CodexJsonParser,
+    "gemini_json": GeminiJsonParser,
 }
 
 
