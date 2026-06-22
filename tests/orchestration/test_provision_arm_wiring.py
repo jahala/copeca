@@ -61,6 +61,9 @@ class StubRepoMgr:
     def reset(self, wt: Path) -> None:
         self.reset_called = True
 
+    def remove_worktree(self, wt: Path) -> None:
+        pass
+
 
 def _task(name: str = "t") -> Task:
     return Task(

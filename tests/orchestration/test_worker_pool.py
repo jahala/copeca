@@ -48,6 +48,7 @@ class StubRepoManager:
         self.worktrees_created: list[Path] = []
         self.setups_called = 0
         self.resets_called = 0
+        self.removes_called = 0
 
     def verify_toolchain(self, repo_key: str) -> None:
         pass
@@ -64,6 +65,9 @@ class StubRepoManager:
 
     def reset(self, worktree: Path) -> None:
         self.resets_called += 1
+
+    def remove_worktree(self, worktree: Path) -> None:
+        self.removes_called += 1
 
 
 def _make_task(name: str, repo: str = "test-repo") -> Task:

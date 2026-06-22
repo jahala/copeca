@@ -92,6 +92,9 @@ class StubRepoMgr:
     def reset(self, wt: Path) -> None:
         pass
 
+    def remove_worktree(self, wt: Path) -> None:
+        pass
+
 
 # ── Task helper ───────────────────────────────────────────────────────────────
 

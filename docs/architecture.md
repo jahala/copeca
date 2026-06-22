@@ -18,7 +18,7 @@ them, it's architecturally wrong regardless of implementation quality.
 |---|---|---|
 | **Reproducible** | Same inputs → same outputs within stochastic bounds | Pinned commits, declared toolchains, per-arm isolation, `check-task` mutation validity |
 | **Verifiable** | Outputs carry their own proof of integrity | `.copeca` zips carry a SHA-256 integrity manifest; `copeca verify` checks single-artifact integrity and `copeca verify --batch --scenario` checks completeness (all expected runs present); cryptographic signing and external anchoring are planned |
-| **Isolated** | The instrument doesn't contaminate the measurement | Git worktrees, per-arm config dirs, allow-listed child environment (baseline inherits no ambient hooks) |
+| **Isolated** | The instrument doesn't contaminate the measurement | Per-item independent clones (no shared object store between tasks), per-arm config dirs, allow-listed child environment (baseline inherits no ambient hooks) |
 | **Comparable** | Numbers from different runs use the same methodology | Cost computed from tokens × one pricing source, same tasks/baseline/metric |
 | **Extensible** | New runners, parsers, modes, tasks without changing the core | YAML-driven config, ABC-based port/adapter boundaries, invoke_template escape hatch |
 
@@ -88,12 +88,16 @@ via architecture tests (import-linter or a simple grep in CI).
 **Ports (abstract interfaces):**
 - `runners/base.py:BaseRunner` — `run(command_spec) -> RunResult`
 - `runners/parsers/base.py:BaseParser` — `parse(stdout: str) -> RunResult`
-- `repos/manager.py:RepoManager` — clone, checkout, create_worktree, reset, remove_worktree
+- `repos/manager.py:RepoManager` — `create_worktree(repo_key, commit, uri, worktree_id) -> Path`,
+  `remove_worktree(clone_path) -> None`, `reset(worktree) -> None`, `setup(worktree, setup_command)`,
+  `build_mutation_history(worktree, steps)`, `verify_toolchain(repo_key)`
 
 **Adapters (concrete implementations):**
 - `runners/subprocess.py:SubprocessRunner` — spawns CLI agent as subprocess
 - `runners/parsers/stream_json.py` — built-in parser (Claude Code stream-json output)
-- `repos/manager.py:GitWorktreeManager` — git bare clone + worktree operations
+- `repos/manager.py:GitWorktreeManager` — bare-cache + per-item independent clone lifecycle:
+  `create_worktree` clones the bare cache with `--no-hardlinks` (independent object store,
+  lockless concurrency); `remove_worktree` deletes the clone via `shutil.rmtree`
 
 Additional parsers (for other CLI agents) are planned; the extension point is
 `runners/parsers/base.py:BaseParser`.

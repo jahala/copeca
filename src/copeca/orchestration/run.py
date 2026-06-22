@@ -291,13 +291,13 @@ def run_single(
         return record
 
     finally:
-        # 9. Reset the worktree — unless the caller asked to keep it for
+        # 9. Remove the clone — unless the caller asked to keep it for
         #    debugging, in which case the per-arm mcp.json / config dir / agent
         #    edits survive for inspection (shakedown SD-C).
         if keep_worktree:
-            logger.info("Keeping worktree for inspection: %s", worktree)
+            logger.info("Keeping clone for inspection: %s", worktree)
         else:
-            repo_mgr.reset(worktree)
+            repo_mgr.remove_worktree(worktree)
 
 
 def _compute_adversarial_flags(

@@ -38,6 +38,9 @@ class _RecordingMgr:
     def reset(self, worktree):
         pass
 
+    def remove_worktree(self, worktree):
+        pass
+
 
 class _StubRunner:
     name = "stub"

@@ -48,6 +48,9 @@ class _StubRepoMgr:
     def reset(self, wt: Path) -> None:
         pass
 
+    def remove_worktree(self, wt: Path) -> None:
+        pass
+
 
 def _task() -> Task:
     return Task(
