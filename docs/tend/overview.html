@@ -2973,6 +2973,29 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
         "kind": "svg",
         "content": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"200\" height=\"120\" viewBox=\"0 0 200 120\">\n  <rect width=\"200\" height=\"120\" fill=\"#FAF5E9\"/>\n  <rect x=\"100\" y=\"15\" width=\"80\" height=\"90\" rx=\"4\" fill=\"#3A2718\" opacity=\"0.08\"/>\n  <rect x=\"108\" y=\"23\" width=\"64\" height=\"5\" rx=\"1\" fill=\"#3A2718\" opacity=\"0.15\"/>\n  <rect x=\"108\" y=\"32\" width=\"52\" height=\"5\" rx=\"1\" fill=\"#3A2718\" opacity=\"0.12\"/>\n  <rect x=\"108\" y=\"41\" width=\"58\" height=\"5\" rx=\"1\" fill=\"#3A2718\" opacity=\"0.15\"/>\n  <rect x=\"108\" y=\"50\" width=\"40\" height=\"5\" rx=\"1\" fill=\"#3A2718\" opacity=\"0.1\"/>\n  <rect x=\"108\" y=\"59\" width=\"48\" height=\"5\" rx=\"1\" fill=\"#3A2718\" opacity=\"0.12\"/>\n  <rect x=\"108\" y=\"68\" width=\"56\" height=\"5\" rx=\"1\" fill=\"#3A2718\" opacity=\"0.15\"/>\n  <rect x=\"108\" y=\"77\" width=\"35\" height=\"5\" rx=\"1\" fill=\"#3A2718\" opacity=\"0.1\"/>\n  <rect x=\"108\" y=\"86\" width=\"44\" height=\"5\" rx=\"1\" fill=\"#3A2718\" opacity=\"0.12\"/>\n  <path d=\"M35,90 Q35,60 50,55 L55,55 M50,55 L45,50 M50,55 L45,60\" stroke=\"#357E2C\" stroke-width=\"2\" fill=\"none\"/>\n  <circle cx=\"35\" cy=\"94\" r=\"5\" fill=\"#3A2718\"/>\n  <text x=\"35\" y=\"108\" text-anchor=\"middle\" font-family=\"sans-serif\" font-size=\"7\" fill=\"#3A2718\" opacity=\"0.6\">seed</text>\n  <circle cx=\"25\" cy=\"30\" r=\"3\" fill=\"#E89227\" opacity=\"0.8\"/>\n  <text x=\"32\" y=\"30\" font-family=\"monospace\" font-size=\"7\" fill=\"#3A2718\">copeca init</text>\n  <text x=\"32\" y=\"42\" font-family=\"monospace\" font-size=\"7\" fill=\"#3A2718\">/benchmark</text>\n  <rect x=\"25\" y=\"52\" width=\"4\" height=\"7\" fill=\"#357E2C\" opacity=\"0.6\"/>\n  <text x=\"34\" y=\"58\" font-family=\"monospace\" font-size=\"7\" fill=\"#3A2718\">tasks/ *16</text>\n  <rect x=\"25\" y=\"66\" width=\"4\" height=\"7\" fill=\"#357E2C\" opacity=\"0.6\"/>\n  <text x=\"34\" y=\"72\" font-family=\"monospace\" font-size=\"7\" fill=\"#3A2718\">repos.yaml</text>\n  <rect x=\"25\" y=\"80\" width=\"4\" height=\"7\" fill=\"#357E2C\" opacity=\"0.6\"/>\n  <text x=\"34\" y=\"86\" font-family=\"monospace\" font-size=\"7\" fill=\"#3A2718\">scenarios/</text>\n</svg>"
       }
+    },
+    {
+      "id": "run-isolation",
+      "title": "run-isolation",
+      "status": "planned",
+      "priority": "high",
+      "dependencies": [
+        "copeca-mode-mechanism",
+        "copeca-single-run"
+      ],
+      "enables": [
+        "copeca-scenario-matrix"
+      ],
+      "personas": [
+        "tool-builder",
+        "platform-builder",
+        "skeptical-evaluator"
+      ],
+      "solves": [
+        "contamination-erodes-trust"
+      ],
+      "journey_phase": "calibrate",
+      "what": "A verifiable clean room for every benchmark run across Claude Code, Codex, and Gemini CLI: a private throwaway HOME so no host CLI config (~/.claude.json, ~/.codex/, ~/.gemini/) is read, written, or l"
     }
   ],
   "source_dirs": [
@@ -2999,24 +3022,25 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
     ],
     "truth": {
       "verified": 8,
-      "total": 18,
+      "total": 19,
       "stale": 11,
       "mock_only": 0,
       "false_done": 5,
-      "auditable": 9,
+      "auditable": 10,
       "audited": 9
     },
     "flow": {
-      "ready_now": 1,
+      "ready_now": 2,
       "blocked": 0
     },
     "value": {
-      "weakest_opportunity_coverage": "contamination-erodes-trust"
+      "highest_value_unblocked": "run-isolation",
+      "weakest_opportunity_coverage": "no-verifiable-results"
     },
     "lifecycle": {
-      "total": 9,
+      "total": 10,
       "planned": {
-        "count": 0,
+        "count": 1,
         "blocked": 0
       },
       "building": {
@@ -3033,19 +3057,19 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
       }
     },
     "coherence": {
-      "total": 55,
+      "total": 57,
       "groups": [
         {
           "kind": "judgment_missing",
           "label": "judgment refresh",
-          "count": 42,
+          "count": 43,
           "route": "/tend brainstorm",
           "section": "spine"
         },
         {
           "kind": "how_decisions_trail",
           "label": "slot coherence",
-          "count": 9,
+          "count": 10,
           "route": "/tend change",
           "section": "spine"
         },
@@ -3070,7 +3094,7 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
       ],
       "incomplete_bets": 0,
       "incomplete_bet_ids": [],
-      "unclaimed_code": 214,
+      "unclaimed_code": 215,
       "unclaimed_code_sample": [
         ".github/FUNDING.yml",
         ".github/ISSUE_TEMPLATE/bug_report.yml",
@@ -3079,7 +3103,7 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
         ".github/ISSUE_TEMPLATE/new_task.yml"
       ]
     },
-    "computed_at": "2026-06-22T15:50:40.392Z"
+    "computed_at": "2026-06-22T17:10:39.783Z"
   },
   "progress": {
     "implementation": 0,
