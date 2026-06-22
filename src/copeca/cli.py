@@ -791,5 +791,86 @@ def compare(
     typer.echo(compare_runs(before_records, after_records))
 
 
+@app.command(name="new-task")
+def new_task(
+    output: Path = typer.Argument(..., help="Path to write the scaffolded task YAML"),
+) -> None:
+    """Scaffold a commented task YAML skeleton to the given path.
+
+    The skeleton contains every required field with placeholder values and a
+    commented line for each optional field. Category choices are derived
+    dynamically from the Category enum so this stays in sync with the model.
+    """
+    from copeca.config.models import Category
+
+    categories = [c.value for c in Category]
+    categories_comment = " | ".join(categories)
+
+    skeleton = f"""\
+# copeca task skeleton — fill in every required field, then run:
+#   copeca validate <dir>             # schema + provenance + tool-agnosticism
+#   copeca check-task <this-file>     # edit tasks only: proves the mutation bites
+
+name: my_task_name            # required: snake_case, e.g. rg_find_matcher_trait
+description: ""               # optional: one-line summary of what the task tests
+source: "MySource (MIT)"      # required: provenance + license family (Apache-2.0 / MIT / CC-BY)
+repo: ripgrep                 # required: key in repos.yaml
+# commit: <40-char SHA>       # optional: per-task commit override (overrides repos.yaml default)
+type: comprehension           # required: comprehension | edit
+category: locate              # required: {categories_comment}
+language: rust                # required: python | rust | go | javascript
+difficulty: medium            # required: easy | medium | hard
+version: 1                    # required: integer; bump on semantic changes
+
+prompt: |
+  # required: the natural-language question sent to the agent.
+  # Name the INFORMATION required — never the tool or method to retrieve it.
+  # Bad: "Use grep to find ..."   Good: "Find the X that ..."
+  Describe what the agent must find or do.
+
+ground_truth:
+  # For comprehension tasks — string matching against agent output (case-insensitive):
+  required_strings:        # every string must appear in the output
+    - ExampleSymbol
+  all_of:                  # completeness check: every entry must appear
+    - ExampleSymbol
+  forbidden_strings:       # none of these may appear (catches refusals)
+    - "I cannot"
+    - "unable to"
+  # For edit tasks — replace the block above with:
+  # test_command:          # argv; exit 0 = agent fixed the bug
+  #   - python
+  #   - -m
+  #   - pytest
+  #   - tests/test_fix.py
+
+# mutations:               # edit tasks only: code changes that introduce a bug
+#   - file: path/to/file.py
+#     action: replace      # replace | delete | insert_after | create
+#     find: "correct_value"
+#     replace: "broken_value"
+#     occurrence: 1        # optional (default 1); which occurrence to replace
+
+# mutation_sequence:       # debug tasks only: committed steps that build git history
+#   - message: "Introduce regression in foo()"
+#     mutations:
+#       - file: path/to/file.py
+#         action: replace
+#         find: "correct"
+#         replace: "broken"
+"""
+
+    output.parent.mkdir(parents=True, exist_ok=True)
+    if output.exists():
+        typer.echo(f"Error: file already exists: {output}", err=True)
+        raise typer.Exit(code=1)
+    output.write_text(skeleton)
+    typer.echo(f"Scaffolded task skeleton: {output}")
+    typer.echo("Next steps:")
+    typer.echo(f"  1. Edit {output}")
+    typer.echo("  2. copeca validate <dir>")
+    typer.echo("  3. copeca check-task <file>  (edit tasks only)")
+
+
 if __name__ == "__main__":
     app()
