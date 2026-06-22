@@ -10,7 +10,10 @@ tamper-proof.
 from __future__ import annotations
 
 import json
+import os
+import re
 import subprocess
+import sys
 import zipfile
 from pathlib import Path
 
@@ -21,10 +24,11 @@ from copeca.results.signing import generate_keypair, serialize_public_key_pem
 def copeca(*args: str) -> subprocess.CompletedProcess[str]:
     """Run the installed copeca CLI entry point."""
     return subprocess.run(
-        ["copeca", *args],
+        [sys.executable, "-m", "copeca", *args],
         capture_output=True,
         text=True,
         timeout=30,
+        env={**os.environ, "NO_COLOR": "1", "TERM": "dumb", "COLUMNS": "200"},
     )
 
 
@@ -177,9 +181,8 @@ class TestRunSignKey:
     def test_run_help_advertises_sign_key(self) -> None:
         """run --help must document --sign-key (operator discoverability)."""
         result = copeca("run", "--help")
-        assert "--sign-key" in result.stdout, (
-            f"run --help must advertise --sign-key.\n{result.stdout}"
-        )
+        clean = re.sub(r"\x1b\[[0-9;]*m", "", result.stdout)
+        assert "--sign-key" in clean, f"run --help must advertise --sign-key.\n{result.stdout}"
 
     def test_sign_key_requires_artifacts(self, tmp_path: Path) -> None:
         """--sign-key without --artifacts fails fast with a clear error (exit 2)."""

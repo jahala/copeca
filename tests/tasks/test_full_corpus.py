@@ -22,7 +22,6 @@ from copeca.config.resources import data_path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 TASKS_DIR = data_path("tasks")
-COPECA = PROJECT_ROOT / ".venv" / "bin" / "copeca"
 SCRIPTS_DIR = PROJECT_ROOT / "scripts"
 
 
@@ -43,7 +42,7 @@ def _load_task(path: Path) -> dict:
 def _run_copeca(*args: str) -> subprocess.CompletedProcess[str]:
     """Run copeca CLI via the installed entry point."""
     return subprocess.run(
-        [str(COPECA), *args],
+        [sys.executable, "-m", "copeca", *args],
         capture_output=True,
         text=True,
         timeout=30,
