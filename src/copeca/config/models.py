@@ -207,6 +207,11 @@ class Mode(BaseModel):
     agent_config: str | None = None
     wrapper: list[str] | None = None
     setup: list[str] | None = None
+    # Per-mode instruction appended to the agent's base prompt (A/B transparency knob).
+    # For CLIs with --append-system-prompt (claude): emitted as a flag.
+    # For CLIs without a flag (codex, gemini): prepended to the positional prompt.
+    # Always recorded as mode_append_system_prompt in the JSONL record for disclosure.
+    append_system_prompt: str | None = None
 
     @model_validator(mode="after")
     def at_least_one_path_or_tool_change(self) -> "Mode":

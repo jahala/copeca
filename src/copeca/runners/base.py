@@ -71,6 +71,7 @@ class BaseRunner(ABC):
         prompt: str,
         budget: float | None = None,
         system_prompt: str | None = None,
+        append_system_prompt: str | None = None,
         tools: list[str] | None = None,
         mcp_config: str | None = None,
         isolation: IsolationSpec | None = None,
@@ -90,6 +91,11 @@ class BaseRunner(ABC):
             prompt: The task prompt (placed after prompt_separator).
             budget: Optional budget in USD.
             system_prompt: Optional system prompt override.
+            append_system_prompt: Optional per-mode instruction to append to the
+                agent's base prompt.  For CLIs with an --append-system-prompt flag
+                (claude), emitted as that flag.  For CLIs without a flag (codex,
+                gemini, prepend_system_prompt=True), prepended to the positional
+                prompt so the instruction is carried rather than silently dropped.
             tools: Optional list of allowed tool names.
             mcp_config: Optional path to MCP config JSON.
             isolation: Per-CLI clean-room descriptor (architecture §13.4).
@@ -137,6 +143,9 @@ class BaseRunner(ABC):
                 cmd.extend([flag, str(budget)])
             elif key == "system_prompt" and system_prompt:
                 cmd.extend([flag, system_prompt])
+            elif key == "append_system_prompt" and append_system_prompt:
+                # CLIs that have a dedicated flag (e.g. claude --append-system-prompt).
+                cmd.extend([flag, append_system_prompt])
             elif key == "tools" and tools:
                 cmd.extend([flag, ",".join(tools)])
             elif key == "mcp_config" and mcp_config and not self.mcp_via_config_overrides:
@@ -153,11 +162,15 @@ class BaseRunner(ABC):
             cmd.extend(isolation.disable_session_flags)
 
         # prompt_separator + positional prompt always comes last. A runner with
-        # no system-prompt flag (codex) folds the system prompt into the positional
-        # prompt here, so the instructions are carried rather than silently dropped.
+        # no system-prompt flag (codex / gemini, prepend_system_prompt=True) folds
+        # the system prompt into the positional prompt here, so instructions are
+        # carried rather than silently dropped.
+        # append_system_prompt uses the same prepend path for these CLIs.
         effective_prompt = prompt
         if self.prepend_system_prompt and system_prompt:
-            effective_prompt = f"{system_prompt}\n\n{prompt}"
+            effective_prompt = f"{system_prompt}\n\n{effective_prompt}"
+        if self.prepend_system_prompt and append_system_prompt:
+            effective_prompt = f"{append_system_prompt}\n\n{effective_prompt}"
         separator = self.arg_map.get("prompt_separator", "")
         if separator:
             cmd.append(separator)
