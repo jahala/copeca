@@ -164,11 +164,13 @@ def run_single(
             apply_mutations(task.mutations, base_path=Path(worktree))
 
         # 5. Build command (apply wrapper prefix if harness declares one) and run.
+        _append_sys_prompt = mode.append_system_prompt if mode is not None else None
         command = runner.build_command(
             model=model,
             prompt=task.prompt,
             budget=budget_usd,
             tools=mode.tools if mode is not None else None,
+            append_system_prompt=_append_sys_prompt,
             mcp_config=harness.mcp_config_path,
             isolation=_isolation,
         )
@@ -338,6 +340,7 @@ def run_single(
             "language": task.language.value,
             "difficulty": task.difficulty.value,
             "mode": mode_name,
+            "mode_append_system_prompt": _append_sys_prompt,
             "model": model,
             "runner": runner.name,
             "repetition": 0,

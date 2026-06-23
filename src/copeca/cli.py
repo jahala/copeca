@@ -460,7 +460,7 @@ def run(
                 tasks=loaded_tasks,
                 modes=scenario.modes,
                 runner_factory=lambda mode_name, model_name: build_runner(
-                    runner, timeout=timeout, runner_dirs=runner_dirs
+                    runner, timeout=scenario.timeout_seconds, runner_dirs=runner_dirs
                 ),
                 repo_mgr=repo_mgr,
                 repos=repos,

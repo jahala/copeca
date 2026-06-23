@@ -17,6 +17,7 @@ runner:
     tools: --tools
     budget: --max-budget-usd
     system_prompt: --system-prompt
+    append_system_prompt: --append-system-prompt
     mcp_config: --mcp-config
     prompt_separator: --
   # config_dir_env delivers the per-arm agent_config overlay (hook modes).
