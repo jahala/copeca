@@ -53,8 +53,8 @@ class TestClaudeIsolationSpec:
     def test_ambient_files(self):
         assert self._cfg().isolation.ambient_files == ["CLAUDE.md", "CLAUDE.local.md"]
 
-    def test_requires_api_key_env(self):
-        assert self._cfg().isolation.requires_api_key_env == "ANTHROPIC_API_KEY"
+    def test_api_key_env(self):
+        assert self._cfg().isolation.api_key_env == "ANTHROPIC_API_KEY"
 
     def test_version_cmd(self):
         assert self._cfg().isolation.version_cmd == ["claude", "--version"]

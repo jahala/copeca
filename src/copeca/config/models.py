@@ -255,9 +255,18 @@ class IsolationSpec(BaseModel):
     # File names to scan for in the pre-run workdir
     # (CLAUDE.md / AGENTS.md / GEMINI.md).
     ambient_files: list[str] = Field(default_factory=list)
-    # Preflight asserts this env var is present before the run
+    # The provider key env var name for this CLI
     # (ANTHROPIC_API_KEY / OPENAI_API_KEY / GEMINI_API_KEY).
-    requires_api_key_env: str | None = None
+    # Profile selection (architecture §13.2):
+    #   API-KEY profile  — when api_key_env is set AND the named var is present in
+    #                      the host env: use a private throwaway HOME and pass the key
+    #                      through to the agent (hermetic + metered).
+    #   SUBSCRIPTION profile (default) — when api_key_env is absent OR the named var
+    #                      is not in the host env: do NOT redirect HOME (use the host
+    #                      login), apply only flag/env neutralizers, and DROP the
+    #                      provider key env var from the child env so a stray key
+    #                      cannot hijack the CLI's subscription login.
+    api_key_env: str | None = None
     # Command to resolve the CLI/tool version for provenance
     # (e.g. [claude, --version]).
     version_cmd: list[str] = Field(default_factory=list)

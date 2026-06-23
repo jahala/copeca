@@ -539,7 +539,7 @@ class TestToolRestriction:
         captured: dict = {}
 
         class _Cap(SubprocessRunner):
-            def run(self, command, cwd=None, env=None):
+            def run(self, command, cwd=None, env=None, exclude=None):
                 captured["cmd"] = command
                 return RunResult(result_text="Matcher find_at", total_cost_usd=0.05, duration_ms=10)
 

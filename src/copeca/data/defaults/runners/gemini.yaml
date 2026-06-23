@@ -30,7 +30,7 @@ runner:
     # auto-approves tool calls in a fresh (zero-config) home.
     disable_ambient_env: { GEMINI_CLI_TRUST_WORKSPACE: "true" }
     ambient_files: [GEMINI.md]
-    requires_api_key_env: GEMINI_API_KEY
+    api_key_env: GEMINI_API_KEY
     version_cmd: [gemini, --version]
 
 # Tool-arm MCP follow-up (ISO-9 / future task):

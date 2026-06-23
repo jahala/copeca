@@ -30,38 +30,29 @@ def _mode(**kwargs: object) -> Mode:
 
 class TestBaselineModeCleanHarness:
     def test_baseline_returns_clean_harness(self, tmp_path: Path) -> None:
-        """Baseline mode (no integration paths) → private HOME set, config_dir None, wrapper None.
+        """Baseline mode with no api_key_env → SUBSCRIPTION profile: no private HOME.
 
-        ISO-2: baseline now receives a private throwaway HOME (architecture §13.2) so
-        the agent never reads/writes the host's ~/.claude.json, ~/.codex/, ~/.gemini/.
-        env is NOT empty — it always contains at least HOME pointing to a fresh temp dir.
-        The OLD assertion (env == {}) encoded the contaminated behavior (the bug this fixes).
+        Architecture §13.2: when no api_key_env is provided (or the key is absent from
+        the host env), the SUBSCRIPTION profile is used — HOME is not redirected and
+        no private temp dir is created. config_dir and wrapper remain None for a clean
+        baseline.
         """
-        import os
-
         mode = _mode(name="baseline")
         worktree = tmp_path / "repo"
         worktree.mkdir()
 
         harness = provision_arm(mode, worktree)
 
-        # HOME must be set and must NOT be the host HOME
-        assert "HOME" in harness.env, "baseline arm must have a private HOME set"
-        assert harness.env["HOME"] != os.environ.get("HOME", ""), (
-            "baseline arm HOME must differ from the host HOME"
+        # SUBSCRIPTION profile: no private HOME created
+        assert harness.private_home is None, (
+            "SUBSCRIPTION profile: no private HOME should be created when api_key_env is absent"
         )
         # config_dir and wrapper remain None for a clean baseline
         assert harness.config_dir is None
         assert harness.wrapper is None
 
     def test_baseline_does_not_create_arms_dir_inside_worktree(self, tmp_path: Path) -> None:
-        """Baseline (no integration paths) does not create .copeca-arms inside the worktree.
-
-        The private HOME is a temp dir OUTSIDE the worktree — it never appears
-        as an untracked file in the agent's working directory.
-        """
-        from pathlib import Path
-
+        """Baseline (no integration paths) does not create .copeca-arms inside the worktree."""
         mode = _mode(name="baseline")
         worktree = tmp_path / "repo"
         worktree.mkdir()
@@ -72,18 +63,16 @@ class TestBaselineModeCleanHarness:
         arms_dir = worktree / ".copeca-arms"
         assert not arms_dir.exists()
 
-        # The private HOME is outside the worktree
-        assert harness.private_home is not None
-        assert not Path(harness.private_home).is_relative_to(worktree)
+        # SUBSCRIPTION profile: private_home is None (no temp dir)
+        assert harness.private_home is None
 
 
 class TestEnvModeSetsEnv:
     def test_proxy_mode_sets_env(self, tmp_path: Path) -> None:
-        """Proxy mode → env contains ANTHROPIC_BASE_URL plus the private HOME.
+        """Proxy mode (SUBSCRIPTION profile) → env contains ANTHROPIC_BASE_URL.
 
-        ISO-2: env now also contains HOME (private throwaway dir) so no integration
-        path accidentally exposes the host HOME to the agent. The old assertion
-        (env == {ANTHROPIC_BASE_URL: ...}) encoded the incomplete behavior.
+        When no api_key_env is set, the SUBSCRIPTION profile is used: no private HOME,
+        but mode.env vars (like ANTHROPIC_BASE_URL) are still applied.
         """
         mode = _mode(
             name="proxy",
@@ -95,7 +84,8 @@ class TestEnvModeSetsEnv:
         harness = provision_arm(mode, worktree)
 
         assert harness.env.get("ANTHROPIC_BASE_URL") == "http://localhost:8080/v1"
-        assert "HOME" in harness.env, "proxy arm must also receive a private HOME"
+        # SUBSCRIPTION profile: HOME is not set in harness.env (host HOME is used)
+        assert harness.private_home is None
 
     def test_env_is_a_copy_not_a_reference(self, tmp_path: Path) -> None:
         """Mutating the returned env dict does not affect the mode."""

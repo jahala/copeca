@@ -77,7 +77,7 @@ fails loudly (exit 2); an unknown `parser` name fails loudly too.
   | `disable_session_flags` | `list[str]` | Flags that disable session persistence (e.g. `[--no-session-persistence]` / `[--ephemeral]`). Default: `[]`. |
   | `disable_telemetry_env` | `dict[str, str]` | Env vars that disable telemetry / nonessential traffic (e.g. `{CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: "1"}`). Default: `{}`. |
   | `ambient_files` | `list[str]` | File names to scan for in the pre-run workdir (`CLAUDE.md` / `AGENTS.md` / `GEMINI.md`). Default: `[]`. |
-  | `requires_api_key_env` | `str \| null` | Preflight asserts this env var is present before the run (`ANTHROPIC_API_KEY` / `OPENAI_API_KEY` / `GEMINI_API_KEY`). |
+  | `api_key_env` | `str \| null` | Names the provider API-key env var. Its **presence** in the environment selects the API-KEY profile (private home + metered key passes through); **absence** selects the SUBSCRIPTION profile (default — host login, provider keys dropped from the child env). See architecture §13.2. |
   | `version_cmd` | `list[str]` | Command to resolve the CLI/tool version for provenance (e.g. `[claude, --version]`). Default: `[]`. |
 
   Example (Claude Code):
@@ -89,7 +89,7 @@ fails loudly (exit 2); an unknown `parser` name fails loudly too.
     disable_session_flags: [--no-session-persistence]
     disable_telemetry_env: { CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: "1" }
     ambient_files: [CLAUDE.md, CLAUDE.local.md]
-    requires_api_key_env: ANTHROPIC_API_KEY
+    api_key_env: ANTHROPIC_API_KEY            # present → API-KEY profile; absent → SUBSCRIPTION (default)
     version_cmd: [claude, --version]
   ```
 

@@ -6,7 +6,7 @@ Covers:
   and no -c mcp_servers.* tokens
 - build_command for the TOOL ARM (mcp_config provided) contains the -c
   mcp_servers.* override tokens produced by _mcp_config_overrides
-- provision_arm sets CODEX_HOME and HOME on the returned harness env
+- provision_arm env behavior under API-KEY and SUBSCRIPTION profiles
 """
 
 from __future__ import annotations
@@ -80,10 +80,10 @@ class TestCodexIsolationSpec:
             "codex strict_mcp_flags must contain --ignore-user-config"
         )
 
-    def test_requires_api_key_env_is_openai(self) -> None:
+    def test_api_key_env_is_openai(self) -> None:
         iso: IsolationSpec = _cfg().isolation
-        assert iso.requires_api_key_env == "OPENAI_API_KEY", (
-            "codex isolation must require OPENAI_API_KEY"
+        assert iso.api_key_env == "OPENAI_API_KEY", (
+            "codex isolation must name api_key_env as OPENAI_API_KEY"
         )
 
     def test_ambient_files_contains_agents_md(self) -> None:
@@ -251,11 +251,11 @@ class TestCodexToolArmCommand:
         assert "--mcp-config" not in cmd, "codex must never emit --mcp-config (it has no such flag)"
 
 
-# ── provision_arm env ─────────────────────────────────────────────────────────
+# ── provision_arm env — API-KEY profile ──────────────────────────────────────
 
 
-class TestCodexProvisionArmEnv:
-    """provision_arm must set CODEX_HOME and HOME to the private home directory."""
+class TestCodexProvisionArmEnvApiKeyProfile:
+    """API-KEY profile (OPENAI_API_KEY present): private HOME + CODEX_HOME set."""
 
     def test_provision_arm_sets_codex_home(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -270,7 +270,7 @@ class TestCodexProvisionArmEnv:
         harness = provision_arm(mode, worktree, isolation=cfg.isolation)
 
         assert "CODEX_HOME" in harness.env, (
-            "provision_arm must set CODEX_HOME when config_home_env=CODEX_HOME"
+            "API-KEY profile must set CODEX_HOME when config_home_env=CODEX_HOME"
         )
 
     def test_provision_arm_codex_home_equals_private_home(
@@ -301,15 +301,37 @@ class TestCodexProvisionArmEnv:
 
         harness = provision_arm(mode, worktree, isolation=cfg.isolation)
 
-        assert "HOME" in harness.env, "provision_arm must set HOME"
+        assert "HOME" in harness.env, "API-KEY profile must set HOME"
         assert harness.env["HOME"] == harness.private_home, (
-            "HOME must point to the private home dir"
+            "HOME must point to the private home dir in API-KEY profile"
         )
 
-    def test_provision_arm_raises_without_api_key(
+    def test_api_key_profile_has_empty_exclude_keys(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """provision_arm must raise before creating state if OPENAI_API_KEY is absent."""
+        """In API-KEY profile the key is allowed through — exclude_keys is empty."""
+        monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+
+        cfg = _cfg()
+        mode = _mode(name="baseline")
+        worktree = tmp_path / "repo"
+        worktree.mkdir()
+
+        harness = provision_arm(mode, worktree, isolation=cfg.isolation)
+
+        assert harness.exclude_keys == set(), "API-KEY profile must not exclude any env keys"
+
+
+# ── provision_arm env — SUBSCRIPTION profile ─────────────────────────────────
+
+
+class TestCodexProvisionArmEnvSubscriptionProfile:
+    """SUBSCRIPTION profile (OPENAI_API_KEY absent): no private HOME; key excluded."""
+
+    def test_subscription_profile_does_not_raise(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Absent api_key_env → SUBSCRIPTION profile (no raise; host login used)."""
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
 
         cfg = _cfg()
@@ -317,5 +339,72 @@ class TestCodexProvisionArmEnv:
         worktree = tmp_path / "repo"
         worktree.mkdir()
 
-        with pytest.raises(RuntimeError, match="OPENAI_API_KEY"):
-            provision_arm(mode, worktree, isolation=cfg.isolation)
+        harness = provision_arm(mode, worktree, isolation=cfg.isolation)
+
+        # Must succeed and return an ArmHarness
+        from copeca.orchestration.state import ArmHarness
+
+        assert isinstance(harness, ArmHarness)
+
+    def test_subscription_profile_no_private_home(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """SUBSCRIPTION profile must NOT create a private HOME."""
+        import os
+
+        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+
+        cfg = _cfg()
+        mode = _mode(name="baseline")
+        worktree = tmp_path / "repo"
+        worktree.mkdir()
+
+        host_home = os.environ.get("HOME", "")
+        harness = provision_arm(mode, worktree, isolation=cfg.isolation)
+
+        assert harness.private_home is None, "SUBSCRIPTION profile must not create a private HOME"
+        # HOME in harness.env must NOT be redirected to a temp dir
+        # (either absent from env, or still the host HOME)
+        env_home = harness.env.get("HOME")
+        assert env_home is None or env_home == host_home, (
+            "SUBSCRIPTION profile must not redirect HOME away from the host"
+        )
+
+    def test_subscription_profile_excludes_provider_keys(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """SUBSCRIPTION profile must signal exclusion of all provider key env vars."""
+        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+
+        cfg = _cfg()
+        mode = _mode(name="baseline")
+        worktree = tmp_path / "repo"
+        worktree.mkdir()
+
+        harness = provision_arm(mode, worktree, isolation=cfg.isolation)
+
+        assert "OPENAI_API_KEY" in harness.exclude_keys, (
+            "SUBSCRIPTION profile must add OPENAI_API_KEY to exclude_keys"
+        )
+
+    def test_subscription_profile_sets_disable_ambient_env(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """SUBSCRIPTION profile still applies disable_ambient_env neutralizers."""
+        from copeca.config.models import IsolationSpec
+
+        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+
+        mode = _mode(name="baseline")
+        worktree = tmp_path / "repo"
+        worktree.mkdir()
+        iso = IsolationSpec(
+            api_key_env="OPENAI_API_KEY",
+            disable_ambient_env={"AGENTS_DISABLE": "1"},
+            disable_telemetry_env={"NO_TELEMETRY": "1"},
+        )
+
+        harness = provision_arm(mode, worktree, isolation=iso)
+
+        assert harness.env.get("AGENTS_DISABLE") == "1"
+        assert harness.env.get("NO_TELEMETRY") == "1"

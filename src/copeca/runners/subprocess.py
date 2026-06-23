@@ -49,15 +49,20 @@ BASE_ENV_ALLOWLIST: frozenset[str] = frozenset(
 
 def _build_child_env(
     extra: dict[str, str] | None = None,
+    exclude: set[str] | None = None,
 ) -> dict[str, str]:
     """Build an explicit, minimal child environment from the host.
 
     Copies host vars whose key is in BASE_ENV_ALLOWLIST or starts with ``LC_``
     (locale). Merges *extra* on top — explicit env wins over any allowlisted
-    host value. Everything else (CLAUDECODE, CLAUDE_*, MCP_*, etc.) is dropped.
+    host value. Then removes every key in *exclude* (after merging). Everything
+    else (CLAUDECODE, CLAUDE_*, MCP_*, etc.) is dropped.
 
     Args:
         extra: Additional key-value pairs to merge (e.g. mode.env overrides).
+        exclude: Keys to remove from the final env — used by subscription mode
+                 to drop the provider key so a stale/dead key cannot hijack the
+                 CLI's subscription login (architecture §13.2).
 
     Returns:
         A new dict to pass as ``env=`` to subprocess.Popen.
@@ -67,6 +72,9 @@ def _build_child_env(
     }
     if extra:
         env.update(extra)
+    if exclude:
+        for key in exclude:
+            env.pop(key, None)
     return env
 
 
@@ -134,6 +142,7 @@ class SubprocessRunner(BaseRunner):
         command: list[str],
         cwd: str | None = None,
         env: dict[str, str] | None = None,
+        exclude: set[str] | None = None,
     ) -> RunResult:
         """Execute the command and return a parsed RunResult.
 
@@ -143,13 +152,16 @@ class SubprocessRunner(BaseRunner):
             env: Optional extra env vars to merge on top of the allowlist
                  (e.g. mode.env from provision_arm). Keys in *env* override
                  any allowlisted host value.
+            exclude: Keys to drop from the child env after merging (subscription
+                     profile: drops the provider key so the CLI uses its host
+                     login instead of a stale/dead API key).
 
         Returns:
             Parsed RunResult from the agent's output.
         """
         # Build an explicit, minimal child env from the strict allowlist;
         # merge any explicit overrides last (side effects at the I/O boundary).
-        child_env = _build_child_env(env)
+        child_env = _build_child_env(env, exclude=exclude)
 
         start = time.perf_counter()
 

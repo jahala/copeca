@@ -180,7 +180,12 @@ def run_single(
         run_env = dict(harness.env)
         if harness.config_dir and getattr(runner, "config_dir_env", None):
             run_env[runner.config_dir_env] = str(harness.config_dir)
-        parsed = runner.run(command, cwd=str(worktree), env=run_env)
+        parsed = runner.run(
+            command,
+            cwd=str(worktree),
+            env=run_env,
+            exclude=harness.exclude_keys if harness.exclude_keys else None,
+        )
 
         # 5.5. Run test_command for edit tasks (P0 bug fix)
         test_command_passed: bool | None = None

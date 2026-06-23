@@ -20,7 +20,13 @@ class StubRunner(BaseRunner):
     def parse(self, stdout: str, supported_events: object = None) -> RunResult:
         return RunResult(result_text=stdout)
 
-    def run(self, command: list[str], cwd: str | None = None) -> RunResult:
+    def run(
+        self,
+        command: list[str],
+        cwd: str | None = None,
+        env: dict[str, str] | None = None,
+        exclude: set[str] | None = None,
+    ) -> RunResult:
         return self.parse("")
 
 
@@ -181,6 +187,7 @@ class TestMcpCommandWiring:
                 command: list[str],
                 cwd: str | None = None,
                 env: dict[str, str] | None = None,
+                exclude: set[str] | None = None,
             ) -> RunResult:
                 return RunResult(result_text="ok", total_cost_usd=0.0, duration_ms=0)
 

@@ -42,9 +42,9 @@ class TestIsolationSpecDefaults:
         rc = RunnerConfig(arg_map={"model": "--model"}, parser="stream_json")
         assert rc.isolation.ambient_files == []
 
-    def test_requires_api_key_env_defaults_to_none(self):
+    def test_api_key_env_defaults_to_none(self):
         rc = RunnerConfig(arg_map={"model": "--model"}, parser="stream_json")
-        assert rc.isolation.requires_api_key_env is None
+        assert rc.isolation.api_key_env is None
 
     def test_version_cmd_defaults_to_empty_list(self):
         rc = RunnerConfig(arg_map={"model": "--model"}, parser="stream_json")
@@ -66,7 +66,7 @@ class TestIsolationSpecRoundTrip:
                 "disable_session_flags": ["--no-session-persistence"],
                 "disable_telemetry_env": {"CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1"},
                 "ambient_files": ["CLAUDE.md", "CLAUDE.local.md"],
-                "requires_api_key_env": "ANTHROPIC_API_KEY",
+                "api_key_env": "ANTHROPIC_API_KEY",
                 "version_cmd": ["claude", "--version"],
             },
         }
@@ -81,7 +81,7 @@ class TestIsolationSpecRoundTrip:
             "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1"
         }
         assert rc.isolation.ambient_files == ["CLAUDE.md", "CLAUDE.local.md"]
-        assert rc.isolation.requires_api_key_env == "ANTHROPIC_API_KEY"
+        assert rc.isolation.api_key_env == "ANTHROPIC_API_KEY"
         assert rc.isolation.version_cmd == ["claude", "--version"]
 
     def test_partial_isolation_block_leaves_other_fields_at_defaults(self):
@@ -90,13 +90,13 @@ class TestIsolationSpecRoundTrip:
             "parser": "stream_json",
             "isolation": {
                 "config_home_env": "CODEX_HOME",
-                "requires_api_key_env": "OPENAI_API_KEY",
+                "api_key_env": "OPENAI_API_KEY",
             },
         }
         rc = RunnerConfig.model_validate(fields)
 
         assert rc.isolation.config_home_env == "CODEX_HOME"
-        assert rc.isolation.requires_api_key_env == "OPENAI_API_KEY"
+        assert rc.isolation.api_key_env == "OPENAI_API_KEY"
         # unset fields stay at their safe defaults
         assert rc.isolation.strict_mcp_flags == []
         assert rc.isolation.disable_ambient_env == {}
@@ -140,7 +140,7 @@ class TestIsolationSpecViaLoadRunner:
             "  isolation:\n"
             "    config_home_env: TESTCLI_HOME\n"
             "    strict_mcp_flags: [--strict-mcp-config]\n"
-            "    requires_api_key_env: TEST_API_KEY\n"
+            "    api_key_env: TEST_API_KEY\n"
             "    version_cmd: [testcli, --version]\n"
         )
         rc = load_runner("testcli", runner_dirs=[d])
@@ -148,7 +148,7 @@ class TestIsolationSpecViaLoadRunner:
         assert isinstance(rc.isolation, IsolationSpec)
         assert rc.isolation.config_home_env == "TESTCLI_HOME"
         assert rc.isolation.strict_mcp_flags == ["--strict-mcp-config"]
-        assert rc.isolation.requires_api_key_env == "TEST_API_KEY"
+        assert rc.isolation.api_key_env == "TEST_API_KEY"
         assert rc.isolation.version_cmd == ["testcli", "--version"]
         # unspecified fields stay at defaults
         assert rc.isolation.disable_ambient_env == {}
@@ -170,5 +170,5 @@ class TestIsolationSpecViaLoadRunner:
         assert rc.isolation.disable_session_flags == []
         assert rc.isolation.disable_telemetry_env == {}
         assert rc.isolation.ambient_files == []
-        assert rc.isolation.requires_api_key_env is None
+        assert rc.isolation.api_key_env is None
         assert rc.isolation.version_cmd == []

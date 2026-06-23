@@ -183,6 +183,12 @@ class BaseRunner(ABC):
         ...
 
     @abstractmethod
-    def run(self, command: list[str], cwd: str | None = None) -> RunResult:
+    def run(
+        self,
+        command: list[str],
+        cwd: str | None = None,
+        env: dict[str, str] | None = None,
+        exclude: set[str] | None = None,
+    ) -> RunResult:
         """Execute the command and return a parsed RunResult."""
         ...

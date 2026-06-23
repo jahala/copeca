@@ -27,9 +27,28 @@ class ArmHarness:
     wrapper: list[str] | None = None
     mcp_config_path: str | None = None
     # Path to the per-run private HOME directory (outside the worktree).
-    # The caller must remove this directory in the same finally block that
-    # removes the worktree so no host footprint remains (architecture §13.2).
+    # Set only in the API-KEY profile. The caller must remove this directory
+    # in the same finally block that removes the worktree so no host footprint
+    # remains (architecture §13.2).
     private_home: str | None = None
+    # Env keys to drop from the child env when calling runner.run().
+    # Set by provision_arm in SUBSCRIPTION profile to strip the provider key
+    # so the CLI uses its host login (architecture §13.2).
+    exclude_keys: set[str] = field(default_factory=set)
+
+
+# Provider key env vars recognized for SUBSCRIPTION-profile exclusion.
+# All three are dropped even if only one is named in api_key_env, to prevent
+# a stale key for a different provider accidentally leaking through.
+_ALL_PROVIDER_KEY_ENVS: frozenset[str] = frozenset(
+    {
+        "ANTHROPIC_API_KEY",
+        "ANTHROPIC_AUTH_TOKEN",
+        "OPENAI_API_KEY",
+        "GEMINI_API_KEY",
+        "GOOGLE_API_KEY",
+    }
+)
 
 
 def provision_arm(
@@ -40,10 +59,23 @@ def provision_arm(
 ) -> ArmHarness:
     """Provision an isolated harness for a benchmark mode arm.
 
-    Every arm — baseline INCLUDED — receives:
-    * A fresh, empty private HOME (a temp dir outside the worktree) so the
-      agent never reads/writes the host's ~/.claude.json, ~/.codex/, etc.
-    * The isolation.config_home_env var set to that HOME (when declared).
+    Profile selection (architecture §13.2):
+
+    API-KEY profile — when isolation.api_key_env names a var AND that var is
+    present in the host environment: create a private throwaway HOME (a temp
+    dir outside the worktree) so the agent never reads/writes the host's
+    ~/.claude.json / ~/.codex / ~/.gemini. The key passes through to the child
+    so the agent authenticates via metered API billing.
+
+    SUBSCRIPTION profile (default) — when api_key_env is absent OR the named
+    var is not in the host environment: do NOT redirect HOME (leave it at the
+    host value so the CLI's existing login works). Apply only the flag/env
+    neutralizers (disable_ambient_env + disable_telemetry_env) and signal the
+    caller to DROP all provider key env vars from the child env, so a stale or
+    dead key cannot hijack the CLI's subscription login. The trace gate
+    (Lock 2, §13.3) guarantees A/B validity in both profiles.
+
+    Every arm — in BOTH profiles — receives:
     * isolation.disable_ambient_env and isolation.disable_telemetry_env
       merged into the arm env.
 
@@ -59,23 +91,20 @@ def provision_arm(
                    When None an empty IsolationSpec is used (safe defaults).
 
     Returns:
-        ArmHarness with env, config_dir, wrapper, and private_home.
+        ArmHarness with env, config_dir, wrapper, private_home, and
+        exclude_keys. private_home is None in SUBSCRIPTION profile (no temp
+        dir is created). exclude_keys is populated in SUBSCRIPTION profile
+        with the provider key env vars to drop from the child env.
 
     Raises:
-        RuntimeError: If isolation.requires_api_key_env names a var absent
-                      from the host environment, or if a setup command fails.
+        RuntimeError: If a setup command fails.
     """
     iso = isolation if isolation is not None else IsolationSpec()
 
-    # ── API-key preflight ─────────────────────────────────────────────
-    # Fail loudly BEFORE creating any filesystem state if the required API
-    # key is absent — auth is via API key, never the host login session
-    # (architecture §13.2).
-    if iso.requires_api_key_env and iso.requires_api_key_env not in os.environ:
-        raise RuntimeError(
-            f"Required API key env var '{iso.requires_api_key_env}' is not set. "
-            f"Export it before running copeca (e.g. export {iso.requires_api_key_env}=<key>)."
-        )
+    # ── Profile selection ──────────────────────────────────────────────
+    # API-KEY profile: api_key_env is set AND that var is in the host env.
+    # SUBSCRIPTION profile: otherwise (absence = use host login).
+    use_api_key_profile = bool(iso.api_key_env and iso.api_key_env in os.environ)
 
     # ── Integration paths (absent for clean baseline / mode=None) ────
     has_paths = bool(
@@ -113,36 +142,58 @@ def provision_arm(
         if mode.setup:
             _run_setup_commands(mode.setup, worktree)
 
-    # ── Private HOME (outside the worktree) ───────────────────────────
-    # Created AFTER the fallible integration-path work above (agent_config
-    # copy, setup commands) so a failure there never leaks an orphaned temp
-    # dir — run_single's finally only removes a home it gets on the harness.
-    # mkdtemp produces a directory owned and removable by copeca; placing it
-    # outside the worktree keeps it from showing up as an untracked file.
-    private_home_path = tempfile.mkdtemp(prefix="copeca-home-")
+    if use_api_key_profile:
+        # ── API-KEY profile ───────────────────────────────────────────
+        # Private HOME created AFTER the fallible integration-path work above
+        # (agent_config copy, setup commands) so a failure there never leaks
+        # an orphaned temp dir — run_single's finally only removes a home it
+        # gets on the harness. mkdtemp produces a directory owned and
+        # removable by copeca; placing it outside the worktree keeps it from
+        # showing up as an untracked file.
+        private_home_path = tempfile.mkdtemp(prefix="copeca-home-")
 
-    # ── Build arm env — isolation vars + mode.env (mode wins) ────────
-    # Order of precedence (highest last, as dict.update wins):
-    #   1. HOME → private_home_path (always)
-    #   2. config_home_env → private_home_path (when declared in descriptor)
-    #   3. disable_ambient_env keys
-    #   4. disable_telemetry_env keys
-    #   5. mode.env keys (the integration-specific overrides win last)
-    env: dict[str, str] = {"HOME": private_home_path}
-    if iso.config_home_env:
-        env[iso.config_home_env] = private_home_path
-    env.update(iso.disable_ambient_env)
-    env.update(iso.disable_telemetry_env)
-    if mode is not None and mode.env:
-        env.update(mode.env)
+        # Order of precedence (highest last, as dict.update wins):
+        #   1. HOME → private_home_path
+        #   2. config_home_env → private_home_path (when declared)
+        #   3. disable_ambient_env keys
+        #   4. disable_telemetry_env keys
+        #   5. mode.env keys (integration-specific overrides win last)
+        env: dict[str, str] = {"HOME": private_home_path}
+        if iso.config_home_env:
+            env[iso.config_home_env] = private_home_path
+        env.update(iso.disable_ambient_env)
+        env.update(iso.disable_telemetry_env)
+        if mode is not None and mode.env:
+            env.update(mode.env)
 
-    return ArmHarness(
-        env=env,
-        config_dir=config_dir,
-        wrapper=wrapper,
-        mcp_config_path=mcp_config_path,
-        private_home=private_home_path,
-    )
+        return ArmHarness(
+            env=env,
+            config_dir=config_dir,
+            wrapper=wrapper,
+            mcp_config_path=mcp_config_path,
+            private_home=private_home_path,
+            exclude_keys=set(),
+        )
+    else:
+        # ── SUBSCRIPTION profile ──────────────────────────────────────
+        # No private HOME — the host HOME stays in place so the CLI's existing
+        # login session is available. Only the flag/env neutralizers apply.
+        # All provider key env vars are added to exclude_keys so the runner
+        # strips them from the child env (a dead key must not hijack the login).
+        env = {}
+        env.update(iso.disable_ambient_env)
+        env.update(iso.disable_telemetry_env)
+        if mode is not None and mode.env:
+            env.update(mode.env)
+
+        return ArmHarness(
+            env=env,
+            config_dir=config_dir,
+            wrapper=wrapper,
+            mcp_config_path=mcp_config_path,
+            private_home=None,
+            exclude_keys=set(_ALL_PROVIDER_KEY_ENVS),
+        )
 
 
 # ── I/O helpers (private, at the edge) ────────────────────────────────────────

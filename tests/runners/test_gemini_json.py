@@ -282,9 +282,9 @@ class TestLoadRunnerGemini:
         rc = load_runner("gemini", runner_dirs=[DEFAULT_RUNNERS_DIR])
         assert "GEMINI.md" in rc.isolation.ambient_files
 
-    def test_requires_api_key_env_is_gemini_api_key(self) -> None:
+    def test_api_key_env_is_gemini_api_key(self) -> None:
         rc = load_runner("gemini", runner_dirs=[DEFAULT_RUNNERS_DIR])
-        assert rc.isolation.requires_api_key_env == "GEMINI_API_KEY"
+        assert rc.isolation.api_key_env == "GEMINI_API_KEY"
 
     def test_version_cmd(self) -> None:
         rc = load_runner("gemini", runner_dirs=[DEFAULT_RUNNERS_DIR])
@@ -364,17 +364,17 @@ class TestGeminiProvisionArm:
             if harness.private_home and Path(harness.private_home).exists():
                 shutil.rmtree(harness.private_home, ignore_errors=True)
 
-    def test_arm_preflight_fails_without_api_key(self, tmp_path: Path) -> None:
-        """provision_arm raises RuntimeError when GEMINI_API_KEY is absent."""
+    def test_subscription_profile_when_api_key_absent(self, tmp_path: Path) -> None:
+        """When GEMINI_API_KEY is absent provision_arm selects the SUBSCRIPTION profile:
+        no private home, exclude_keys contains provider keys."""
         rc = load_runner("gemini", runner_dirs=[DEFAULT_RUNNERS_DIR])
         fake_env = {"PATH": "/usr/bin:/bin", "HOME": str(tmp_path)}
-        with (
-            patch.dict(os.environ, fake_env, clear=True),
-            pytest.raises(RuntimeError, match="GEMINI_API_KEY"),
-        ):
-            provision_arm(
+        with patch.dict(os.environ, fake_env, clear=True):
+            harness = provision_arm(
                 mode=None,
                 worktree=tmp_path,
                 arm_name="baseline",
                 isolation=rc.isolation,
             )
+        assert harness.private_home is None
+        assert "GEMINI_API_KEY" in harness.exclude_keys

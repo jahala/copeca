@@ -486,24 +486,45 @@ satisfies them.
 | Environment | scrubbed allowlist; no ambient keys/hooks |
 | Telemetry / auto-update | no side-channel noise; no mid-run binary change |
 
-### 13.2 Lock 1 — Prevention: bring-your-own-home (zero host footprint)
+### 13.2 Lock 1 — Prevention: isolation profiles
 
-**copeca never reads, writes, copies, or mutates any host CLI config.** Each run
+copeca selects one of two isolation profiles per run, based on whether the
+runner's `api_key_env` variable is present in the host environment.
+
+#### API-KEY profile (opt-in, for metered/CI use)
+
+Activated when `api_key_env` is set in the runner descriptor **and** the named
+env var (`ANTHROPIC_API_KEY` / `OPENAI_API_KEY` / `GEMINI_API_KEY`) is present
+in the host environment.
+
+**copeca never reads, writes, copies, or mutates any host CLI config.** The run
 gets a private, throwaway `HOME` (and the CLI's config-home env var) pointed into
 a per-run temp dir copeca owns and tears down with the worktree. The CLI resolves
 every `~/`-relative config path into that dir, so the real `~/.claude.json`,
 `~/.codex/`, `~/.gemini/` are never touched — nothing leaks in, nothing is left
-behind. This is the operator-safety constraint: copeca runs repeatedly on shared
-developer machines and must be inert on the host.
+behind. Auth comes from the API key, which passes through to the child env.
 
-Auth comes from an **API-key env var** (`ANTHROPIC_API_KEY` / `OPENAI_API_KEY` /
-`GEMINI_API_KEY`), never the host's login session (that token lives in the home we
-hide). Preflight fails loudly if the required key is absent. This is also correct
-for a *cost* benchmark: metered API pricing, not a flat subscription.
+#### SUBSCRIPTION profile (default, for local/developer use)
 
-On top of the private home: **strict-MCP** (baseline none; tool arm exactly the
-declared set), **ambient-instruction neutralization**, **session-off**,
-**telemetry-off**, and the **tool allowlist**.
+Activated when `api_key_env` is absent in the runner descriptor OR the named env
+var is not present in the host environment.
+
+The host `HOME` is **not** redirected — the CLI's existing subscription login is
+used as-is. Only the flag/env neutralizers are applied (see below). Critically,
+**all provider key env vars are dropped from the child env** (`ANTHROPIC_API_KEY`,
+`ANTHROPIC_AUTH_TOKEN`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, `GOOGLE_API_KEY`) so
+a stale or expired key cannot shadow the subscription login and cause billing
+errors or silent auth failures.
+
+Lock 2 (§13.3, the post-hoc symmetric trace gate) guarantees A/B validity in
+subscription mode: because both baseline and tool arm run with identical host
+settings, any ambient influence is symmetric and cancels in the delta.
+
+#### Neutralizers applied in both profiles
+
+**Strict-MCP** (baseline none; tool arm exactly the declared set),
+**ambient-instruction neutralization**, **session-off**, **telemetry-off**,
+and the **tool allowlist**.
 
 ### 13.3 Lock 2 — Detection: prove it after the fact
 
@@ -534,13 +555,13 @@ isolation:
   disable_session_flags: [--no-session-persistence]
   disable_telemetry_env: { CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: "1" }
   ambient_files: [CLAUDE.md, CLAUDE.local.md]   # for the pre-run workdir scan
-  requires_api_key_env: ANTHROPIC_API_KEY       # preflight asserts presence
+  api_key_env: ANTHROPIC_API_KEY                # present in host env → API-KEY profile
   version_cmd: [claude, --version]              # provenance
 ```
 
 Lock-1 summary per shipped CLI:
 
-| CLI | private home | strict-MCP (baseline=none) | ambient off | session off | auth |
+| CLI | private home (API-KEY profile) | strict-MCP (baseline=none) | ambient off | session off | api_key_env |
 |---|---|---|---|---|---|
 | Claude Code | `HOME` + `CLAUDE_CONFIG_DIR` | `--strict-mcp-config` | `CLAUDE_CODE_DISABLE_CLAUDE_MDS=1` | `--no-session-persistence` | `ANTHROPIC_API_KEY` |
 | Codex | `HOME` + `CODEX_HOME` | `--ignore-user-config` | fresh home + workdir scan (`AGENTS.md`) | `--ephemeral` | `OPENAI_API_KEY` |

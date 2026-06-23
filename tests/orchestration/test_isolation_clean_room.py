@@ -231,10 +231,13 @@ def _run_clean_room_probe(
     # 2. Simulate contaminated developer machine — HOST HOME points at fake_host_home
     monkeypatch.setenv("HOME", str(fake_host_home))
 
-    # 3. Patch the required API key so provision_arm's preflight passes
+    # 3. Patch the API key so provision_arm uses the API-KEY profile (private HOME)
+    #    which is required for the clean-room proof: the host sentinel must be hidden
+    #    behind a private HOME. Without the key the SUBSCRIPTION profile leaves HOME
+    #    unchanged, which would expose the sentinel and fail assertion 2.
     iso = _make_isolation_spec(cli_name)
-    if iso.requires_api_key_env:
-        monkeypatch.setenv(iso.requires_api_key_env, "test-key-for-iso9")
+    if iso.api_key_env:
+        monkeypatch.setenv(iso.api_key_env, "test-key-for-iso9")
 
     # 4. Build the stub agent binary
     stub = _make_stub_agent(tmp_path / f"bin_{cli_name}", cli_name)

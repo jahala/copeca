@@ -17,7 +17,7 @@ runner:
   isolation:
     config_home_env: CODEX_HOME
     strict_mcp_flags: [--ignore-user-config]
-    requires_api_key_env: OPENAI_API_KEY
+    api_key_env: OPENAI_API_KEY
     ambient_files: [AGENTS.md]
     version_cmd: [codex, --version]
   arg_map:

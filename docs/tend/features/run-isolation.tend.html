@@ -2696,7 +2696,7 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
     "cmd": "PATH=\"$PWD/.venv/bin:$PATH\" python -m pytest tests/orchestration/test_isolation_clean_room.py -q"
   },
   "progress": {
-    "implementation": 0,
+    "implementation": 10,
     "verification": 0
   },
   "personas_resolved": [
@@ -2844,6 +2844,12 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
         "i006"
       ],
       "description": "Follow docs/architecture.md (esp. §13) and docs/engineering.md — failing test first, smallest reasonable change, I/O at the edge, one execution path (no if-docker).\n\nTest: tests/orchestration/test_isolation_clean_room.py\nAsserts: with a fake host config dir carrying an MCP stub server, a baseline run for each of claude/codex/gemini shows zero tool_calls to that server in the parsed trace. Closes findings.md §7 empirical uncertainties.\nBoundary: e2e — real CLI subprocess (or a minimal stub harness) against a real fake host config.\nSetup: create a fake ~/.claude.json / CODEX_HOME / GEMINI_CLI_HOME pointing at a stub MCP server; plant the path in the test env without touching the real host config.\nRun: pytest tests/orchestration/test_isolation_clean_room.py -q\n\nImplement: Capstone test only — no new production code expected if ISO-2/3/4/5/6 are correct. If the test fails, the gap is in the per-CLI descriptor (ISO-3/4/5). Do not modify the test file once written."
+    },
+    {
+      "id": "i010",
+      "title": "AUTH-1 Two isolation profiles: SUBSCRIPTION default + API-KEY opt-in",
+      "status": "done",
+      "description": "Renamed requires_api_key_env → api_key_env on IsolationSpec and all runner YAMLs. provision_arm selects profile by checking iso.api_key_env in os.environ: API-KEY profile creates private throwaway HOME and passes key through; SUBSCRIPTION profile (default) keeps host HOME so CLI subscription login works, and drops all provider key env vars (via ArmHarness.exclude_keys) so a stale key cannot shadow it. _build_child_env gains exclude param. docs/architecture.md §13.2 updated. All 857 tests green, ruff clean."
     }
   ]
 }
