@@ -352,4 +352,10 @@ class Scenario(BaseModel):
     timeout_seconds: int = Field(default=300, ge=1)
     max_workers: int = Field(default=1, ge=1)
     output_dir: str = "results"
+    # Fixed system prompt applied to ALL arms (baseline + experimental), passed via
+    # the runner's --system-prompt so it REPLACES the agent CLI's default prompt.
+    # Held constant across arms so the system prompt is a controlled condition, not
+    # an uncontrolled CLI default that may bias toward native tools. "{cwd}" is
+    # substituted with the per-run worktree path. None ⇒ the CLI's own default.
+    system_prompt: str | None = None
     adversarial_thresholds: AdversarialThresholds = Field(default_factory=AdversarialThresholds)
