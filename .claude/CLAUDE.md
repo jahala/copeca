@@ -60,7 +60,7 @@ models: [claude-haiku-4-5] # MUST equal a pricing key in the runner YAML
 repetitions: 1             # 5+ for tight CIs (validate_scenario warns under 5)
 budget_usd: 1.00           # per-run cap, passed to the agent CLI
 timeout_seconds: 600       # per-run; raise it for edit tasks (Rust/Go/npm compiles)
-max_workers: 1             # KEEP AT 1 — concurrency is unsafe (see below)
+max_workers: 4             # per-item clones are collision-free (RUN-CLONE) — safe >1
 output_dir: results
 ```
 
@@ -73,15 +73,23 @@ output_dir: results
   binary via mcp_config) — recreate it if missing. Point the `tilth` mcp server command
   at the absolute `~/.cargo/bin/tilth` (1.0.0) path so PATH order cannot pick up
   homebrew 0.9.0 instead. copeca warns at run time when multiple versions are installed.
+- **Auth: subscription is the default; NEVER set the API key globally.** copeca
+  auto-selects per run: if the provider key env (`ANTHROPIC_API_KEY` / `OPENAI_API_KEY`
+  / `GEMINI_API_KEY`) is present → API-KEY profile (private home, metered); else →
+  SUBSCRIPTION profile (uses your `claude login`; provider keys are dropped from the
+  agent env so a stale key can't shadow the login). **Do NOT put the key in `~/.zshenv`
+  or Conductor's global env — it hijacks your own interactive Claude Code ("Credit
+  balance is too low").** For API mode, source a scoped file only for the run:
+  `source ~/.copeca.env && copeca run …`. copeca aborts fast if a run reports
+  "not logged in" so a whole scenario can't grade as silent garbage. (architecture §13.2)
 - **Repos auto-clone** into `repos/_bare/` + `repos/_worktrees/` (both gitignored).
   **Edit tasks run real `test_command`s** → need `cargo`/`go`/`node`/`npm`/`python3`
   on PATH; comprehension tasks only need the checkout.
 - **`results/` is gitignored** — runs aren't committed; commit a small fixture (e.g.
   `tests/fixtures/sample_report_records.jsonl`) if you need a runnable artifact.
-- **`max_workers` MUST be 1** for now: `run_matrix` uses ThreadPoolExecutor but the
-  worktree manager only locks `create_worktree`, so concurrent git reset/mutation across
-  worktrees of the *same* bare repo collide on `index.lock` and corrupt the run. (Tracked
-  fix: per-repo lock.)
+- **`max_workers` > 1 is now safe** (RUN-CLONE): each work item gets its OWN independent
+  clone (`git clone --no-hardlinks` from the bare cache), so there is no shared
+  `index.lock` to collide on. The old "keep at 1" caveat is obsolete.
 - **Editable-install hijack** (the `.venv` repoint gotcha): if `import copeca` resolves
   outside `cancun`, fix with `pip install -e . --no-deps` from cancun.
 - **Controls** (`ctrl_*`, `control: true`) should show ~no tool effect — the report's

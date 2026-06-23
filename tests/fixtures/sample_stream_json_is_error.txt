@@ -1,0 +1,2 @@
+{"type":"system","message":"init"}
+{"type":"result","is_error":true,"result":"Not logged in · Please run /login","total_cost_usd":0,"session_id":"test-session","uuid":"a1b2"}

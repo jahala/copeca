@@ -595,7 +595,36 @@ def run_matrix(
             if on_record is not None:
                 on_record(record)
 
+            # AUTH-3: fail-fast on auth / credential errors so the operator isn't
+            # billed for a full scenario of doomed runs.  Check after persisting so
+            # the first error record is kept (useful for diagnosis).
+            _record_error = record.get("error") or ""
+            if _record_error and _is_auth_error(_record_error):
+                request_abort()
+                raise RuntimeError(
+                    f"CLI not authenticated — run `claude login` or set a scoped API key "
+                    f"(architecture §13.2); aborting scenario so you don't spend on "
+                    f"{len(work_items) - len(records)} doomed run(s). "
+                    f"Auth error: {_record_error}"
+                )
+
     return records
+
+
+# Auth-error signatures that warrant an immediate scenario abort.  Case-insensitive.
+_AUTH_ERROR_PATTERNS = (
+    "not logged in",
+    "please run /login",
+    "credit balance",
+    "authentication",
+    "not authenticated",
+)
+
+
+def _is_auth_error(error_text: str) -> bool:
+    """Return True when error_text matches a known auth / credential failure signature."""
+    lower = error_text.lower()
+    return any(pat in lower for pat in _AUTH_ERROR_PATTERNS)
 
 
 def _run_one_work_item(
