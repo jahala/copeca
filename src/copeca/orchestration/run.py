@@ -71,6 +71,7 @@ def run_single(
     budget_usd: float | None = None,
     adversarial_thresholds: AdversarialThresholds | None = None,
     keep_worktree: bool = False,
+    system_prompt: str | None = None,
 ) -> dict[str, Any]:
     """Execute a single copeca run — the complete measurement pipeline.
 
@@ -165,12 +166,17 @@ def run_single(
 
         # 5. Build command (apply wrapper prefix if harness declares one) and run.
         _append_sys_prompt = mode.append_system_prompt if mode is not None else None
+        # Scenario-level system prompt (held constant across arms). "{cwd}" → the
+        # per-run worktree so the agent is told its working directory, matching
+        # reference harnesses that pass --system-prompt. None ⇒ the CLI's default.
+        _system_prompt = system_prompt.replace("{cwd}", str(worktree)) if system_prompt else None
         command = runner.build_command(
             model=model,
             prompt=task.prompt,
             budget=budget_usd,
             tools=mode.tools if mode is not None else None,
             append_system_prompt=_append_sys_prompt,
+            system_prompt=_system_prompt,
             mcp_config=harness.mcp_config_path,
             isolation=_isolation,
         )
@@ -684,6 +690,7 @@ def _run_one_work_item(
         budget_usd=scenario.budget_usd,
         adversarial_thresholds=scenario.adversarial_thresholds,
         keep_worktree=keep_worktrees,
+        system_prompt=scenario.system_prompt,
     )
     record["repetition"] = item["rep"]
     return record

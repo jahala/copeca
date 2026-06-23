@@ -224,3 +224,90 @@ class TestMatrixPathModeWiring:
         assert "COPECA_TEST_SIGNAL" not in (spies["baseline"].captured_env or {}), (
             "Baseline arm must not see the experimental mode's env"
         )
+
+
+class SysPromptCapturingRunner:
+    """Spy runner — records the system_prompt kwarg build_command receives."""
+
+    name: str = "spy"
+
+    def __init__(self) -> None:
+        self.captured_system_prompt: object = "__unset__"
+
+    def build_command(self, model: str, prompt: str, **kwargs: object) -> list[str]:
+        self.captured_system_prompt = kwargs.get("system_prompt")
+        return ["echo", "ok"]
+
+    def run(
+        self,
+        command: list[str],
+        cwd: str | None = None,
+        env: dict[str, str] | None = None,
+        exclude: set[str] | None = None,
+    ) -> RunResult:
+        return RunResult(result_text="ok", total_cost_usd=0.0, duration_ms=0)
+
+
+class TestSystemPromptWiring:
+    """Scenario.system_prompt is a CONTROLLED condition — it must reach
+    build_command equally on every arm (baseline + experimental). Absent a
+    scenario value it must be None so the CLI keeps its own default prompt.
+    """
+
+    def test_run_single_threads_system_prompt_with_cwd(self, tmp_path: Path) -> None:
+        runner = SysPromptCapturingRunner()
+        wt = tmp_path / "wt"
+        run_single(
+            task=_task(),
+            mode_name="baseline",
+            model="test-model",
+            runner=runner,
+            repo_mgr=StubRepoMgr(wt),
+            system_prompt="LEAN PROMPT. cwd={cwd}",
+        )
+        assert runner.captured_system_prompt == f"LEAN PROMPT. cwd={wt}", (
+            "scenario system_prompt must reach build_command with {cwd} substituted"
+        )
+
+    def test_no_system_prompt_is_none(self, tmp_path: Path) -> None:
+        runner = SysPromptCapturingRunner()
+        run_single(
+            task=_task(),
+            mode_name="baseline",
+            model="test-model",
+            runner=runner,
+            repo_mgr=StubRepoMgr(tmp_path / "wt"),
+        )
+        assert runner.captured_system_prompt is None, (
+            "no scenario system_prompt => build_command gets None (CLI default kept)"
+        )
+
+    def test_run_matrix_threads_system_prompt_to_all_arms(self, tmp_path: Path) -> None:
+        scenario = Scenario.model_validate(
+            {
+                "name": "sp-scenario",
+                "tasks": ["t"],
+                "modes": ["baseline", "exp"],
+                "models": ["m"],
+                "repetitions": 1,
+                "system_prompt": "LEAN {cwd}",
+            }
+        )
+        spies: dict[str, SysPromptCapturingRunner] = {}
+        runner_factory = lambda mode_name, model: spies.setdefault(  # noqa: E731
+            mode_name, SysPromptCapturingRunner()
+        )
+        run_matrix(
+            scenario=scenario,
+            tasks=[_task("t")],
+            modes=["baseline", "exp"],
+            runner_factory=runner_factory,
+            repo_mgr=StubRepoMgr(tmp_path / "wt"),
+            mode_defs={
+                "baseline": Mode(name="baseline", tools=["Bash"]),
+                "exp": Mode(name="exp", tools=["Bash"]),
+            },
+        )
+        for arm in ("baseline", "exp"):
+            assert spies[arm].captured_system_prompt is not None, f"{arm} got no system_prompt"
+            assert "LEAN" in str(spies[arm].captured_system_prompt), f"{arm} system_prompt wrong"
