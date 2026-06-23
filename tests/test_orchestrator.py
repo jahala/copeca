@@ -47,6 +47,7 @@ class StubRepoManager:
         self.worktrees_created: list[Path] = []
         self.setups_called = 0
         self.resets_called = 0
+        self.removes_called = 0
 
     def verify_toolchain(self, repo_key: str) -> None:
         pass
@@ -63,6 +64,9 @@ class StubRepoManager:
 
     def reset(self, worktree: Path) -> None:
         self.resets_called += 1
+
+    def remove_worktree(self, worktree: Path) -> None:
+        self.removes_called += 1
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
@@ -142,14 +146,12 @@ class TestFullPipeline:
         runner_factory = _runner_factory
         repo_mgr = StubRepoManager(tmp_path / "worktrees")
 
-        results_path = tmp_path / "results.jsonl"
         records = run_matrix(
             scenario=scenario,
             tasks=list(tasks.values()),
             modes=scenario.modes,
             runner_factory=runner_factory,
             repo_mgr=repo_mgr,
-            results_path=results_path,
             max_workers=1,
         )
 
@@ -164,10 +166,10 @@ class TestFullPipeline:
             assert "model" in r
             assert "repetition" in r
 
-        # Verify JSONL was NOT written by run_matrix — the orchestrator returns
-        # records but the CLI caller persists them (arch §5: "The orchestrator
-        # returns a record dict; the CLI caller persists it.")
-        assert not results_path.exists()
+        # run_matrix performs no persistence itself — the orchestrator returns records and
+        # the caller injects an on_record sink (arch §5: "the orchestrator returns a record
+        # dict; the CLI caller persists it"). Streaming persistence is covered by
+        # tests/orchestration/test_worker_pool.py::TestStreamingPersistence.
 
     def test_single_run_pipeline_integration(self, tmp_path, test_repo):
         """run_single produces correct record with all required fields."""
@@ -296,13 +298,16 @@ class TestFullPipeline:
 
 
 class TestKeepWorktrees:
-    """--keep-worktrees must skip the worktree reset so per-arm state (mcp.json,
-    config dir, the agent's repo edits) survives for debugging. Shakedown SD-C:
+    """--keep-worktrees must skip clone removal so per-arm state (mcp.json,
+    config dir, the agent's repo edits) survives for debugging.  Shakedown SD-C:
     debugging the tilth-arm failure required hand-recreating a worktree because
-    run_single reset unconditionally.
+    run_single cleaned up unconditionally.
+
+    With RUN-CLONE, the default path calls remove_worktree (full deletion);
+    keep_worktree=True skips that call so the clone is retained for inspection.
     """
 
-    def test_keep_worktree_skips_reset(self, tmp_path, test_repo):
+    def test_keep_worktree_skips_removal(self, tmp_path, test_repo):
         repo_mgr = StubRepoManager(tmp_path / "worktrees")
         run_single(
             task=_make_task("keep_test"),
@@ -314,12 +319,13 @@ class TestKeepWorktrees:
             repo_commit=None,
             keep_worktree=True,
         )
-        assert repo_mgr.resets_called == 0
+        assert repo_mgr.removes_called == 0
 
-    def test_default_resets_worktree(self, tmp_path, test_repo):
+    def test_default_removes_clone(self, tmp_path, test_repo):
+        """run_single with keep_worktree=False calls remove_worktree (not reset)."""
         repo_mgr = StubRepoManager(tmp_path / "worktrees")
         run_single(
-            task=_make_task("reset_test"),
+            task=_make_task("remove_test"),
             mode_name="baseline",
             model="test-model",
             runner=_make_runner(),
@@ -327,7 +333,8 @@ class TestKeepWorktrees:
             repo_uri=str(test_repo),
             repo_commit=None,
         )
-        assert repo_mgr.resets_called == 1
+        assert repo_mgr.removes_called == 1
+        assert repo_mgr.resets_called == 0
 
 
 class TestVendorPrimaryCost:
@@ -532,7 +539,7 @@ class TestToolRestriction:
         captured: dict = {}
 
         class _Cap(SubprocessRunner):
-            def run(self, command, cwd=None, env=None):
+            def run(self, command, cwd=None, env=None, exclude=None):
                 captured["cmd"] = command
                 return RunResult(result_text="Matcher find_at", total_cost_usd=0.05, duration_ms=10)
 

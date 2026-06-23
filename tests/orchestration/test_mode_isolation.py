@@ -30,32 +30,50 @@ def _mode(**kwargs: object) -> Mode:
 
 class TestBaselineModeCleanHarness:
     def test_baseline_returns_clean_harness(self, tmp_path: Path) -> None:
-        """Baseline mode (no integration paths) → env empty, config_dir None, wrapper None."""
+        """Baseline mode with no api_key_env → SUBSCRIPTION profile: no private HOME.
+
+        Architecture §13.2: when no api_key_env is provided (or the key is absent from
+        the host env), the SUBSCRIPTION profile is used — HOME is not redirected and
+        no private temp dir is created. config_dir and wrapper remain None for a clean
+        baseline.
+        """
         mode = _mode(name="baseline")
         worktree = tmp_path / "repo"
         worktree.mkdir()
 
         harness = provision_arm(mode, worktree)
 
-        assert harness.env == {}
+        # SUBSCRIPTION profile: no private HOME created
+        assert harness.private_home is None, (
+            "SUBSCRIPTION profile: no private HOME should be created when api_key_env is absent"
+        )
+        # config_dir and wrapper remain None for a clean baseline
         assert harness.config_dir is None
         assert harness.wrapper is None
 
-    def test_baseline_does_not_create_arms_dir(self, tmp_path: Path) -> None:
-        """Baseline produces no side effects on the worktree."""
+    def test_baseline_does_not_create_arms_dir_inside_worktree(self, tmp_path: Path) -> None:
+        """Baseline (no integration paths) does not create .copeca-arms inside the worktree."""
         mode = _mode(name="baseline")
         worktree = tmp_path / "repo"
         worktree.mkdir()
 
-        provision_arm(mode, worktree)
+        harness = provision_arm(mode, worktree)
 
+        # No .copeca-arms inside the worktree
         arms_dir = worktree / ".copeca-arms"
         assert not arms_dir.exists()
+
+        # SUBSCRIPTION profile: private_home is None (no temp dir)
+        assert harness.private_home is None
 
 
 class TestEnvModeSetsEnv:
     def test_proxy_mode_sets_env(self, tmp_path: Path) -> None:
-        """Proxy mode → env contains ANTHROPIC_BASE_URL."""
+        """Proxy mode (SUBSCRIPTION profile) → env contains ANTHROPIC_BASE_URL.
+
+        When no api_key_env is set, the SUBSCRIPTION profile is used: no private HOME,
+        but mode.env vars (like ANTHROPIC_BASE_URL) are still applied.
+        """
         mode = _mode(
             name="proxy",
             env={"ANTHROPIC_BASE_URL": "http://localhost:8080/v1"},
@@ -65,7 +83,9 @@ class TestEnvModeSetsEnv:
 
         harness = provision_arm(mode, worktree)
 
-        assert harness.env == {"ANTHROPIC_BASE_URL": "http://localhost:8080/v1"}
+        assert harness.env.get("ANTHROPIC_BASE_URL") == "http://localhost:8080/v1"
+        # SUBSCRIPTION profile: HOME is not set in harness.env (host HOME is used)
+        assert harness.private_home is None
 
     def test_env_is_a_copy_not_a_reference(self, tmp_path: Path) -> None:
         """Mutating the returned env dict does not affect the mode."""

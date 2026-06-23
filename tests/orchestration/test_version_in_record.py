@@ -26,7 +26,13 @@ class _StubRunner:
     def build_command(self, model: str, prompt: str, **kwargs: object) -> list[str]:
         return ["echo", "ok"]
 
-    def run(self, command: list[str], cwd: str | None = None, env: dict | None = None) -> RunResult:
+    def run(
+        self,
+        command: list[str],
+        cwd: str | None = None,
+        env: dict | None = None,
+        exclude: set[str] | None = None,
+    ) -> RunResult:
         self.captured_env = dict(env) if env is not None else {}
         return RunResult(result_text="ok", total_cost_usd=0.0, duration_ms=0)
 
@@ -46,6 +52,9 @@ class _StubRepoMgr:
         pass
 
     def reset(self, wt: Path) -> None:
+        pass
+
+    def remove_worktree(self, wt: Path) -> None:
         pass
 
 

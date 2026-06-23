@@ -23,12 +23,19 @@ def parse_stream_json(raw: str) -> RunResult:
     `usage` blocks, tool calls from user messages with `tool_use` content,
     and the final result text from the last assistant text message.
 
+    When the result event carries ``is_error: true`` (e.g. "Not logged in ·
+    Please run /login", budget exhaustion), the run is recorded as an error
+    rather than a valid answer: ``RunResult.error`` is set to the result text
+    and ``result_text`` is left empty.  This prevents auth/budget failures from
+    silently grading as wrong answers and skewing metrics (AUTH-3).
+
     Args:
         raw: Complete stdout from a Claude Code stream-json verbose run.
 
     Returns:
         RunResult with turns, tool_calls, result_text, total_cost_usd,
-        and duration_ms populated from the parsed stream.
+        and duration_ms populated from the parsed stream.  When the CLI
+        reports is_error=true, only error is set (result_text stays empty).
     """
     if not raw.strip():
         return RunResult()
@@ -39,6 +46,7 @@ def parse_stream_json(raw: str) -> RunResult:
     result_text = ""
     vendor_cost = 0.0
     duration = 0
+    error: str | None = None
 
     for line in raw.strip().split("\n"):
         line = line.strip()
@@ -95,10 +103,15 @@ def parse_stream_json(raw: str) -> RunResult:
                             result_text += "\n"
                         result_text += text
 
-        # Extract result event
+        # Extract result event — surface is_error so auth/budget failures are
+        # recorded as errors, never graded as wrong answers (AUTH-3).
         if event.get("type") == "result":
             vendor_cost = event.get("total_cost_usd", 0.0)
             duration = event.get("duration_ms", 0)
+            if event.get("is_error"):
+                error = str(event.get("result", "claude run reported is_error=true"))
+                # Do not treat the error text as a valid answer
+                result_text = ""
 
     return RunResult(
         turns=turns,
@@ -106,6 +119,7 @@ def parse_stream_json(raw: str) -> RunResult:
         total_cost_usd=vendor_cost,
         duration_ms=duration,
         tool_calls=tool_calls,
+        error=error,
     )
 
 

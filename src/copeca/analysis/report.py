@@ -6,6 +6,7 @@ runners/repos/results/orchestration.
 
 from typing import Any
 
+from copeca.analysis.contamination import filter_clean_baseline
 from copeca.analysis.stats import (
     ascii_sparkline,
     bootstrap_ci,
@@ -259,6 +260,7 @@ def generate_report(records: list[dict[str, Any]]) -> str:
     """Generate a markdown report from JSONL records.
 
     Report structure:
+    0. Trace Gate — CONTAMINATED_TRACE (if baseline records used the tool-under-test)
     1. Delta-headline: cost-per-correct for each mode + delta + CI
     2. Per-task table: task name | mode1 cost | mode2 cost | delta% [95% CI]
     3. Cost breakdown: input/output/cache tokens per mode
@@ -269,12 +271,16 @@ def generate_report(records: list[dict[str, Any]]) -> str:
     8. Per-Language Breakdown (if records carry language)
     9. Per-Difficulty Breakdown (if records carry difficulty)
 
+    Baseline records whose tool_sequence contains the tool-under-test's tools
+    are flagged CONTAMINATED_TRACE and excluded from all metrics (ISO-7).
+
     Args:
         records: List of dicts (JSONL records) with fields:
             task, mode, total_cost_usd, correct, input_tokens,
             output_tokens, cache_creation_tokens, cache_read_tokens.
             Optional: adversarial_flags, per_turn_output_tokens,
-            per_turn_context_tokens, tool_sequence, language, difficulty.
+            per_turn_context_tokens, tool_sequence, language, difficulty,
+            tool_adopted.
 
     Returns:
         Markdown string.
@@ -290,6 +296,12 @@ def generate_report(records: list[dict[str, Any]]) -> str:
     if not records:
         return "## Copeca Report\n\n*No valid results — all runs failed.*\n"
 
+    # Post-hoc symmetric trace gate (ISO-7): exclude baseline records that
+    # called the tool-under-test — they contaminate the A/B comparison.
+    records, contaminated_records = filter_clean_baseline(records)
+    if not records:
+        return "## Copeca Report\n\n*No valid results — all baseline records were contaminated.*\n"
+
     lines: list[str] = []
     lines.append("## Copeca Report")
     lines.append("")
@@ -304,6 +316,10 @@ def generate_report(records: list[dict[str, Any]]) -> str:
             err = str(raw).splitlines()[0][:120]
             lines.append(f"- **{r.get('mode', '?')}** / {r.get('task', '?')}: {err}")
         lines.append("")
+
+    # Trace Gate section — rendered early so readers see the exclusion notice
+    # before any delta numbers.
+    lines.extend(_trace_gate_section(contaminated_records))
 
     # Discover modes
     by_mode = group_by(records, key="mode")
@@ -525,6 +541,38 @@ def generate_report(records: list[dict[str, Any]]) -> str:
     lines.extend(_control_section(records, by_mode, modes))
     lines.extend(_tool_validity_section(records, by_mode, modes))
     return "\n".join(lines)
+
+
+def _trace_gate_section(contaminated: list[dict[str, Any]]) -> list[str]:
+    """Render the Trace Gate section when baseline contamination is detected.
+
+    Lists each contaminated baseline record (task + tool calls that matched
+    the tool-under-test) and states they were excluded from the delta.
+    Returns empty list when there are no contaminated records.
+    """
+    if not contaminated:
+        return []
+
+    lines: list[str] = []
+    lines.append("### Trace Gate — CONTAMINATED_TRACE")
+    lines.append("")
+    lines.append(
+        f"{len(contaminated)} baseline record(s) were found to have called the "
+        "tool-under-test and are **excluded from all delta metrics** below. "
+        "A clean A/B requires the baseline arm to use none of the tool-under-test "
+        "tools; these records violate that invariant."
+    )
+    lines.append("")
+    lines.append("| Task | Mode | Contaminating Tools |")
+    lines.append("|------|------|---------------------|")
+    for r in contaminated:
+        task = r.get("task", "?")
+        mode = r.get("mode", "?")
+        seq: list[str] = r.get("tool_sequence") or []
+        bad_tools = ", ".join(seq) if seq else "(unknown)"
+        lines.append(f"| {task} | {mode} | `{bad_tools}` |")
+    lines.append("")
+    return lines
 
 
 def _tool_validity_section(

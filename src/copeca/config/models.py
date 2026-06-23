@@ -228,6 +228,50 @@ class Mode(BaseModel):
 # ── Runner ────────────────────────────────────────────────────────────────────
 
 
+class IsolationSpec(BaseModel):
+    """Per-CLI clean-room descriptor — the data the orchestrator reads to apply
+    the isolation contract uniformly, with no per-CLI branches in the engine
+    (architecture §13.4, invariant 4).
+
+    All fields are optional with safe defaults so a runner YAML that omits the
+    ``isolation:`` block behaves the same as one that declares every field empty.
+    """
+
+    # Env var pointing at the per-run private config home
+    # (CLAUDE_CONFIG_DIR / CODEX_HOME / GEMINI_CLI_HOME).
+    config_home_env: str | None = None
+    # Flags forcing "only my MCP": claude --strict-mcp-config,
+    # codex --ignore-user-config, gemini --allowed-mcp-server-names.
+    strict_mcp_flags: list[str] = Field(default_factory=list)
+    # Env vars that neutralize ambient instruction files
+    # (e.g. {CLAUDE_CODE_DISABLE_CLAUDE_MDS: "1"}).
+    disable_ambient_env: dict[str, str] = Field(default_factory=dict)
+    # Flags that disable session persistence
+    # (e.g. [--no-session-persistence] / [--ephemeral]).
+    disable_session_flags: list[str] = Field(default_factory=list)
+    # Env vars that disable telemetry / nonessential traffic
+    # (e.g. {CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: "1"}).
+    disable_telemetry_env: dict[str, str] = Field(default_factory=dict)
+    # File names to scan for in the pre-run workdir
+    # (CLAUDE.md / AGENTS.md / GEMINI.md).
+    ambient_files: list[str] = Field(default_factory=list)
+    # The provider key env var name for this CLI
+    # (ANTHROPIC_API_KEY / OPENAI_API_KEY / GEMINI_API_KEY).
+    # Profile selection (architecture §13.2):
+    #   API-KEY profile  — when api_key_env is set AND the named var is present in
+    #                      the host env: use a private throwaway HOME and pass the key
+    #                      through to the agent (hermetic + metered).
+    #   SUBSCRIPTION profile (default) — when api_key_env is absent OR the named var
+    #                      is not in the host env: do NOT redirect HOME (use the host
+    #                      login), apply only flag/env neutralizers, and DROP the
+    #                      provider key env var from the child env so a stray key
+    #                      cannot hijack the CLI's subscription login.
+    api_key_env: str | None = None
+    # Command to resolve the CLI/tool version for provenance
+    # (e.g. [claude, --version]).
+    version_cmd: list[str] = Field(default_factory=list)
+
+
 class RunnerConfig(BaseModel):
     """A loaded runner config — the CLI interface plus pricing.
 
@@ -256,6 +300,9 @@ class RunnerConfig(BaseModel):
     # updated: str}. Kept as-is so the cost model and staleness check (which read
     # it by key name) consume the same shape they always have.
     pricing: dict[str, dict[str, Any]] | None = None
+    # Per-CLI clean-room descriptor (architecture §13.4). Safe empty defaults
+    # when the runner YAML omits the isolation: block.
+    isolation: IsolationSpec = Field(default_factory=IsolationSpec)
 
     @model_validator(mode="after")
     def arg_map_or_invoke_template(self) -> "RunnerConfig":

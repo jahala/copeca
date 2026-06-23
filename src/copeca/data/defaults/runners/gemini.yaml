@@ -1,0 +1,64 @@
+# Gemini CLI runner — CLI interface + pricing.
+# Interface verified against `gemini --help` and real `gemini --output-format json`
+# output shape. Pricing illustrative — verify current rates at:
+#   https://ai.google.dev/gemini-api/docs/pricing
+# Updated: 2026-06-22
+
+# Everything here is data — copeca's build_runner reads it; nothing about gemini
+# is hardcoded in cli.py.
+runner:
+  cli: gemini
+  default_args:
+    - -p                    # positional prompt flag
+    - --output-format
+    - json                  # emit a single JSON object (parsed by gemini_json)
+    - --yolo                # auto-approve all tool calls (non-interactive headless)
+  arg_map:
+    model: -m
+    prompt_separator: --
+  # gemini has no --system-prompt flag; callers should fold system instructions
+  # into the positional prompt (see codex.yaml's prepend_system_prompt pattern).
+  parser: gemini_json
+  isolation:
+    config_home_env: GEMINI_CLI_HOME
+    # Baseline isolation relies solely on a FRESH, EMPTY GEMINI_CLI_HOME:
+    # no settings.json in the private home means zero MCP servers are loaded.
+    # strict_mcp_flags is intentionally empty — see architecture §13.3 and the
+    # tool-arm follow-up note below.
+    strict_mcp_flags: []
+    # GEMINI_CLI_TRUST_WORKSPACE=true is required so --yolo actually
+    # auto-approves tool calls in a fresh (zero-config) home.
+    disable_ambient_env: { GEMINI_CLI_TRUST_WORKSPACE: "true" }
+    ambient_files: [GEMINI.md]
+    api_key_env: GEMINI_API_KEY
+    version_cmd: [gemini, --version]
+
+# Tool-arm MCP follow-up (ISO-9 / future task):
+#   To inject MCP for the experimental arm, provision_arm must write an
+#   mcpServers block into the private home's settings.json
+#   (GEMINI_CLI_HOME/settings.json) and then pass
+#   --allowed-mcp-server-names <names> so only copeca's declared servers load.
+#   strict_mcp_flags will then be populated with [--allowed-mcp-server-names].
+#   Until that task lands, baseline = zero MCP (the fresh-home guarantee),
+#   and the tool arm must fall back to one of the other integration paths
+#   (env proxy, wrapper, etc.).
+
+# gemini JSON emits NO total_cost_usd, so cost is computed from these rates
+# (cost_source="modeled"; see orchestration/run.py + docs/metrics.md).
+# cache_creation is unused — gemini reports no cache-write token count — but the
+# cost model reads the key, so it is present (rate is irrelevant: tokens are 0).
+# Rates illustrative (USD per 1M tokens).
+# Sources: Google AI Gemini API pricing page (2026-06-22). VERIFY before publishing.
+pricing:
+  gemini-2.5-pro:
+    input: 1.25            # $1.25/1M input tokens (≤200k context window)
+    cache_creation: 0.00   # cache-write tokens not reported in gemini JSON
+    cache_read: 0.31       # $0.3125/1M cached tokens
+    output: 10.00          # $10.00/1M output tokens
+    updated: "2026-06-22"
+  gemini-2.5-flash:
+    input: 0.15            # $0.15/1M input tokens
+    cache_creation: 0.00   # cache-write tokens not reported in gemini JSON
+    cache_read: 0.037      # $0.0375/1M cached tokens
+    output: 0.60           # $0.60/1M output tokens
+    updated: "2026-06-22"

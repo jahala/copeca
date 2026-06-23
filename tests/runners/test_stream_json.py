@@ -11,6 +11,9 @@ from copeca.runners.parsers.stream_json import (
 )
 
 FIXTURE = Path(__file__).resolve().parent.parent / "fixtures" / "sample_stream_json.txt"
+FIXTURE_IS_ERROR = (
+    Path(__file__).resolve().parent.parent / "fixtures" / "sample_stream_json_is_error.txt"
+)
 
 
 class TestStreamJsonParser:
@@ -154,3 +157,56 @@ class TestStreamJsonDedup:
         )
         result = parse_stream_json("\n".join([ev, ev, ev]))
         assert result.num_turns == 3
+
+
+class TestStreamJsonIsError:
+    """AUTH-3: when the CLI's result event carries is_error=true, the parser
+    must surface it as RunResult.error, not silently treat it as a valid answer.
+    Pins the fix for the 'Not logged in · Please run /login' incident.
+    """
+
+    def test_is_error_result_sets_error_field(self):
+        """A result event with is_error=true must set RunResult.error to the result text."""
+        text = FIXTURE_IS_ERROR.read_text()
+        result = parse_stream_json(text)
+        assert result.error is not None
+        assert "Not logged in" in result.error
+
+    def test_is_error_result_does_not_set_result_text(self):
+        """An is_error result must NOT be treated as a valid answer (result_text stays empty)."""
+        text = FIXTURE_IS_ERROR.read_text()
+        result = parse_stream_json(text)
+        assert result.result_text == ""
+
+    def test_is_error_false_result_parses_cleanly(self):
+        """A normal is_error=false result still parses cleanly — no regression."""
+        import json as _json
+
+        stream = "\n".join(
+            [
+                _json.dumps(
+                    {
+                        "type": "assistant",
+                        "message": {
+                            "id": "msg_A",
+                            "role": "assistant",
+                            "usage": {"input_tokens": 10, "output_tokens": 5},
+                            "content": [{"type": "text", "text": "The answer is 42."}],
+                        },
+                    }
+                ),
+                _json.dumps(
+                    {
+                        "type": "result",
+                        "is_error": False,
+                        "result": "The answer is 42.",
+                        "total_cost_usd": 0.001,
+                        "duration_ms": 1234,
+                    }
+                ),
+            ]
+        )
+        result = parse_stream_json(stream)
+        assert result.error is None
+        assert result.total_cost_usd == 0.001
+        assert result.duration_ms == 1234

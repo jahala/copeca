@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# tend feature artifact: skeptical-evaluator
+# tend feature artifact: run-isolation
 : << 'OO_HTML'
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>skeptical-evaluator · tend</title>
+<title>run-isolation · tend</title>
 
 <!-- OO:STYLE:START -->
 <!-- template_version: 1 -->
@@ -2168,6 +2168,106 @@ nav.toc a.active {
   color: var(--text-2);
 }
 
+/* ── 11b-i. "What's missing" panel (VR-6) ───────────────────────────────────
+   Garden main column only. Three intent signals unified into one calm decision
+   surface: uncovered persona jobs, incomplete bets, unclaimed code. Never red,
+   never a defect list — human-facing decision support. */
+.whats-missing-tend {
+  margin: var(--sp-8) 0;
+  padding: var(--sp-4) var(--sp-6);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-2);
+}
+
+.whats-missing-tend__heading {
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  margin: 0 0 var(--sp-4);
+  font-weight: 600;
+}
+
+/* Persona-job group ─────────────────────────────────────────────────────── */
+.whats-missing-tend__section {
+  margin: var(--sp-3) 0 0;
+}
+
+.whats-missing-tend__section-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-2);
+  margin: 0 0 var(--sp-2);
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.whats-missing-tend__persona {
+  margin: var(--sp-2) 0 var(--sp-3);
+}
+
+.whats-missing-tend__persona-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-2);
+  margin: 0 0 var(--sp-1);
+}
+
+.whats-missing-tend__job-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.whats-missing-tend__job {
+  font-size: 12px;
+  color: var(--text-muted);
+  padding: 2px 0 2px var(--sp-2);
+  border-left: 2px solid var(--border);
+  margin-bottom: 2px;
+}
+
+/* Incomplete bets ───────────────────────────────────────────────────────── */
+.whats-missing-tend__bets-count {
+  font-size: 12px;
+  color: var(--text-2);
+  margin: 0 0 var(--sp-2);
+}
+
+.whats-missing-tend__bet-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1) var(--sp-2);
+  font-family: var(--mono);
+  font-size: 11px;
+}
+
+/* Unclaimed code ────────────────────────────────────────────────────────── */
+.whats-missing-tend__code-count {
+  font-size: 12px;
+  color: var(--text-2);
+  margin: 0 0 var(--sp-2);
+}
+
+.whats-missing-tend__code-sample {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.whats-missing-tend__code-path {
+  padding: 1px 0 1px var(--sp-2);
+  border-left: 2px solid var(--border);
+  margin-bottom: 1px;
+}
+
 /* ── 11b. Masthead band (M1) ─────────────────────────────────────────────────
    The full-width editorial band above the three columns. Information beautifully
    set, never promotion: a bg-2 band with a bottom rule, height-capped (~280px of
@@ -2446,7 +2546,7 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
     <span class="bed-top-header__sep" data-top-header-garden-sep>/</span>
     <a class="bed-top-header__garden" data-top-header-garden href="#">garden</a>
     <span class="bed-top-header__sep" data-top-header-crumb-sep>/</span>
-    <span class="bed-top-header__crumb" data-top-header-crumb>skeptical-evaluator</span>
+    <span class="bed-top-header__crumb" data-top-header-crumb>run-isolation</span>
     <span class="bed-top-header__stats">
       <span class="bed-top-header__health" data-top-header-health></span>
       <span class="bed-top-header__stat" data-top-header-status></span>
@@ -2477,7 +2577,7 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
   <main class="center-col">
     <header class="article-head">
       <div class="article-head__text">
-        <h1 class="article-title" data-article-title>Skeptical Evaluator</h1>
+        <h1 class="article-title" data-article-title>run-isolation</h1>
       </div>
       <div class="article-head__thumb" data-article-thumb></div>
     </header>
@@ -2501,231 +2601,257 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
   "schema_version": "1",
   "kind": "feature",
   "tend_version": "0.4.0",
-  "generated_at": "2026-06-19T12:13:14.757Z",
+  "generated_at": "2026-06-22T17:08:52.788Z",
   "project_name": "copeca"
 }
 </script>
 
 <script id="oo-data" type="application/json">
 {
-  "id": "skeptical-evaluator",
-  "title": "Skeptical Evaluator",
+  "id": "run-isolation",
+  "title": "run-isolation",
   "status": "planned",
-  "persona": {
-    "archetype": "Reads the \"-90% tokens!\" claims and doesn't believe any of them. Reviews tools for teams and papers for journals. Has seen SWE-bench Verified get deprecated after contamination was proven. Knows that memorization, weak tests, and cherry-picked baselines make most claims worthless. Wants one honest, checkable answer.",
-    "jobs": [
-      "When a vendor brings me a \"-70% token savings!\" claim backed by a blog post and a self-run benchmark, because I've been burned by SWE-bench scores that turned out to be memorization and by compression claims that ignored accuracy, we believe I can point them at a shared benchmark, demand they submit a .copeca zip, and verify it myself with a single command. We'll know we got it right when copeca verify --batch --scenario confirms all expected runs exist, none are tampered, and the cost-per-correct delta with 95% CI tells me whether their tool actually improves efficiency or just looks good on a slide.",
-      "When I'm evaluating multiple tools for the same team adoption decision, because each tool claims savings on different methodologies against different baselines — their numbers literally don't mean the same thing, we believe I can define one scenario file, run all the tools against the same tasks, and get a report where every number is comparable because they were all computed from tokens × the same pricing model. We'll know we got it right when the per-task breakdown shows me exactly where each tool wins and loses, and concentrated wins in one tool's favorite task type are visible rather than hidden in an aggregate.",
-      "When a published benchmark result changes my team's tooling strategy, because if the result was cherry-picked or the task set was selected to favor one mechanism, the whole strategy pivots on a lie, we believe the result should carry a provenance trail — which source benchmarks informed the task corpus, which tasks were excluded and why, what the contamination self-check found. We'll know we got it right when the source: field on every task traces back to a documented license, the corpus taxonomy is organized by what the agent must DO (not any tool's mechanism), and the contamination self-check's findings are public."
-    ],
-    "description": "Researcher, reviewer, procurement lead, or engineering manager evaluating coding-agent tools for adoption. Has been burned by contaminated benchmarks and cherry-picked results. Uses copeca as a neutral, verifiable yardstick — the one place where tool claims are measured against the same tasks with the same cost model and the artifacts prove nothing was faked.",
-    "bound_features": [
-      {
-        "id": "copeca-analysis-reporting",
-        "title": "copeca-analysis-reporting",
-        "status": "verified",
-        "priority": "high",
-        "dependencies": [
-          "copeca-scenario-matrix",
-          "copeca-cost-model",
-          "copeca-artifact-integrity"
-        ],
-        "enables": [
-          "copeca-docs-and-init"
-        ],
-        "personas": [
-          "tool-builder",
-          "skeptical-evaluator",
-          "platform-builder"
-        ],
-        "solves": [
-          "no-shared-yardstick",
-          "accuracy-blind-claims"
-        ],
-        "journey_phase": "compare",
-        "what": "Comprehensive markdown reports with cost-per-correct as the headline metric — per-task comparison tables, cost breakdowns, per-turn context sparklines, adversarial flag summaries, tool adoption rates,",
-        "thumbnail": {
-          "kind": "svg",
-          "content": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"200\" height=\"120\" viewBox=\"0 0 200 120\">\n  <rect width=\"200\" height=\"120\" fill=\"#FAF5E9\"/>\n  <rect x=\"15\" y=\"20\" width=\"80\" height=\"12\" rx=\"2\" fill=\"#3F7186\"/>\n  <rect x=\"15\" y=\"38\" width=\"120\" height=\"2\" rx=\"1\" fill=\"#3A2718\" opacity=\"0.15\"/>\n  <rect x=\"15\" y=\"46\" width=\"55\" height=\"12\" rx=\"2\" fill=\"#E89227\"/>\n  <rect x=\"15\" y=\"64\" width=\"48\" height=\"12\" rx=\"2\" fill=\"#E89227\"/>\n  <rect x=\"15\" y=\"82\" width=\"38\" height=\"12\" rx=\"2\" fill=\"#E89227\"/>\n  <rect x=\"110\" y=\"20\" width=\"75\" height=\"2\" rx=\"1\" fill=\"#3A2718\" opacity=\"0.1\"/>\n  <rect x=\"110\" y=\"28\" width=\"75\" height=\"2\" rx=\"1\" fill=\"#3A2718\" opacity=\"0.1\"/>\n  <rect x=\"110\" y=\"36\" width=\"75\" height=\"2\" rx=\"1\" fill=\"#3A2718\" opacity=\"0.1\"/>\n  <rect x=\"110\" y=\"46\" width=\"65\" height=\"12\" rx=\"2\" fill=\"#357E2C\"/>\n  <rect x=\"110\" y=\"64\" width=\"75\" height=\"12\" rx=\"2\" fill=\"#357E2C\" opacity=\"0.7\"/>\n  <text x=\"80\" y=\"102\" text-anchor=\"middle\" font-family=\"sans-serif\" font-size=\"10\" fill=\"#3A2718\" font-weight=\"bold\">DELTA REPORT</text>\n  <polyline points=\"180,80 185,75 190,82 195,70\" stroke=\"#E89227\" stroke-width=\"2\" fill=\"none\"/>\n</svg>"
-        }
-      },
-      {
-        "id": "copeca-artifact-integrity",
-        "title": "copeca-artifact-integrity",
-        "status": "verified",
-        "priority": "high",
-        "dependencies": [
-          "copeca-single-run"
-        ],
-        "enables": [
-          "copeca-analysis-reporting"
-        ],
-        "personas": [
-          "tool-builder",
-          "platform-builder",
-          "skeptical-evaluator"
-        ],
-        "solves": [
-          "no-verifiable-results"
-        ],
-        "journey_phase": "verify",
-        "what": "`.copeca` artifact zips — every run optionally produces a SHA-256 integrity manifest covering the full session (stdout, stderr, parsed turns), the task/runner/repos config, the post-mutation diff, and",
-        "thumbnail": {
-          "kind": "svg",
-          "content": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 200 120\" fill=\"none\">\n  <rect width=\"200\" height=\"120\" rx=\"8\" fill=\"#FAF5E9\"/>\n  <g transform=\"translate(50,20)\">\n    <rect x=\"0\" y=\"10\" width=\"48\" height=\"56\" rx=\"3\" fill=\"#3F7186\" opacity=\"0.1\" stroke=\"#3F7186\" stroke-width=\"2\"/>\n    <rect x=\"4\" y=\"14\" width=\"40\" height=\"5\" rx=\"1\" fill=\"#3A2718\" opacity=\"0.15\"/>\n    <rect x=\"4\" y=\"22\" width=\"30\" height=\"4\" rx=\"1\" fill=\"#3A2718\" opacity=\"0.12\"/>\n    <rect x=\"4\" y=\"28\" width=\"36\" height=\"4\" rx=\"1\" fill=\"#3A2718\" opacity=\"0.12\"/>\n    <line x1=\"4\" y1=\"36\" x2=\"44\" y2=\"36\" stroke=\"#3A2718\" stroke-width=\"0.5\" opacity=\"0.2\"/>\n    <rect x=\"4\" y=\"40\" width=\"28\" height=\"4\" rx=\"1\" fill=\"#E89227\" opacity=\"0.25\"/>\n    <rect x=\"4\" y=\"47\" width=\"34\" height=\"4\" rx=\"1\" fill=\"#E89227\" opacity=\"0.25\"/>\n    <rect x=\"4\" y=\"54\" width=\"22\" height=\"4\" rx=\"1\" fill=\"#E89227\" opacity=\"0.25\"/>\n    <circle cx=\"74\" cy=\"38\" r=\"8\" fill=\"none\" stroke=\"#3F7186\" stroke-width=\"2.5\"/>\n    <rect x=\"71\" y=\"35\" width=\"6\" height=\"6\" rx=\"1\" fill=\"none\" stroke=\"#3F7186\" stroke-width=\"1.5\"/>\n  </g>\n  <text x=\"85\" y=\"95\" text-anchor=\"middle\" font-family=\"system-ui, sans-serif\" font-size=\"9\" fill=\"#3A2718\" font-weight=\"600\">VERIFY</text>\n</svg>"
-        }
-      },
-      {
-        "id": "copeca-docs-and-init",
-        "title": "copeca-docs-and-init",
-        "status": "in-progress",
-        "priority": "medium",
-        "dependencies": [
-          "copeca-validate-tasks",
-          "copeca-single-run",
-          "copeca-mode-mechanism",
-          "copeca-cost-model",
-          "copeca-scenario-matrix",
-          "copeca-artifact-integrity",
-          "copeca-analysis-reporting",
-          "copeca-task-corpus"
-        ],
-        "personas": [
-          "tool-builder",
-          "platform-builder",
-          "skeptical-evaluator"
-        ],
-        "journey_phase": "orient",
-        "what": "Production-ready documentation and project scaffolding — `copeca init ./my-benchmark` bootstraps a working suite in one command. Docs cover task authoring, runner configuration, metrics, methodology, ",
-        "thumbnail": {
-          "kind": "svg",
-          "content": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"200\" height=\"120\" viewBox=\"0 0 200 120\">\n  <rect width=\"200\" height=\"120\" fill=\"#FAF5E9\"/>\n  <rect x=\"100\" y=\"15\" width=\"80\" height=\"90\" rx=\"4\" fill=\"#3A2718\" opacity=\"0.08\"/>\n  <rect x=\"108\" y=\"23\" width=\"64\" height=\"5\" rx=\"1\" fill=\"#3A2718\" opacity=\"0.15\"/>\n  <rect x=\"108\" y=\"32\" width=\"52\" height=\"5\" rx=\"1\" fill=\"#3A2718\" opacity=\"0.12\"/>\n  <rect x=\"108\" y=\"41\" width=\"58\" height=\"5\" rx=\"1\" fill=\"#3A2718\" opacity=\"0.15\"/>\n  <rect x=\"108\" y=\"50\" width=\"40\" height=\"5\" rx=\"1\" fill=\"#3A2718\" opacity=\"0.1\"/>\n  <rect x=\"108\" y=\"59\" width=\"48\" height=\"5\" rx=\"1\" fill=\"#3A2718\" opacity=\"0.12\"/>\n  <rect x=\"108\" y=\"68\" width=\"56\" height=\"5\" rx=\"1\" fill=\"#3A2718\" opacity=\"0.15\"/>\n  <rect x=\"108\" y=\"77\" width=\"35\" height=\"5\" rx=\"1\" fill=\"#3A2718\" opacity=\"0.1\"/>\n  <rect x=\"108\" y=\"86\" width=\"44\" height=\"5\" rx=\"1\" fill=\"#3A2718\" opacity=\"0.12\"/>\n  <path d=\"M35,90 Q35,60 50,55 L55,55 M50,55 L45,50 M50,55 L45,60\" stroke=\"#357E2C\" stroke-width=\"2\" fill=\"none\"/>\n  <circle cx=\"35\" cy=\"94\" r=\"5\" fill=\"#3A2718\"/>\n  <text x=\"35\" y=\"108\" text-anchor=\"middle\" font-family=\"sans-serif\" font-size=\"7\" fill=\"#3A2718\" opacity=\"0.6\">seed</text>\n  <circle cx=\"25\" cy=\"30\" r=\"3\" fill=\"#E89227\" opacity=\"0.8\"/>\n  <text x=\"32\" y=\"30\" font-family=\"monospace\" font-size=\"7\" fill=\"#3A2718\">copeca init</text>\n  <text x=\"32\" y=\"42\" font-family=\"monospace\" font-size=\"7\" fill=\"#3A2718\">/benchmark</text>\n  <rect x=\"25\" y=\"52\" width=\"4\" height=\"7\" fill=\"#357E2C\" opacity=\"0.6\"/>\n  <text x=\"34\" y=\"58\" font-family=\"monospace\" font-size=\"7\" fill=\"#3A2718\">tasks/ *16</text>\n  <rect x=\"25\" y=\"66\" width=\"4\" height=\"7\" fill=\"#357E2C\" opacity=\"0.6\"/>\n  <text x=\"34\" y=\"72\" font-family=\"monospace\" font-size=\"7\" fill=\"#3A2718\">repos.yaml</text>\n  <rect x=\"25\" y=\"80\" width=\"4\" height=\"7\" fill=\"#357E2C\" opacity=\"0.6\"/>\n  <text x=\"34\" y=\"86\" font-family=\"monospace\" font-size=\"7\" fill=\"#3A2718\">scenarios/</text>\n</svg>"
-        }
-      },
-      {
-        "id": "copeca-task-corpus",
-        "title": "copeca-task-corpus",
-        "status": "verified",
-        "priority": "high",
-        "dependencies": [
-          "copeca-validate-tasks"
-        ],
-        "enables": [
-          "copeca-docs-and-init"
-        ],
-        "personas": [
-          "tool-builder",
-          "skeptical-evaluator"
-        ],
-        "solves": [
-          "contamination-erodes-trust"
-        ],
-        "journey_phase": "author",
-        "what": "Neutral, independently-sourced seed task corpus (~85 tasks: 35 migrated from tilth + 50 authored fresh from 6 independent source families with verified licenses and low contamination). Every task carr",
-        "thumbnail": {
-          "kind": "svg",
-          "content": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"200\" height=\"120\" viewBox=\"0 0 200 120\">\n  <rect width=\"200\" height=\"120\" fill=\"#FAF5E9\"/>\n  <rect x=\"15\" y=\"15\" width=\"55\" height=\"38\" rx=\"3\" fill=\"#3F7186\" opacity=\"0.15\"/>\n  <rect x=\"18\" y=\"19\" width=\"49\" height=\"6\" rx=\"1\" fill=\"#3A2718\" opacity=\"0.3\"/>\n  <rect x=\"18\" y=\"28\" width=\"40\" height=\"6\" rx=\"1\" fill=\"#3A2718\" opacity=\"0.2\"/>\n  <rect x=\"18\" y=\"37\" width=\"44\" height=\"6\" rx=\"1\" fill=\"#3A2718\" opacity=\"0.25\"/>\n  <rect x=\"85\" y=\"15\" width=\"55\" height=\"38\" rx=\"3\" fill=\"#3F7186\" opacity=\"0.15\"/>\n  <rect x=\"88\" y=\"19\" width=\"49\" height=\"6\" rx=\"1\" fill=\"#3A2718\" opacity=\"0.3\"/>\n  <rect x=\"88\" y=\"28\" width=\"35\" height=\"6\" rx=\"1\" fill=\"#3A2718\" opacity=\"0.2\"/>\n  <rect x=\"88\" y=\"37\" width=\"42\" height=\"6\" rx=\"1\" fill=\"#3A2718\" opacity=\"0.25\"/>\n  <rect x=\"155\" y=\"15\" width=\"30\" height=\"38\" rx=\"3\" fill=\"#E89227\" opacity=\"0.2\"/>\n  <rect x=\"158\" y=\"19\" width=\"24\" height=\"6\" rx=\"1\" fill=\"#3A2718\" opacity=\"0.3\"/>\n  <rect x=\"158\" y=\"28\" width=\"18\" height=\"6\" rx=\"1\" fill=\"#3A2718\" opacity=\"0.2\"/>\n  <rect x=\"158\" y=\"37\" width=\"22\" height=\"6\" rx=\"1\" fill=\"#3A2718\" opacity=\"0.25\"/>\n  <text x=\"15\" y=\"70\" font-family=\"monospace\" font-size=\"8\" fill=\"#3A2718\">SWE-QA (Apache-2.0)</text>\n  <text x=\"15\" y=\"82\" font-family=\"monospace\" font-size=\"8\" fill=\"#3A2718\">SWE-bench-Live (MIT)</text>\n  <text x=\"15\" y=\"94\" font-family=\"monospace\" font-size=\"8\" fill=\"#3A2718\">Terminal-Bench 2.0</text>\n  <text x=\"15\" y=\"106\" font-family=\"monospace\" font-size=\"7\" fill=\"#3A2718\" opacity=\"0.6\">85 tasks · 6 families · verified licenses</text>\n  <line x1=\"15\" y1=\"110\" x2=\"185\" y2=\"110\" stroke=\"#357E2C\" stroke-width=\"2\" opacity=\"0.5\"/>\n  <circle cx=\"100\" cy=\"110\" r=\"3\" fill=\"#357E2C\" opacity=\"0.7\"/>\n</svg>"
-        }
-      },
-      {
-        "id": "run-isolation",
-        "title": "run-isolation",
-        "status": "planned",
-        "priority": "high",
-        "dependencies": [
-          "copeca-mode-mechanism",
-          "copeca-single-run"
-        ],
-        "enables": [
-          "copeca-scenario-matrix"
-        ],
-        "personas": [
-          "tool-builder",
-          "platform-builder",
-          "skeptical-evaluator"
-        ],
-        "solves": [
-          "contamination-erodes-trust"
-        ],
-        "journey_phase": "calibrate",
-        "what": "A verifiable clean room for every benchmark run across Claude Code, Codex, and Gemini CLI: a private throwaway HOME so no host CLI config (~/.claude.json, ~/.codex/, ~/.gemini/) is read, written, or l"
-      }
-    ],
-    "bound_checks": [
-      {
-        "feature_id": "copeca-analysis-reporting",
-        "check_id": "c001",
-        "job_index": 1
-      },
-      {
-        "feature_id": "copeca-analysis-reporting",
-        "check_id": "c004",
-        "job_index": 0
-      },
-      {
-        "feature_id": "copeca-artifact-integrity",
-        "check_id": "c001",
-        "job_index": 0
-      },
-      {
-        "feature_id": "copeca-artifact-integrity",
-        "check_id": "c002",
-        "job_index": 0
-      },
-      {
-        "feature_id": "copeca-artifact-integrity",
-        "check_id": "c003",
-        "job_index": 2
-      },
-      {
-        "feature_id": "copeca-docs-and-init",
-        "check_id": "c003",
-        "job_index": 2
-      },
-      {
-        "feature_id": "copeca-task-corpus",
-        "check_id": "c001",
-        "job_index": 2
-      },
-      {
-        "feature_id": "copeca-task-corpus",
-        "check_id": "c002",
-        "job_index": 2
-      },
-      {
-        "feature_id": "run-isolation",
-        "check_id": "c002",
-        "job_index": 0
-      },
-      {
-        "feature_id": "run-isolation",
-        "check_id": "c005",
-        "job_index": 0
-      }
-    ],
-    "felt_opportunities": [
-      "no-shared-yardstick",
-      "accuracy-blind-claims",
-      "no-verifiable-results",
-      "contamination-erodes-trust"
-    ],
-    "journey_phases": [
-      "orient",
-      "author",
-      "calibrate",
-      "verify",
-      "compare"
-    ]
-  },
-  "narrative": "## Voice\n\nYou hear the weary, precise tone of someone who reads claims for a living and has stopped being polite about it. A skeptical evaluator has been burned before and carries receipts. They do not say “I don't believe you.” They say “show me the .copeca zip.”\n\n> “Your blog post says -70% tokens. Your graph has no error bars. Your baseline is your own tool's previous version. What am I supposed to do with this?”\n\n> “SWE-bench Verified was the gold standard until someone noticed you could reproduce gold patches from task IDs alone. What's the contamination self-check on your corpus?”\n\n> “I have five tools in front of me. Each one claims to be best. Each one measured ‘best' differently. I need one number computed the same way, or I'm guessing.”\n\nThey speak the language of methodology. They notice when a benchmark is described by *what the tool does* instead of *what the agent must do*. They know the difference between a task taxonomy and a marketing slide.\n\n## Scenarios\n\n**Monday, 14:30. Remote. Video call, three vendors this week.** She is reviewing a compression tool for adoption across three engineering teams. The vendor's deck shows a -70% token savings curve with no accuracy data anywhere. She asks: “Does the tool ever make the answer wrong?” The vendor pauses. “Well, if the compression is lossy in a way that changes function signatures, the model might hallucinate the API. But that's a model problem.” She ends the call early. Opens the copeca task corpus. Searches for tasks tagged `function_signature_migration`. There are 12. That is the benchmark this tool needs to pass before she'll recommend it.\n\n## Why this archetype matters\n\nSkeptical evaluators are the demand side — they translate benchmarks into procurement decisions that affect hundreds of engineers. When they trust a number, tools get adopted. When they distrust a number, the category rots. The SWE-bench contamination crisis proved that blind trust in self-reported benchmarks is malpractice. Copeca exists because the evaluator who asks the hard questions is not the obstacle — they are the immune system.\n\n---\n\n**Evidence provenance:** SWE-bench Verified deprecation (OpenAI Feb 2026); “The SWE-Bench Illusion” (NeurIPS 2025, arXiv:2506.12286) proved gold patches reproducible from task IDs alone; SWE-bench+ (York University, arXiv:2410.06992) found 94% of instances created before training cutoffs with 32% solution leakage. Jobs derived from three evaluation moments: receiving a vendor claim, comparing multiple tools, and acting on a published result.",
-  "thumbnail": {
-    "kind": "svg",
-    "content": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 200 120\" fill=\"none\">\n  <rect width=\"200\" height=\"120\" rx=\"8\" fill=\"#FAF5E9\"/>\n  <rect x=\"30\" y=\"25\" width=\"140\" height=\"70\" rx=\"3\" fill=\"#3A2718\" opacity=\"0.12\"/>\n  <rect x=\"20\" y=\"15\" width=\"160\" height=\"80\" rx=\"3\" fill=\"#FAF5E9\" stroke=\"#3A2718\" stroke-width=\"1\" opacity=\"0.8\"/>\n  <text x=\"35\" y=\"35\" font-family=\"monospace\" font-size=\"5\" fill=\"#3A2718\">claim: -70% tokens (blog post)</text>\n  <rect x=\"35\" y=\"42\" width=\"48\" height=\"1\" fill=\"#3A2718\" opacity=\"0.3\"/>\n  <text x=\"35\" y=\"55\" font-family=\"monospace\" font-size=\"5\" fill=\"#3F7186\">check 1: accuracy data?</text>\n  <rect x=\"130\" y=\"50\" width=\"8\" height=\"8\" rx=\"1\" fill=\"none\" stroke=\"#E89227\" stroke-width=\"1.5\"/>\n  <text x=\"142\" y=\"58\" font-family=\"monospace\" font-size=\"4\" fill=\"#E89227\">NO</text>\n  <text x=\"35\" y=\"67\" font-family=\"monospace\" font-size=\"5\" fill=\"#3F7186\">check 2: baseline same tasks?</text>\n  <rect x=\"145\" y=\"62\" width=\"8\" height=\"8\" rx=\"1\" fill=\"none\" stroke=\"#E89227\" stroke-width=\"1.5\"/>\n  <text x=\"157\" y=\"70\" font-family=\"monospace\" font-size=\"4\" fill=\"#E89227\">NO</text>\n  <text x=\"35\" y=\"79\" font-family=\"monospace\" font-size=\"5\" fill=\"#3F7186\">check 3: .copeca zip?</text>\n  <rect x=\"125\" y=\"74\" width=\"8\" height=\"8\" rx=\"1\" fill=\"none\" stroke=\"#E89227\" stroke-width=\"1.5\"/>\n  <text x=\"137\" y=\"82\" font-family=\"monospace\" font-size=\"4\" fill=\"#E89227\">NO</text>\n  <text x=\"35\" y=\"92\" font-family=\"monospace\" font-size=\"5\" fill=\"#3A2718\" font-weight=\"bold\">verdict: UNVERIFIED</text>\n  <circle cx=\"163\" cy=\"40\" r=\"12\" fill=\"none\" stroke=\"#357E2C\" stroke-width=\"2\" opacity=\"0.6\"/>\n  <circle cx=\"159\" cy=\"38\" r=\"4\" fill=\"#357E2C\" opacity=\"0.6\"/>\n  <line x1=\"170\" y1=\"36\" x2=\"176\" y2=\"30\" stroke=\"#357E2C\" stroke-width=\"1.5\" opacity=\"0.6\"/>\n</svg>"
+  "priority": "high",
+  "dependencies": [
+    "copeca-mode-mechanism",
+    "copeca-single-run"
+  ],
+  "enables": [
+    "copeca-scenario-matrix"
+  ],
+  "journey_phase": "calibrate",
+  "personas": [
+    "tool-builder",
+    "platform-builder",
+    "skeptical-evaluator"
+  ],
+  "solves": [
+    "contamination-erodes-trust"
+  ],
+  "what": "A verifiable clean room for every benchmark run across Claude Code, Codex, and Gemini CLI: a private throwaway HOME so no host CLI config (~/.claude.json, ~/.codex/, ~/.gemini/) is read, written, or left behind (zero host footprint); exactly the declared MCP/tools (baseline: none) via each CLI's strict mechanism; ambient instruction files (CLAUDE.md/AGENTS.md/GEMINI.md) neutralized; session + telemetry off — backed by a post-hoc symmetric trace gate that FAILS any baseline that used the tool-under-test.",
+  "why": "The full-haiku A/B was void: the baseline silently used the host's tilth MCP server (loaded from ~/.claude.json — a config FILE the env allowlist never touched), and the wrong tool version was tested (homebrew 0.9.0, not the cargo 1.0.0 under test). copeca runs repeatedly on shared developer machines, so it must isolate each run AND prove it — without mutating the operator's CLI configs.",
+  "impact": "Every reported delta is trustworthy: the baseline provably used no tool-under-test, the tool arm provably used it, the exact tool version+path is recorded in each result, and copeca leaves the operator's real CLI configs byte-for-byte untouched. Isolation generalizes across vendors by DATA (one `isolation:` descriptor per runner YAML), not by per-CLI code branches.",
+  "fit": "Hardens the clean-room invariant (architecture.md §13). Extends copeca-mode-mechanism (per-arm provisioning) + copeca-single-run (child env/home) + the analysis layer (trace gate).",
+  "where": "src/copeca/config/models.py (IsolationSpec on RunnerConfig), src/copeca/orchestration/state.py (bring-your-own-home provisioning), src/copeca/runners/subprocess.py + base.py (HOME/env + strict-MCP flags), src/copeca/orchestration/run.py (preflight + pre-run workdir scan), src/copeca/analysis/ (post-hoc trace gate), src/copeca/data/defaults/runners/{claude,codex,gemini}.yaml",
+  "how": "Each runner YAML carries an `isolation:` descriptor (config_home_env, strict_mcp_flags, disable_ambient_env, disable_session_flags, disable_telemetry_env, ambient_files, requires_api_key_env, version_cmd). The orchestrator provisions a per-run private HOME, applies the descriptor uniformly (no per-CLI branch), runs a pre-run workdir scan for un-disable-able ambient files, then a post-hoc symmetric trace gate (baseline ∩ tool-under-test == ∅; tool arm used the tool). See architecture.md §13.",
+  "checks": [
+    {
+      "id": "c001",
+      "description": "Zero host footprint: a run executes with HOME (and the CLI config-home env var) pointed at a per-run temp dir; the host ~/.claude.json / ~/.codex/ / ~/.gemini/ are not read and are byte-for-byte unchanged after the run.",
+      "validates": "impact",
+      "method": "synthetic-test",
+      "validates_job": "tool-builder:1",
+      "verification_recipe": "Plant a sentinel host config dir; run baseline; assert the child env's HOME != host HOME and the sentinel files' bytes are unchanged after the run."
+    },
+    {
+      "id": "c002",
+      "description": "Baseline sees no host MCP (contamination reproduction): with a host config carrying an MCP server, a baseline run shows ZERO calls to that server's tools — for each of claude, codex, gemini.",
+      "validates": "what",
+      "method": "synthetic-test",
+      "validates_job": "skeptical-evaluator:0",
+      "verification_recipe": "Stand up a fake host config registering an MCP server (e.g. a stub tilth); run a baseline for each CLI; parse the trace; assert zero tool calls to that server."
+    },
+    {
+      "id": "c003",
+      "description": "Strict MCP + tool-arm injection: baseline gets zero MCP servers; the tool arm gets exactly the declared set and uses it (tool_adopted >= 1).",
+      "validates": "what",
+      "method": "synthetic-test",
+      "validates_job": "tool-builder:1",
+      "verification_recipe": "Run baseline (assert command carries the strict-MCP flag and no --mcp-config / no -c mcp_servers) and the tool arm (assert the declared server is injected and the trace shows >=1 call)."
+    },
+    {
+      "id": "c004",
+      "description": "Ambient instructions neutralized: a CLAUDE.md/AGENTS.md/GEMINI.md in the worktree does not reach the agent; if a CLI cannot disable it, the run is refused (CONTAMINATED_WORKDIR).",
+      "validates": "how",
+      "method": "synthetic-test",
+      "validates_job": "tool-builder:1",
+      "verification_recipe": "Plant an ambient instruction file in the worktree; assert the disable env/flag is set (claude/gemini) or the pre-run scan refuses the run (codex)."
+    },
+    {
+      "id": "c005",
+      "description": "Post-hoc symmetric trace gate: a results set where the baseline used the tool-under-test is flagged CONTAMINATED_TRACE and excluded from the delta; a clean set passes and reports tool_adopted.",
+      "validates": "impact",
+      "method": "synthetic-test",
+      "validates_job": "skeptical-evaluator:0",
+      "verification_recipe": "Feed analyze a JSONL where a baseline record calls the tool-under-test; assert it is flagged + excluded from the delta. Feed a clean set; assert it passes."
+    },
+    {
+      "id": "c006",
+      "description": "Version provenance + multi-version warning: each result records the resolved tool version + path; a preflight warns when multiple installed versions of the tool are detected.",
+      "validates": "impact",
+      "method": "synthetic-test",
+      "validates_job": "tool-builder:0",
+      "verification_recipe": "Run with two tilth binaries on PATH (0.9.0 + 1.0.0); assert a multi-version warning fires and the record stores the resolved version+path."
+    },
+    {
+      "id": "c007",
+      "description": "Cross-CLI uniformity: claude, codex, and gemini each satisfy the isolation contract via their YAML descriptor, with no per-CLI branch in the orchestrator.",
+      "validates": "how",
+      "method": "synthetic-test",
+      "validates_job": "platform-builder:1",
+      "verification_recipe": "Assert the orchestrator reads isolation from the descriptor for all three runners; grep the orchestration layer for per-CLI conditionals (there must be none)."
+    }
+  ],
+  "smoke": {
+    "cmd": "PATH=\"$PWD/.venv/bin:$PATH\" python -m pytest tests/orchestration/test_isolation_clean_room.py -q"
   },
   "progress": {
-    "implementation": 0,
+    "implementation": 10,
     "verification": 0
-  }
+  },
+  "personas_resolved": [
+    {
+      "id": "tool-builder",
+      "name": "Tool Builder",
+      "jobs": [
+        "When I'm about to publish a release blog post with a screenshot of token savings, because every competitor's post has the same \"-90%\" claim and reviewers have stopped believing them, we believe I can run one command against my tool and get a number that includes accuracy, cost, and is independently verifiable. We'll know we got it right when the report headline says cost-per-correct with a delta % and 95% CI, and I can share a .copeca zip so anyone can verify it.",
+        "When I've added a caching layer or index to my MCP server, because I need to know whether the added complexity (and the 200ms per-tool-call overhead) actually improves cost-per-correct or just makes the tool busier, we believe I can A/B the same scenario in two modes — my tool enabled vs. a clean baseline — and get a per-task breakdown so I see exactly which tasks improved and which regressed. We'll know we got it right when the report table shows per-task deltas, not just an aggregate, so I can show my team which task types our tool actually helps and where we need work.",
+        "When I'm picking which integration to invest in — MCP server vs. PreToolUse hook vs. API proxy — because each has different reach, maintenance cost, and performance characteristics, we believe I can benchmark the same tool through all three integration paths against the same task set. We'll know we got it right when the cost-per-correct comparison across modes tells me which integration path gives the best efficiency, without having to build three separate eval harnesses."
+      ]
+    },
+    {
+      "id": "platform-builder",
+      "name": "Platform Builder",
+      "jobs": [
+        "When I'm adding a new model to our platform, because I need to validate that our token reporting and cost model are accurate before customers depend on them, we believe I can run the same scenario through our CLI and through the reference Claude Code harness, compute cost both ways, and detect pricing drift >5%. We'll know we got it right when copeca's cross-check between vendor_cost_usd and computed cost flags any divergence, and the staleness warnings fire on pricing data older than 30 days.",
+        "When I'm A/B-comparing output formats (JSON vs. stream-json), output parsers, or system prompt variations, because a 2% accuracy difference at our throughput is six figures annually, we believe I can declare the variant as a mode in copeca and get a statistically grounded comparison with confidence intervals. We'll know we got it right when the report shows 95% bootstrapped CIs on cost-per-correct with enough repetitions to be credible, and the adversarial flags warn me if any variant is snowballing tokens or timing out disproportionately.",
+        "When a vendor rejects our bug report claiming \"works fine on our end,\" because their self-reported cost numbers are computed differently and the disagreement can't be resolved with screenshots, we believe I can ship a .copeca zip — hashed, time-stamped, with full session data and the exact runner config — as the evidence. We'll know we got it right when the hash chain proves the artifact wasn't doctored after the run, and the vendor can copeca verify it and either reproduce or concede."
+      ]
+    },
+    {
+      "id": "skeptical-evaluator",
+      "name": "Skeptical Evaluator",
+      "jobs": [
+        "When a vendor brings me a \"-70% token savings!\" claim backed by a blog post and a self-run benchmark, because I've been burned by SWE-bench scores that turned out to be memorization and by compression claims that ignored accuracy, we believe I can point them at a shared benchmark, demand they submit a .copeca zip, and verify it myself with a single command. We'll know we got it right when copeca verify --batch --scenario confirms all expected runs exist, none are tampered, and the cost-per-correct delta with 95% CI tells me whether their tool actually improves efficiency or just looks good on a slide.",
+        "When I'm evaluating multiple tools for the same team adoption decision, because each tool claims savings on different methodologies against different baselines — their numbers literally don't mean the same thing, we believe I can define one scenario file, run all the tools against the same tasks, and get a report where every number is comparable because they were all computed from tokens × the same pricing model. We'll know we got it right when the per-task breakdown shows me exactly where each tool wins and loses, and concentrated wins in one tool's favorite task type are visible rather than hidden in an aggregate.",
+        "When a published benchmark result changes my team's tooling strategy, because if the result was cherry-picked or the task set was selected to favor one mechanism, the whole strategy pivots on a lie, we believe the result should carry a provenance trail — which source benchmarks informed the task corpus, which tasks were excluded and why, what the contamination self-check found. We'll know we got it right when the source: field on every task traces back to a documented license, the corpus taxonomy is organized by what the agent must DO (not any tool's mechanism), and the contamination self-check's findings are public."
+      ]
+    }
+  ],
+  "steps": [
+    {
+      "id": "i001",
+      "title": "ISO-1 Isolation descriptor model",
+      "status": "pending",
+      "traces_to": [
+        "c007"
+      ],
+      "dependencies": [],
+      "description": "Follow docs/architecture.md (esp. §13) and docs/engineering.md — failing test first, smallest reasonable change, I/O at the edge, one execution path (no if-docker).\n\nTest: tests/config/test_isolation_spec.py\nAsserts: IsolationSpec validates all required fields (config_home_env, strict_mcp_flags, disable_ambient_env, disable_session_flags, disable_telemetry_env, ambient_files, requires_api_key_env, version_cmd); RunnerConfig rejects a missing isolation block; JSON schema export matches pydantic shape.\nBoundary: pure function / pydantic validation — no I/O.\nSetup: none.\nRun: pytest tests/config/test_isolation_spec.py -q\n\nImplement: Add IsolationSpec sub-model to RunnerConfig in src/copeca/config/models.py. Add JSON schema + validation. Do not modify the test file once written."
+    },
+    {
+      "id": "i002",
+      "title": "ISO-2 Bring-your-own-home provisioning (Lock 1 core)",
+      "status": "pending",
+      "traces_to": [
+        "c001"
+      ],
+      "dependencies": [
+        "i001"
+      ],
+      "description": "Follow docs/architecture.md (esp. §13) and docs/engineering.md — failing test first, smallest reasonable change, I/O at the edge, one execution path (no if-docker).\n\nTest: tests/orchestration/test_byo_home.py\nAsserts: every arm (baseline included) receives a fresh ephemeral HOME dir in the child env; the CLI config-home env var is set into that dir; baseline no longer returns an empty ArmHarness(); preflight raises if the provider API-key env is absent.\nBoundary: integration — real tempdir creation, real env dict assembly; no subprocess launch.\nSetup: mock the runner's requires_api_key_env with a seeded env.\nRun: pytest tests/orchestration/test_byo_home.py -q\n\nImplement: Modify src/copeca/orchestration/state.py to provision a per-run private HOME via the IsolationSpec and inject it + the CLI config-home env var into the child env. Add preflight assertion for API key presence. Do not modify the test file once written."
+    },
+    {
+      "id": "i003",
+      "title": "ISO-3 Claude isolation application",
+      "status": "pending",
+      "traces_to": [
+        "c002",
+        "c003",
+        "c004"
+      ],
+      "dependencies": [
+        "i001",
+        "i002"
+      ],
+      "description": "Follow docs/architecture.md (esp. §13) and docs/engineering.md — failing test first, smallest reasonable change, I/O at the edge, one execution path (no if-docker).\n\nTest: tests/runners/test_claude_isolation.py\nAsserts: the assembled claude command includes --strict-mcp-config; --no-session-persistence; CLAUDE_CODE_DISABLE_CLAUDE_MDS=1 in env; telemetry-off env; tool allowlist. Baseline has no --mcp-config. Tool arm has --mcp-config pointing at the declared server.\nBoundary: unit — assert the command list + env dict; no subprocess launch.\nSetup: load claude.yaml with isolation block.\nRun: pytest tests/runners/test_claude_isolation.py -q\n\nImplement: Add isolation block to src/copeca/data/defaults/runners/claude.yaml. Modify command-builder in src/copeca/runners/subprocess.py (or base.py) to read the descriptor and apply flags/env uniformly. Do not modify the test file once written."
+    },
+    {
+      "id": "i004",
+      "title": "ISO-4 Codex isolation",
+      "status": "pending",
+      "traces_to": [
+        "c002",
+        "c003",
+        "c004"
+      ],
+      "dependencies": [
+        "i001",
+        "i002"
+      ],
+      "description": "Follow docs/architecture.md (esp. §13) and docs/engineering.md — failing test first, smallest reasonable change, I/O at the edge, one execution path (no if-docker).\n\nTest: tests/runners/test_codex_isolation.py\nAsserts: CODEX_HOME points at the BYO-home dir; --ignore-user-config is in the command; --ephemeral is in the command; OPENAI_API_KEY is required in env; tool arm command carries -c mcp_servers flags for the declared server.\nBoundary: unit — command list + env dict; no subprocess launch.\nSetup: load codex.yaml with isolation block.\nRun: pytest tests/runners/test_codex_isolation.py -q\n\nImplement: Add isolation block to src/copeca/data/defaults/runners/codex.yaml. Wire into command-builder via the descriptor (absorbs old SD-L2 codex MCP arm task). Do not modify the test file once written."
+    },
+    {
+      "id": "i005",
+      "title": "ISO-5 Gemini runner + parser + isolation",
+      "status": "pending",
+      "traces_to": [
+        "c002",
+        "c003",
+        "c004"
+      ],
+      "dependencies": [
+        "i001",
+        "i002"
+      ],
+      "description": "Follow docs/architecture.md (esp. §13) and docs/engineering.md — failing test first, smallest reasonable change, I/O at the edge, one execution path (no if-docker).\n\nTest: tests/runners/test_gemini_isolation.py + tests/parsers/test_gemini_json.py\nAsserts: gemini command includes -p --output-format json --yolo; GEMINI_CLI_HOME set to BYO-home; --allowed-mcp-server-names present; GEMINI_CLI_TRUST_WORKSPACE=true in env. Tool arm writes mcpServers into settings.json under BYO-home/.gemini/ and allows by name. Parser extracts tokens from stats.models.*; cost_source=modeled.\nBoundary: unit for command/env; integration for parser (real gemini JSON fixture).\nSetup: fixture gemini output JSONL.\nRun: pytest tests/runners/test_gemini_isolation.py tests/parsers/test_gemini_json.py -q\n\nImplement: Create src/copeca/data/defaults/runners/gemini.yaml. Add gemini_json parser. Wire into command-builder via descriptor. Do not modify the test file once written."
+    },
+    {
+      "id": "i006",
+      "title": "ISO-6 Pre-run workdir ambient scan (Lock 2a)",
+      "status": "pending",
+      "traces_to": [
+        "c004"
+      ],
+      "dependencies": [
+        "i001"
+      ],
+      "description": "Follow docs/architecture.md (esp. §13) and docs/engineering.md — failing test first, smallest reasonable change, I/O at the edge, one execution path (no if-docker).\n\nTest: tests/orchestration/test_workdir_scan.py\nAsserts: a worktree containing CLAUDE.md with a CLI that cannot disable it causes CONTAMINATED_WORKDIR status; a worktree with CLAUDE.md and claude (which CAN disable it) passes the scan; empty worktree always passes.\nBoundary: integration — real tempdir with planted files.\nSetup: create temp worktree dirs with/without ambient files.\nRun: pytest tests/orchestration/test_workdir_scan.py -q\n\nImplement: Add pre-run workdir scan to src/copeca/orchestration/run.py reading ambient_files from the IsolationSpec. Refuse with CONTAMINATED_WORKDIR when a file exists that the CLI cannot disable. Do not modify the test file once written."
+    },
+    {
+      "id": "i007",
+      "title": "ISO-7 Post-hoc symmetric trace gate (Lock 2b)",
+      "status": "pending",
+      "traces_to": [
+        "c005"
+      ],
+      "dependencies": [],
+      "description": "Follow docs/architecture.md (esp. §13) and docs/engineering.md — failing test first, smallest reasonable change, I/O at the edge, one execution path (no if-docker).\n\nTest: tests/analysis/test_trace_gate.py\nAsserts: a JSONL where a baseline record's tool_calls intersects the tool-under-test set yields CONTAMINATED_TRACE status and is excluded from the delta; a clean JSONL passes and reports tool_adopted correctly.\nBoundary: unit — pure function over JSONL records; no subprocess.\nSetup: craft minimal JSONL fixtures: contaminated baseline record + clean baseline record.\nRun: pytest tests/analysis/test_trace_gate.py -q\n\nImplement: Add symmetric trace gate to src/copeca/analysis/ (new function or extend existing tool_adopted/tool-validity logic). Baseline tool_calls ∩ tool-under-test == ∅ else CONTAMINATED_TRACE; exclude from delta. Do not modify the test file once written."
+    },
+    {
+      "id": "i008",
+      "title": "ISO-8 Version provenance + multi-version preflight",
+      "status": "pending",
+      "traces_to": [
+        "c006"
+      ],
+      "dependencies": [
+        "i001"
+      ],
+      "description": "Follow docs/architecture.md (esp. §13) and docs/engineering.md — failing test first, smallest reasonable change, I/O at the edge, one execution path (no if-docker).\n\nTest: tests/orchestration/test_version_provenance.py\nAsserts: each result record includes tool_version and tool_path fields; preflight with two tilth binaries on PATH (0.9.0 + 1.0.0) emits a WARN multi-version message; tilth.yaml absolute path points at ~/.cargo/bin/tilth.\nBoundary: integration — real version_cmd subprocess call (mocked binary) + real result dict.\nSetup: two stub binaries on PATH returning different --version strings.\nRun: pytest tests/orchestration/test_version_provenance.py -q\n\nImplement: Read version_cmd from IsolationSpec in src/copeca/orchestration/run.py; record resolved version+path per result; add multi-version preflight warning; update src/copeca/data/defaults/modes/tilth.yaml to absolute ~/.cargo/bin/tilth. Do not modify the test file once written."
+    },
+    {
+      "id": "i009",
+      "title": "ISO-9 Per-CLI empirical isolation proof",
+      "status": "pending",
+      "traces_to": [
+        "c002"
+      ],
+      "dependencies": [
+        "i003",
+        "i004",
+        "i005",
+        "i006"
+      ],
+      "description": "Follow docs/architecture.md (esp. §13) and docs/engineering.md — failing test first, smallest reasonable change, I/O at the edge, one execution path (no if-docker).\n\nTest: tests/orchestration/test_isolation_clean_room.py\nAsserts: with a fake host config dir carrying an MCP stub server, a baseline run for each of claude/codex/gemini shows zero tool_calls to that server in the parsed trace. Closes findings.md §7 empirical uncertainties.\nBoundary: e2e — real CLI subprocess (or a minimal stub harness) against a real fake host config.\nSetup: create a fake ~/.claude.json / CODEX_HOME / GEMINI_CLI_HOME pointing at a stub MCP server; plant the path in the test env without touching the real host config.\nRun: pytest tests/orchestration/test_isolation_clean_room.py -q\n\nImplement: Capstone test only — no new production code expected if ISO-2/3/4/5/6 are correct. If the test fails, the gap is in the per-CLI descriptor (ISO-3/4/5). Do not modify the test file once written."
+    },
+    {
+      "id": "i010",
+      "title": "AUTH-1 Two isolation profiles: SUBSCRIPTION default + API-KEY opt-in",
+      "status": "done",
+      "description": "Renamed requires_api_key_env → api_key_env on IsolationSpec and all runner YAMLs. provision_arm selects profile by checking iso.api_key_env in os.environ: API-KEY profile creates private throwaway HOME and passes key through; SUBSCRIPTION profile (default) keeps host HOME so CLI subscription login works, and drops all provider key env vars (via ArmHarness.exclude_keys) so a stale key cannot shadow it. _build_child_env gains exclude param. docs/architecture.md §13.2 updated. All 857 tests green, ruff clean."
+    }
+  ]
 }
 </script>
 <!-- OO:DATA:END -->
@@ -4450,13 +4576,29 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
   function renderAudit(data) {
     var audit = data && data.audit;
     if (!audit || !isNonEmptyArray(audit.verdicts)) return '';
-    var counts = { pass: 0, partial: 0, fail: 0 };
+    var counts = { pass: 0, partial: 0, fail: 0, deferred: 0 };
     audit.verdicts.forEach(function (v) { if (counts[v.verdict] != null) counts[v.verdict]++; });
+    // Build result label: when deferred tail exists, show "verified · N deferred (reasons)"
+    var resultLabel = esc(audit.result || 'pending');
+    var deferredTail = '';
+    if (counts.deferred > 0) {
+      var deferredReasons = audit.verdicts
+        .filter(function (v) { return v.verdict === 'deferred'; })
+        .map(function (v) { return esc(v.deferred_reason || v.deferred_category || 'deferred'); })
+        .join(', ');
+      deferredTail = '<div class="journey-row"><span class="journey-row__key">deferred</span>' +
+        '<span class="journey-row__val">' + counts.deferred + ' deferred — ' + deferredReasons + '</span></div>';
+    }
+    var verdictsLine = counts.pass + ' pass';
+    if (counts.partial > 0) verdictsLine += ' · ' + counts.partial + ' partial';
+    if (counts.fail > 0) verdictsLine += ' · ' + counts.fail + ' fail';
+    if (counts.deferred > 0) verdictsLine += ' · ' + counts.deferred + ' deferred';
     var body = '<div class="detail-audit">' +
-      '<div class="journey-row"><span class="journey-row__key">result</span><span class="journey-row__val">' + esc(audit.result || 'pending') + '</span></div>' +
+      '<div class="journey-row"><span class="journey-row__key">result</span><span class="journey-row__val">' + resultLabel + '</span></div>' +
       '<div class="journey-row"><span class="journey-row__key">verdicts</span><span class="journey-row__val">' +
-        counts.pass + ' pass · ' + counts.partial + ' partial · ' + counts.fail + ' fail' +
+        verdictsLine +
       '</span></div>' +
+      deferredTail +
     '</div>';
     return railSection('audit', body, { collapsible: true });
   }
@@ -5050,6 +5192,98 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
     '</span>';
   }
 
+  // renderWhatMissingPanel(data, meta) — VR-6 "What's missing" decision panel.
+  //
+  // Garden main column ONLY. Reads health_snapshot.what_missing (a pure
+  // computed block from computeProjectHealth). Three signals:
+  //   1. Uncovered persona jobs — grouped by persona
+  //   2. Incomplete bets — N features missing ≥1 slot, linked by id
+  //   3. Unclaimed code — N source files owned by no feature
+  //
+  // Presence-driven: returns '' when no signal is present (no uncovered_intent,
+  // no incomplete_bets, no unclaimed_code), or when called on a feature page.
+  // NEVER shows red/error styling — calm, neutral, human-facing.
+  function renderWhatMissingPanel(data, meta) {
+    if (!meta || meta.kind !== 'garden') return '';
+    var snap = data && data.health_snapshot;
+    if (!snap) return '';
+    var wm = snap.what_missing;
+    if (!wm) return '';
+
+    // Determine if there is anything to show.
+    var hasIntent = isNonEmptyArray(wm.uncovered_intent);
+    var hasBets = wm.incomplete_bets > 0;
+    var hasCode = wm.unclaimed_code > 0;
+    if (!hasIntent && !hasBets && !hasCode) return '';
+
+    var html = '';
+
+    // 1. Uncovered persona jobs
+    if (hasIntent) {
+      var personaGroupsHtml = wm.uncovered_intent.map(function (pg) {
+        pg = pg || {};
+        var jobs = isNonEmptyArray(pg.uncovered_jobs) ? pg.uncovered_jobs : [];
+        var jobsHtml = jobs.map(function (job) {
+          return '<li class="whats-missing-tend__job">' + esc(String(job)) + '</li>';
+        }).join('');
+        return '<div class="whats-missing-tend__persona">' +
+          '<div class="whats-missing-tend__persona-name">' + esc(String(pg.persona_name || pg.persona_id || '')) + '</div>' +
+          '<ul class="whats-missing-tend__job-list">' + jobsHtml + '</ul>' +
+        '</div>';
+      }).join('');
+      html +=
+        '<div class="whats-missing-tend__section">' +
+        '<div class="whats-missing-tend__section-label">uncovered jobs</div>' +
+        personaGroupsHtml +
+        '</div>';
+    }
+
+    // 2. Incomplete bets
+    if (hasBets) {
+      var ids = isNonEmptyArray(wm.incomplete_bet_ids) ? wm.incomplete_bet_ids : [];
+      var linksHtml = ids.map(function (id) {
+        return '<a href="features/' + esc(String(id)) + '.tend.html" class="tend-link">' + esc(String(id)) + '</a>';
+      }).join('');
+      var moreCount = wm.incomplete_bets - ids.length;
+      var moreSuffix = moreCount > 0
+        ? '<span class="whats-missing-tend__bet-links"> +' + esc(String(moreCount)) + ' more</span>'
+        : '';
+      html +=
+        '<div class="whats-missing-tend__section">' +
+        '<div class="whats-missing-tend__section-label">incomplete bets</div>' +
+        '<div class="whats-missing-tend__bets-count">' +
+          esc(String(wm.incomplete_bets)) + ' feature' + (wm.incomplete_bets !== 1 ? 's' : '') + ' with empty slots' +
+        '</div>' +
+        '<div class="whats-missing-tend__bet-links">' + linksHtml + moreSuffix + '</div>' +
+        '</div>';
+    }
+
+    // 3. Unclaimed code
+    if (hasCode) {
+      var sample = isNonEmptyArray(wm.unclaimed_code_sample) ? wm.unclaimed_code_sample : [];
+      var sampleHtml = sample.map(function (p) {
+        return '<li class="whats-missing-tend__code-path">' + esc(String(p)) + '</li>';
+      }).join('');
+      var morePaths = wm.unclaimed_code - sample.length;
+      var morePathSuffix = morePaths > 0
+        ? '<li class="whats-missing-tend__code-path">&hellip;and ' + esc(String(morePaths)) + ' more</li>'
+        : '';
+      html +=
+        '<div class="whats-missing-tend__section">' +
+        '<div class="whats-missing-tend__section-label">unclaimed code</div>' +
+        '<div class="whats-missing-tend__code-count">' +
+          esc(String(wm.unclaimed_code)) + ' source file' + (wm.unclaimed_code !== 1 ? 's' : '') + ' owned by no feature' +
+        '</div>' +
+        '<ul class="whats-missing-tend__code-sample">' + sampleHtml + morePathSuffix + '</ul>' +
+        '</div>';
+    }
+
+    return '<section class="whats-missing-tend">' +
+      '<h2 class="whats-missing-tend__heading">What\'s missing</h2>' +
+      html +
+    '</section>';
+  }
+
   function renderPage(data, meta) {
     data = data || {};
     meta = meta || {};
@@ -5153,6 +5387,9 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
       mainBody +
       narrativeHtml +
       cardsHtml +
+      // Garden ONLY: "What's missing" decision panel (VR-6). Reads from
+      // health_snapshot.what_missing — never recomputes. Absent on feature pages.
+      (isGarden ? renderWhatMissingPanel(data, meta) : '') +
       (isGarden ? '' : renderDecisions(data)) +
       (isGarden ? '' : renderReferences(data));
 
@@ -5235,6 +5472,8 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
     eyebrowFor: eyebrowFor,
     renderEntityCard: renderEntityCard,
     renderEntityCardGrid: renderEntityCardGrid,
+    // VR-6 "What's missing" panel — exposed for unit tests:
+    renderWhatMissingPanel: renderWhatMissingPanel,
   };
 }));
 

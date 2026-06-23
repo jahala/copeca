@@ -18,7 +18,7 @@ them, it's architecturally wrong regardless of implementation quality.
 |---|---|---|
 | **Reproducible** | Same inputs → same outputs within stochastic bounds | Pinned commits, declared toolchains, per-arm isolation, `check-task` mutation validity |
 | **Verifiable** | Outputs carry their own proof of integrity | `.copeca` zips carry a SHA-256 integrity manifest; `copeca verify` checks single-artifact integrity and `copeca verify --batch --scenario` checks completeness (all expected runs present); cryptographic signing and external anchoring are planned |
-| **Isolated** | The instrument doesn't contaminate the measurement | Git worktrees, per-arm config dirs, allow-listed child environment (baseline inherits no ambient hooks) |
+| **Isolated** | The instrument doesn't contaminate the measurement, and doesn't touch the host | Per-item independent clones; a private throwaway HOME per run (zero host-config footprint); strict-MCP + ambient-instruction neutralization; allow-listed child environment; a post-hoc trace gate that proves the baseline used no tool-under-test (§13) |
 | **Comparable** | Numbers from different runs use the same methodology | Cost computed from tokens × one pricing source, same tasks/baseline/metric |
 | **Extensible** | New runners, parsers, modes, tasks without changing the core | YAML-driven config, ABC-based port/adapter boundaries, invoke_template escape hatch |
 
@@ -88,12 +88,16 @@ via architecture tests (import-linter or a simple grep in CI).
 **Ports (abstract interfaces):**
 - `runners/base.py:BaseRunner` — `run(command_spec) -> RunResult`
 - `runners/parsers/base.py:BaseParser` — `parse(stdout: str) -> RunResult`
-- `repos/manager.py:RepoManager` — clone, checkout, create_worktree, reset, remove_worktree
+- `repos/manager.py:RepoManager` — `create_worktree(repo_key, commit, uri, worktree_id) -> Path`,
+  `remove_worktree(clone_path) -> None`, `reset(worktree) -> None`, `setup(worktree, setup_command)`,
+  `build_mutation_history(worktree, steps)`, `verify_toolchain(repo_key)`
 
 **Adapters (concrete implementations):**
 - `runners/subprocess.py:SubprocessRunner` — spawns CLI agent as subprocess
 - `runners/parsers/stream_json.py` — built-in parser (Claude Code stream-json output)
-- `repos/manager.py:GitWorktreeManager` — git bare clone + worktree operations
+- `repos/manager.py:GitWorktreeManager` — bare-cache + per-item independent clone lifecycle:
+  `create_worktree` clones the bare cache with `--no-hardlinks` (independent object store,
+  lockless concurrency); `remove_worktree` deletes the clone via `shutil.rmtree`
 
 Additional parsers (for other CLI agents) are planned; the extension point is
 `runners/parsers/base.py:BaseParser`.
@@ -315,13 +319,18 @@ or "guidelines" — they are the definition of what copeca IS.
    vendor's self-report (a large divergence flags possible misreporting). When no
    vendor cost is reported, computed is the fallback (`cost_source = "modeled"`).
 
-3. **The baseline must be clean.** Every A/B comparison must run baseline with
-   its own config dir, its own env, and zero inherited hooks. The subprocess
-   runner builds the child environment from an explicit allowlist (infra vars,
-   locale, and provider credentials only); everything else — `CLAUDECODE`,
-   `CLAUDE_*`, `MCP_*`, and arbitrary ambient hooks — is excluded. Experimental
-   mode env is merged on top via `provision_arm`, so only declared vars reach
-   the experimental child.
+3. **The baseline must be clean — and proven clean.** Every run executes in a
+   clean room (§13): a private throwaway HOME so no host CLI config
+   (`~/.claude.json`, `~/.codex/`, `~/.gemini/`) is read, written, or left
+   behind; only copeca's declared MCP servers (baseline: none) via the CLI's
+   strict-MCP mechanism; ambient instruction files (`CLAUDE.md`/`AGENTS.md`/
+   `GEMINI.md`) neutralized; session and telemetry off; the child environment
+   built from an explicit allowlist (everything else — `CLAUDECODE`, `CLAUDE_*`,
+   `MCP_*`, ambient hooks — excluded); experimental mode env merged on top via
+   `provision_arm` so only declared vars reach the experimental child.
+   Prevention is backed by detection: a post-hoc symmetric trace gate fails any
+   baseline that used the tool-under-test, so a contaminated A/B can never be
+   silently reported.
 
 4. **One execution path.** There is no `if docker:` branch. If Docker execution
    is added later, it replaces the subprocess execution path — it doesn't sit
@@ -352,7 +361,7 @@ is not.
 
 | Non-feature | Why not |
 |---|---|
-| **Code execution sandbox (Docker)** | One execution path. Git worktrees provide sufficient isolation for the trust model (pinned repos, known commits). Docker would add a mode flag, create two result types, and break comparability. If isolation needs increase, Docker replaces subprocess — it doesn't join it. |
+| **Code execution sandbox (Docker)** | One execution path. Config isolation is solved without it: a private per-run HOME (§13) gives zero host-config footprint, and the post-hoc trace gate proves no tool leaked — a stronger "no tool leaked" check than a container, which only isolates the filesystem. Docker would also force the tool-under-test into an image (you'd measure the in-image build, not the local one you're iterating on), add a mode flag, and create two result types. Its real value (hermetic toolchains, untrusted-code blast radius) is a separate, future concern; if added, it replaces subprocess — it doesn't join it. |
 | **Multi-episode / stateful tasks** | Cross-session state breaks the isolation model. Memory tools (mem0, Letta, Graphiti) need persistent stores across sessions — external databases, file systems, services. Adding them would require docker-compose fixtures, state snapshot/restore, and a fundamentally different correctness model. The memory space already has dedicated benchmarks (LoCoMo, LongMemEval). Explicitly out of scope. |
 | **LLM judge for correctness** | Non-deterministic (breaks reproducibility), self-preferring (a Claude judge favors Claude outputs), rewards verbosity (the exact pattern `talkative_failure` exists to catch). Allowed only for post-hoc failure analysis and authoring-time audits — never in the scoring path. |
 | **Web dashboard** | Not architecture — deployment. The artifact model and JSONL format already support it. A web layer that ingests .copeca zips and renders leaderboards is a deployment concern, not a core architecture change. |
@@ -448,3 +457,130 @@ of their personal copeca settings.
 | **No async** | Copeca is I/O-bound on subprocesses, not on concurrent connections. The worker pool uses `concurrent.futures.ThreadPoolExecutor`; each thread spawns its own subprocess, so process-level isolation comes from the subprocesses, not the threading model. Async adds complexity without benefit. |
 | **No database** | JSONL is the canonical data store. It's append-only, human-readable, `jq`-queryable, and trivially version-controlled. A database would add a schema migration problem for a write-once-read-many workload. |
 | **No web framework** | Copeca's API is its CLI. A web layer (leaderboard, dashboard) consumes JSONL + .copeca zips; it doesn't need to be in the same process or even the same repository. |
+
+---
+
+## 13. Cross-CLI isolation: the clean room
+
+copeca benchmarks multiple agent CLIs (Claude Code, Codex, Gemini CLI; more as
+data-only descriptors later). The A/B is valid only if **every run receives
+exactly the tools/MCP/instructions copeca declares — and nothing from the host.**
+That holds across vendors via one contract, two enforcement locks, and one data
+descriptor per CLI. Research backing this section:
+`docs/research/cross-cli-isolation/findings.md`.
+
+### 13.1 The isolation contract (nine dimensions)
+
+Every run, every CLI, controls these. Vendor-neutral; §13.4 is how each CLI
+satisfies them.
+
+| Dimension | What must hold |
+|---|---|
+| Config root | CLI reads settings/auth/MCP/sessions from a fresh empty dir, not the host |
+| MCP servers | exactly copeca's declared set; baseline = none |
+| Ambient instructions | no `CLAUDE.md`/`AGENTS.md`/`GEMINI.md` reaches the agent |
+| Tool allowlist | only the declared built-in tools |
+| Session / state | no carryover between runs |
+| Working dir | fresh checkout at the pinned commit |
+| Model | pinned via flag every invocation |
+| Environment | scrubbed allowlist; no ambient keys/hooks |
+| Telemetry / auto-update | no side-channel noise; no mid-run binary change |
+
+### 13.2 Lock 1 — Prevention: isolation profiles
+
+copeca selects one of two isolation profiles per run, based on whether the
+runner's `api_key_env` variable is present in the host environment.
+
+#### API-KEY profile (opt-in, for metered/CI use)
+
+Activated when `api_key_env` is set in the runner descriptor **and** the named
+env var (`ANTHROPIC_API_KEY` / `OPENAI_API_KEY` / `GEMINI_API_KEY`) is present
+in the host environment.
+
+**copeca never reads, writes, copies, or mutates any host CLI config.** The run
+gets a private, throwaway `HOME` (and the CLI's config-home env var) pointed into
+a per-run temp dir copeca owns and tears down with the worktree. The CLI resolves
+every `~/`-relative config path into that dir, so the real `~/.claude.json`,
+`~/.codex/`, `~/.gemini/` are never touched — nothing leaks in, nothing is left
+behind. Auth comes from the API key, which passes through to the child env.
+
+#### SUBSCRIPTION profile (default, for local/developer use)
+
+Activated when `api_key_env` is absent in the runner descriptor OR the named env
+var is not present in the host environment.
+
+The host `HOME` is **not** redirected — the CLI's existing subscription login is
+used as-is. Only the flag/env neutralizers are applied (see below). Critically,
+**all provider key env vars are dropped from the child env** (`ANTHROPIC_API_KEY`,
+`ANTHROPIC_AUTH_TOKEN`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, `GOOGLE_API_KEY`) so
+a stale or expired key cannot shadow the subscription login and cause billing
+errors or silent auth failures.
+
+Lock 2 (§13.3, the post-hoc symmetric trace gate) guarantees A/B validity in
+subscription mode: because both baseline and tool arm run with identical host
+settings, any ambient influence is symmetric and cancels in the delta.
+
+#### Neutralizers applied in both profiles
+
+**Strict-MCP** (baseline none; tool arm exactly the declared set),
+**ambient-instruction neutralization**, **session-off**, **telemetry-off**,
+and the **tool allowlist**.
+
+### 13.3 Lock 2 — Detection: prove it after the fact
+
+Prevention can have per-CLI gaps (Gemini and Codex lack a single strict-MCP flag).
+Two vendor-neutral checks read ground truth, not config:
+
+- **Pre-run workdir scan** — refuse the run (`CONTAMINATED_WORKDIR`) if the
+  worktree tree contains ambient instruction files copeca cannot disable for that
+  CLI.
+- **Post-hoc symmetric trace gate** — after parsing the trace: baseline
+  `tool_calls ∩ tool-under-test == ∅` else `CONTAMINATED_TRACE` (excluded from the
+  delta); the tool arm must have used the tool (`tool_adopted`). Because it reads
+  the parsed trace, it catches leaks on **any** CLI — it is the guard that would
+  have caught the contamination incident, and it is why the deliberate no-Docker
+  choice (invariant 4, §8) holds.
+
+### 13.4 The per-CLI descriptor (data, not code)
+
+Each runner YAML carries an `isolation:` block — the data the orchestrator reads
+to apply the contract uniformly, with **no per-CLI branches** in the engine
+(invariant 4).
+
+```yaml
+isolation:
+  config_home_env: CLAUDE_CONFIG_DIR        # set alongside HOME, into the per-run dir
+  strict_mcp_flags: [--strict-mcp-config]   # baseline: applied with no --mcp-config
+  disable_ambient_env: { CLAUDE_CODE_DISABLE_CLAUDE_MDS: "1" }
+  disable_session_flags: [--no-session-persistence]
+  disable_telemetry_env: { CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: "1" }
+  ambient_files: [CLAUDE.md, CLAUDE.local.md]   # for the pre-run workdir scan
+  api_key_env: ANTHROPIC_API_KEY                # present in host env → API-KEY profile
+  version_cmd: [claude, --version]              # provenance
+```
+
+Lock-1 summary per shipped CLI:
+
+| CLI | private home (API-KEY profile) | strict-MCP (baseline=none) | ambient off | session off | api_key_env |
+|---|---|---|---|---|---|
+| Claude Code | `HOME` + `CLAUDE_CONFIG_DIR` | `--strict-mcp-config` | `CLAUDE_CODE_DISABLE_CLAUDE_MDS=1` | `--no-session-persistence` | `ANTHROPIC_API_KEY` |
+| Codex | `HOME` + `CODEX_HOME` | `--ignore-user-config` | fresh home + workdir scan (`AGENTS.md`) | `--ephemeral` | `OPENAI_API_KEY` |
+| Gemini CLI | `HOME` + `GEMINI_CLI_HOME` | `--allowed-mcp-server-names` (none) | `context.fileName` override + workdir scan (`GEMINI.md`) | fresh `--session-id` | `GEMINI_API_KEY` |
+
+The tool arm injects MCP per CLI: Claude `--mcp-config <file>`; Codex repeated
+`-c mcp_servers.<name>...`; Gemini writes `mcpServers` into the scoped
+`settings.json` inside its private home, then allows it by name.
+
+### 13.5 Version provenance
+
+Each record stores the resolved tool-under-test version + path (the descriptor's
+`version_cmd`). A preflight detects multiple installed versions of the tool and
+warns (the homebrew-0.9.0-vs-cargo-1.0.0 trap that voided an early run). "Which
+version was tested?" is always answerable from the artifact.
+
+### 13.6 Scope
+
+Claude Code, Codex, and Gemini CLI are implemented and **empirically verified** —
+a baseline run against a host config that carries an MCP server must show zero use
+of it. Cline, Goose, Copilot CLI, Amp, and aider are data-only descriptors added
+on demand. OpenCode is deferred (config-merge + cost-event bugs; see findings.md).

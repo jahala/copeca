@@ -65,6 +65,37 @@ fails loudly (exit 2); an unknown `parser` name fails loudly too.
   CLIs without a config-dir concept.
 - **`parser`** — The name of the output parser (see Parser registry below). The
   named parser must be built, or `build_runner` raises.
+- **`isolation`** — Per-CLI clean-room descriptor (architecture §13.4). An
+  optional sub-block; omitting it yields safe empty defaults. All sub-fields are
+  optional:
+
+  | Sub-field | Type | Description |
+  |---|---|---|
+  | `config_home_env` | `str \| null` | Env var pointing at the per-run private config home (`CLAUDE_CONFIG_DIR` / `CODEX_HOME` / `GEMINI_CLI_HOME`). |
+  | `strict_mcp_flags` | `list[str]` | Flags that force "only my MCP" (claude: `--strict-mcp-config`; codex: `--ignore-user-config`; gemini: `--allowed-mcp-server-names`). Default: `[]`. |
+  | `disable_ambient_env` | `dict[str, str]` | Env vars that neutralize ambient instruction files (e.g. `{CLAUDE_CODE_DISABLE_CLAUDE_MDS: "1"}`). Default: `{}`. |
+  | `disable_session_flags` | `list[str]` | Flags that disable session persistence (e.g. `[--no-session-persistence]` / `[--ephemeral]`). Default: `[]`. |
+  | `disable_telemetry_env` | `dict[str, str]` | Env vars that disable telemetry / nonessential traffic (e.g. `{CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: "1"}`). Default: `{}`. |
+  | `ambient_files` | `list[str]` | File names to scan for in the pre-run workdir (`CLAUDE.md` / `AGENTS.md` / `GEMINI.md`). Default: `[]`. |
+  | `api_key_env` | `str \| null` | Names the provider API-key env var. Its **presence** in the environment selects the API-KEY profile (private home + metered key passes through); **absence** selects the SUBSCRIPTION profile (default — host login, provider keys dropped from the child env). See architecture §13.2. |
+  | `version_cmd` | `list[str]` | Command to resolve the CLI/tool version for provenance (e.g. `[claude, --version]`). Default: `[]`. |
+
+  Example (Claude Code):
+  ```yaml
+  isolation:
+    config_home_env: CLAUDE_CONFIG_DIR
+    strict_mcp_flags: [--strict-mcp-config]
+    disable_ambient_env: { CLAUDE_CODE_DISABLE_CLAUDE_MDS: "1" }
+    disable_session_flags: [--no-session-persistence]
+    disable_telemetry_env: { CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: "1" }
+    ambient_files: [CLAUDE.md, CLAUDE.local.md]
+    api_key_env: ANTHROPIC_API_KEY            # present → API-KEY profile; absent → SUBSCRIPTION (default)
+    version_cmd: [claude, --version]
+  ```
+
+  Validated by the `IsolationSpec` Pydantic model at load time — no separate
+  JSON schema exists for runner configs (Pydantic is the validator, per
+  engineering.md §12).
 
 ---
 

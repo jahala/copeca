@@ -229,19 +229,18 @@ class TestWorktreeConcurrency:
             _rmtree_workaround(p)
 
     def test_worktree_path_keyed_per_work_item(self, tmp_path: Path, test_repo: Path) -> None:
-        """Worktree path embeds the worktree_id discriminator, not just the repo key.
+        """Clone path embeds the worktree_id discriminator, not just the repo key.
 
-        Two sequential calls with different IDs must produce different paths;
-        the discriminator must appear in the path so the caller can predict it.
+        Two calls with different IDs must produce different paths; the
+        discriminator must appear in the path so the caller can predict it.
+        With independent clones, the two calls are fully independent — no
+        reset or serialisation is required between them.
         """
         mgr = GitWorktreeManager(repos_dir=tmp_path / "repos")
 
         wt_a = mgr.create_worktree(
             "test-repo", commit=None, uri=str(test_repo), worktree_id="mode-a_rep0"
         )
-        # Reset so the same repo can issue a second worktree.
-        mgr.reset(wt_a)
-
         wt_b = mgr.create_worktree(
             "test-repo", commit=None, uri=str(test_repo), worktree_id="mode-b_rep0"
         )

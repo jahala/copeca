@@ -262,7 +262,6 @@ def test_full_pipeline(
         runner_factory=_make_runner,
         repo_mgr=repo_mgr,
         repos=repos,
-        results_path=None,
         max_workers=1,  # sequential — deterministic ordering
         pricing=pricing,
         mode_defs=mode_defs,
@@ -377,7 +376,6 @@ def test_cli_artifact_path_builds_one_per_matrix_record(
         runner_factory=_make_runner,
         repo_mgr=repo_mgr,
         repos=repos,
-        results_path=None,
         max_workers=1,
         pricing={MODEL: PRICING},
         mode_defs=mode_defs,

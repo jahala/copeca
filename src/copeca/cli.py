@@ -138,6 +138,7 @@ def build_runner(
         mcp_via_config_overrides=cfg.mcp_via_config_overrides,
         parser=get_parser(cfg.parser),
         config_dir_env=cfg.config_dir_env,
+        isolation=cfg.isolation,
     )
 
 
@@ -424,25 +425,54 @@ def run(
             f"{scenario.repetitions} rep(s) = {total_runs} total runs"
         )
 
-        records = run_matrix(
-            scenario=scenario,
-            tasks=loaded_tasks,
-            modes=scenario.modes,
-            runner_factory=lambda mode_name, model_name: build_runner(
-                runner, timeout=timeout, runner_dirs=runner_dirs
-            ),
-            repo_mgr=repo_mgr,
-            repos=repos,
-            results_path=results_path,
-            max_workers=scenario.max_workers,
-            pricing=pricing,
-            mode_defs=mode_defs,
-            keep_worktrees=keep_worktrees,
-        )
+        # Fresh results file per run — truncate so re-running the same scenario name does
+        # not append onto (and mix with) a previous run's records.
+        results_dir.mkdir(parents=True, exist_ok=True)
+        results_path.write_text("")
 
-        for record in records:
+        # Stream each record to disk AS it completes — crash-safe + live partial stats.
+        # I/O lives here at the CLI boundary; run_matrix stays I/O-free (architecture.md §7.8).
+        def _persist(record: dict) -> None:
             append_jsonl(record, results_path)
             emit_vendor_divergence_warning(extract_vendor_divergence_warning(record))
+
+        # Interrupt handling (RUN-E): on SIGINT/SIGTERM, stop dispatching new work and
+        # group-kill in-flight agents — the run leaves no orphaned agent/MCP-server
+        # processes, and completed records are already on disk (streamed via _persist).
+        import signal as _signal
+
+        from copeca.orchestration.run import request_abort
+        from copeca.runners.subprocess import terminate_active_process_groups
+
+        def _on_interrupt(signum: int, frame: object) -> None:  # noqa: ARG001
+            typer.echo(
+                "\n⚠ Interrupted — stopping new work and killing in-flight agents...",
+                err=True,
+            )
+            request_abort()
+            terminate_active_process_groups(_signal.SIGKILL)
+
+        _prev_int = _signal.signal(_signal.SIGINT, _on_interrupt)
+        _prev_term = _signal.signal(_signal.SIGTERM, _on_interrupt)
+        try:
+            records = run_matrix(
+                scenario=scenario,
+                tasks=loaded_tasks,
+                modes=scenario.modes,
+                runner_factory=lambda mode_name, model_name: build_runner(
+                    runner, timeout=timeout, runner_dirs=runner_dirs
+                ),
+                repo_mgr=repo_mgr,
+                repos=repos,
+                on_record=_persist,
+                max_workers=scenario.max_workers,
+                pricing=pricing,
+                mode_defs=mode_defs,
+                keep_worktrees=keep_worktrees,
+            )
+        finally:
+            _signal.signal(_signal.SIGINT, _prev_int)
+            _signal.signal(_signal.SIGTERM, _prev_term)
 
         if artifacts:
             task_by_name = {t.name: t for t in loaded_tasks}

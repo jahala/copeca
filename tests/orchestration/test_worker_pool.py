@@ -1,6 +1,9 @@
 """Test the matrix runner — tasks x modes x repetitions produce correct cardinality."""
 
+import json
 from pathlib import Path
+
+import pytest
 
 from copeca.config.models import (
     Category,
@@ -12,6 +15,7 @@ from copeca.config.models import (
     TaskType,
 )
 from copeca.orchestration.run import run_matrix
+from copeca.results.writer import append_jsonl
 from copeca.runners.parsers.base import RunResult
 from copeca.runners.subprocess import SubprocessRunner
 
@@ -44,6 +48,7 @@ class StubRepoManager:
         self.worktrees_created: list[Path] = []
         self.setups_called = 0
         self.resets_called = 0
+        self.removes_called = 0
 
     def verify_toolchain(self, repo_key: str) -> None:
         pass
@@ -60,6 +65,9 @@ class StubRepoManager:
 
     def reset(self, worktree: Path) -> None:
         self.resets_called += 1
+
+    def remove_worktree(self, worktree: Path) -> None:
+        self.removes_called += 1
 
 
 def _make_task(name: str, repo: str = "test-repo") -> Task:
@@ -124,7 +132,6 @@ class TestMatrixCardinality:
             return _make_runner()
 
         repo_mgr = StubRepoManager(tmp_path)
-        results_path = tmp_path / "results.jsonl"
 
         records = run_matrix(
             scenario=scenario,
@@ -132,7 +139,6 @@ class TestMatrixCardinality:
             modes=scenario.modes,
             runner_factory=runner_factory,
             repo_mgr=repo_mgr,
-            results_path=results_path,
             max_workers=1,
         )
 
@@ -153,7 +159,6 @@ class TestMatrixCardinality:
             return _make_runner()
 
         repo_mgr = StubRepoManager(tmp_path)
-        results_path = tmp_path / "results.jsonl"
 
         records = run_matrix(
             scenario=scenario,
@@ -161,7 +166,6 @@ class TestMatrixCardinality:
             modes=scenario.modes,
             runner_factory=runner_factory,
             repo_mgr=repo_mgr,
-            results_path=results_path,
             max_workers=1,
         )
 
@@ -182,7 +186,6 @@ class TestMatrixCardinality:
             return _make_runner()
 
         repo_mgr = StubRepoManager(tmp_path)
-        results_path = tmp_path / "results.jsonl"
 
         records = run_matrix(
             scenario=scenario,
@@ -190,7 +193,6 @@ class TestMatrixCardinality:
             modes=scenario.modes,
             runner_factory=runner_factory,
             repo_mgr=repo_mgr,
-            results_path=results_path,
             max_workers=1,
         )
 
@@ -218,7 +220,6 @@ class TestConcurrentExecution:
             return _make_runner()
 
         repo_mgr = StubRepoManager(tmp_path)
-        results_path = tmp_path / "results.jsonl"
 
         records = run_matrix(
             scenario=scenario,
@@ -226,7 +227,6 @@ class TestConcurrentExecution:
             modes=scenario.modes,
             runner_factory=runner_factory,
             repo_mgr=repo_mgr,
-            results_path=results_path,
             max_workers=2,
         )
 
@@ -250,7 +250,6 @@ class TestConcurrentExecution:
             return _make_runner()
 
         repo_mgr = StubRepoManager(tmp_path)
-        results_path = tmp_path / "results.jsonl"
 
         records = run_matrix(
             scenario=scenario,
@@ -258,7 +257,6 @@ class TestConcurrentExecution:
             modes=scenario.modes,
             runner_factory=runner_factory,
             repo_mgr=repo_mgr,
-            results_path=results_path,
             max_workers=1,
         )
 
@@ -282,7 +280,6 @@ class TestMatrixFailureIsolation:
             repetitions=1,
         )
         repo_mgr = StubRepoManager(tmp_path)
-        results_path = tmp_path / "results.jsonl"
 
         # Runner factory: a runner whose run() will fail for the bad task
         class FailingRunner:
@@ -294,7 +291,7 @@ class TestMatrixFailureIsolation:
             def build_command(self, model, prompt, **kwargs):
                 return ["echo", prompt]
 
-            def run(self, command, cwd=None, env=None):
+            def run(self, command, cwd=None, env=None, exclude=None):
                 self._commands.append(command)
                 if self._fail_on in command[1]:
                     raise RuntimeError("simulated runner failure")
@@ -313,7 +310,6 @@ class TestMatrixFailureIsolation:
             modes=scenario.modes,
             runner_factory=runner_factory,
             repo_mgr=repo_mgr,
-            results_path=results_path,
             max_workers=1,
         )
 
@@ -346,7 +342,6 @@ class TestMatrixErrorPaths:
             return _make_runner()
 
         repo_mgr = StubRepoManager(tmp_path)
-        results_path = tmp_path / "results.jsonl"
 
         records = run_matrix(
             scenario=scenario,
@@ -354,7 +349,6 @@ class TestMatrixErrorPaths:
             modes=scenario.modes,
             runner_factory=runner_factory,
             repo_mgr=repo_mgr,
-            results_path=results_path,
             max_workers=1,
         )
 
@@ -375,7 +369,6 @@ class TestMatrixErrorPaths:
             return _make_runner()
 
         repo_mgr = StubRepoManager(tmp_path)
-        results_path = tmp_path / "results.jsonl"
 
         # Pricing dict exists but model="test-model" is NOT in it
         pricing = {
@@ -393,7 +386,6 @@ class TestMatrixErrorPaths:
             modes=scenario.modes,
             runner_factory=runner_factory,
             repo_mgr=repo_mgr,
-            results_path=results_path,
             max_workers=1,
             pricing=pricing,
         )
@@ -417,7 +409,6 @@ class TestMatrixErrorPaths:
             return _make_runner()
 
         repo_mgr = StubRepoManager(tmp_path)
-        results_path = tmp_path / "results.jsonl"
 
         records = run_matrix(
             scenario=scenario,
@@ -425,8 +416,130 @@ class TestMatrixErrorPaths:
             modes=scenario.modes,
             runner_factory=runner_factory,
             repo_mgr=repo_mgr,
-            results_path=results_path,
             max_workers=1,
         )
 
         assert len(records) == 0
+
+
+class TestStreamingPersistence:
+    """RUN-A: run_matrix streams each record to an injected sink as it completes."""
+
+    def test_matrix_streams_each_record_to_sink(self, tmp_path):
+        """run_matrix hands each record to on_record as it completes, not batched at the end."""
+        tasks = {"task_a": _make_task("task_a"), "task_b": _make_task("task_b")}
+        scenario = _make_scenario(tasks=["task_a", "task_b"], modes=["baseline"], repetitions=1)
+
+        def runner_factory(mode, model):
+            return _make_runner()
+
+        repo_mgr = StubRepoManager(tmp_path)
+        seen: list[str] = []
+
+        records = run_matrix(
+            scenario=scenario,
+            tasks=list(tasks.values()),
+            modes=scenario.modes,
+            runner_factory=runner_factory,
+            repo_mgr=repo_mgr,
+            max_workers=1,
+            on_record=lambda r: seen.append(r["task"]),
+        )
+
+        assert sorted(seen) == ["task_a", "task_b"]  # the sink saw every record
+        assert len(records) == 2  # and the returned list is unchanged
+
+    def test_matrix_persisted_records_survive_mid_run_interruption(self, tmp_path):
+        """A sink that raises mid-run (a simulated Ctrl-C) leaves already-completed records on disk.
+
+        The crash-safety guarantee: records stream to disk as they complete, so an interrupted
+        run keeps its finished work instead of losing the whole in-memory batch.
+        """
+        tasks = {
+            "task_a": _make_task("task_a"),
+            "task_b": _make_task("task_b"),
+            "task_c": _make_task("task_c"),
+        }
+        scenario = _make_scenario(
+            tasks=["task_a", "task_b", "task_c"], modes=["baseline"], repetitions=1
+        )
+
+        def runner_factory(mode, model):
+            return _make_runner()
+
+        repo_mgr = StubRepoManager(tmp_path)
+        out = tmp_path / "stream.jsonl"
+        calls = {"n": 0}
+
+        def sink(record):
+            calls["n"] += 1
+            if calls["n"] == 2:
+                raise KeyboardInterrupt("simulated interrupt mid-run")
+            append_jsonl(record, out)
+
+        with pytest.raises(KeyboardInterrupt):
+            run_matrix(
+                scenario=scenario,
+                tasks=list(tasks.values()),
+                modes=scenario.modes,
+                runner_factory=runner_factory,
+                repo_mgr=repo_mgr,
+                max_workers=1,
+                on_record=sink,
+            )
+
+        lines = out.read_text().splitlines() if out.exists() else []
+        assert (
+            len(lines) == 1
+        )  # exactly the pre-interrupt record persisted — nothing lost in a buffer
+        assert json.loads(lines[0])["task"] == "task_a"  # the first completed record
+
+
+class TestInterruption:
+    """RUN-E: the abort flag stops new work items without spawning agents."""
+
+    def test_abort_flag_api(self):
+        from copeca.orchestration.run import abort_requested, clear_abort, request_abort
+
+        clear_abort()
+        assert abort_requested() is False
+        request_abort()
+        assert abort_requested() is True
+        clear_abort()
+        assert abort_requested() is False
+
+    def test_work_item_bails_before_spawning_when_aborted(self, tmp_path):
+        """When aborted, _run_one_work_item raises BEFORE building a runner — no agent spawns.
+
+        DISCRIMINATES: asserts runner_factory was never called, so an interrupted run
+        cannot launch new agents for queued work.
+        """
+        from copeca.orchestration.run import _run_one_work_item, clear_abort, request_abort
+
+        scenario = _make_scenario(tasks=["task_a"], modes=["baseline"], repetitions=1)
+        item = {
+            "task": _make_task("task_a"),
+            "task_name": "task_a",
+            "mode_name": "baseline",
+            "model": "test-model",
+            "rep": 0,
+            "repo_uri": None,
+            "repo_commit": None,
+            "mode_obj": None,
+        }
+        factory_calls: list[tuple] = []
+
+        def runner_factory(mode, model):
+            factory_calls.append((mode, model))
+            return _make_runner()
+
+        clear_abort()
+        request_abort()
+        try:
+            with pytest.raises(RuntimeError, match="interrupt"):
+                _run_one_work_item(
+                    item, runner_factory, StubRepoManager(tmp_path), scenario, None, False
+                )
+            assert factory_calls == []  # bailed before building a runner / spawning an agent
+        finally:
+            clear_abort()

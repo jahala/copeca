@@ -38,6 +38,9 @@ class _RecordingMgr:
     def reset(self, worktree):
         pass
 
+    def remove_worktree(self, worktree):
+        pass
+
 
 class _StubRunner:
     name = "stub"
@@ -46,7 +49,7 @@ class _StubRunner:
     def build_command(self, **kwargs):
         return ["echo", "hi"]
 
-    def run(self, command, cwd=None, env=None):
+    def run(self, command, cwd=None, env=None, exclude=None):
         return RunResult(result_text="answer x", total_cost_usd=0.0, duration_ms=1)
 
 

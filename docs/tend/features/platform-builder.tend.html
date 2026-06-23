@@ -2647,7 +2647,7 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
           "platform-builder"
         ],
         "journey_phase": "calibrate",
-        "what": "Full matrix runner — `copeca run scenarios/my.yaml` executes tasks × modes × models × repetitions with parallel git-worktree-isolated workers, configurable adversarial thresholds, and scenario-level v",
+        "what": "Full matrix runner — `copeca run scenarios/my.yaml` executes the tasks × modes × models × repetitions matrix, each work-item in its OWN isolated clone, streaming every result to disk as it completes, ",
         "thumbnail": {
           "kind": "svg",
           "content": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 200 120\" fill=\"none\">\n  <rect width=\"200\" height=\"120\" rx=\"8\" fill=\"#FAF5E9\"/>\n  <g transform=\"translate(35,25)\">\n    <rect x=\"0\" y=\"0\" width=\"36\" height=\"18\" rx=\"2\" fill=\"#357E2C\" opacity=\"0.12\"/>\n    <rect x=\"42\" y=\"0\" width=\"36\" height=\"18\" rx=\"2\" fill=\"#357E2C\" opacity=\"0.12\"/>\n    <rect x=\"84\" y=\"0\" width=\"36\" height=\"18\" rx=\"2\" fill=\"#357E2C\" opacity=\"0.12\"/>\n    <rect x=\"0\" y=\"24\" width=\"36\" height=\"18\" rx=\"2\" fill=\"#E89227\" opacity=\"0.18\"/>\n    <rect x=\"42\" y=\"24\" width=\"36\" height=\"18\" rx=\"2\" fill=\"#E89227\" opacity=\"0.18\"/>\n    <rect x=\"84\" y=\"24\" width=\"36\" height=\"18\" rx=\"2\" fill=\"#E89227\" opacity=\"0.18\"/>\n    <rect x=\"0\" y=\"48\" width=\"36\" height=\"18\" rx=\"2\" fill=\"#3F7186\" opacity=\"0.12\"/>\n    <rect x=\"42\" y=\"48\" width=\"36\" height=\"18\" rx=\"2\" fill=\"#3F7186\" opacity=\"0.12\"/>\n    <rect x=\"84\" y=\"48\" width=\"36\" height=\"18\" rx=\"2\" fill=\"#3F7186\" opacity=\"0.12\"/>\n  </g>\n  <text x=\"100\" y=\"100\" text-anchor=\"middle\" font-family=\"system-ui, sans-serif\" font-size=\"9\" fill=\"#3A2718\" font-weight=\"600\">SCENARIO</text>\n</svg>"
@@ -2677,6 +2677,29 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
           "kind": "svg",
           "content": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 200 120\" fill=\"none\">\n  <rect width=\"200\" height=\"120\" rx=\"8\" fill=\"#FAF5E9\"/>\n  <g transform=\"translate(20,35)\">\n    <rect x=\"0\" y=\"0\" width=\"14\" height=\"50\" rx=\"3\" fill=\"#357E2C\" opacity=\"0.15\"/>\n    <rect x=\"26\" y=\"0\" width=\"14\" height=\"50\" rx=\"3\" fill=\"#357E2C\" opacity=\"0.15\"/>\n    <rect x=\"52\" y=\"0\" width=\"14\" height=\"50\" rx=\"3\" fill=\"#E89227\" opacity=\"0.3\"/>\n    <rect x=\"78\" y=\"0\" width=\"14\" height=\"50\" rx=\"3\" fill=\"#E89227\" opacity=\"0.3\"/>\n    <rect x=\"104\" y=\"0\" width=\"14\" height=\"50\" rx=\"3\" fill=\"#357E2C\" opacity=\"0.15\"/>\n    <rect x=\"130\" y=\"0\" width=\"14\" height=\"50\" rx=\"3\" fill=\"#E89227\" opacity=\"0.3\"/>\n  </g>\n  <path d=\"M40,60 L52,60\" stroke=\"#3F7186\" stroke-width=\"2\"/>\n  <path d=\"M66,60 L78,60\" stroke=\"#3F7186\" stroke-width=\"2\"/>\n  <path d=\"M92,60 L104,60\" stroke=\"#3F7186\" stroke-width=\"2\"/>\n  <path d=\"M118,60 L130,60\" stroke=\"#3F7186\" stroke-width=\"2\"/>\n  <circle cx=\"46\" cy=\"60\" r=\"2\" fill=\"#3F7186\"/>\n  <circle cx=\"72\" cy=\"60\" r=\"2\" fill=\"#3F7186\"/>\n  <circle cx=\"98\" cy=\"60\" r=\"2\" fill=\"#3F7186\"/>\n  <circle cx=\"124\" cy=\"60\" r=\"2\" fill=\"#3F7186\"/>\n  <text x=\"100\" y=\"108\" text-anchor=\"middle\" font-family=\"system-ui, sans-serif\" font-size=\"9\" fill=\"#3A2718\" font-weight=\"600\">RUN</text>\n</svg>"
         }
+      },
+      {
+        "id": "run-isolation",
+        "title": "run-isolation",
+        "status": "planned",
+        "priority": "high",
+        "dependencies": [
+          "copeca-mode-mechanism",
+          "copeca-single-run"
+        ],
+        "enables": [
+          "copeca-scenario-matrix"
+        ],
+        "personas": [
+          "tool-builder",
+          "platform-builder",
+          "skeptical-evaluator"
+        ],
+        "solves": [
+          "contamination-erodes-trust"
+        ],
+        "journey_phase": "calibrate",
+        "what": "A verifiable clean room for every benchmark run across Claude Code, Codex, and Gemini CLI: a private throwaway HOME so no host CLI config (~/.claude.json, ~/.codex/, ~/.gemini/) is read, written, or l"
       }
     ],
     "bound_checks": [
@@ -2706,9 +2729,24 @@ a.masthead-tend__chip:hover { color: var(--accent); border-color: var(--border-s
         "job_index": 1
       },
       {
+        "feature_id": "copeca-scenario-matrix",
+        "check_id": "c004",
+        "job_index": 1
+      },
+      {
         "feature_id": "copeca-single-run",
         "check_id": "c002",
         "job_index": 0
+      },
+      {
+        "feature_id": "copeca-single-run",
+        "check_id": "c004",
+        "job_index": 0
+      },
+      {
+        "feature_id": "run-isolation",
+        "check_id": "c007",
+        "job_index": 1
       }
     ],
     "felt_opportunities": [
