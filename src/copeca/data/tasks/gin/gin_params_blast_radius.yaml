@@ -1,0 +1,22 @@
+name: gin_params_blast_radius
+description: "Blast-radius / refactor-impact: the Params type defines Get and ByName in tree.go; determine which file and methods depend on them before a signature change. Tests symbol-level dependency analysis (the name `Get` is ubiquitous, so textual search is uninformative)."
+source: "copeca-archetypes-2026-06"
+repo: gin
+commit: d7776de7d444935ea4385999711bd6331a98fecb
+type: comprehension
+category: trace
+language: go
+difficulty: medium
+version: 1
+prompt: |
+  In gin, the `Params` type defines the methods `Get` and `ByName`.
+  Suppose you need to change their signatures. Find where these
+  methods are defined, then determine which other source file and
+  which methods in it would have to be updated — i.e. what depends
+  on `Params.Get` / `Params.ByName`. Name the file and the methods.
+ground_truth:
+  required_strings:
+    - tree.go
+    - context.go
+    - ByName
+    - Param

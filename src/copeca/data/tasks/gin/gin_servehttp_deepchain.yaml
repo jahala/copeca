@@ -1,0 +1,23 @@
+name: gin_servehttp_deepchain
+description: "Deep multi-hop control-flow trace: follow gin's request path from Engine.ServeHTTP through pool acquisition, route matching, and handler execution — five hops across gin.go, tree.go, and context.go. Tests sustaining a call chain across files (each hop is a separate native lookup)."
+source: "copeca-archetypes-2026-06"
+repo: gin
+commit: d7776de7d444935ea4385999711bd6331a98fecb
+type: comprehension
+category: trace
+language: go
+difficulty: hard
+version: 1
+prompt: |
+  Trace gin's full request-handling chain starting at
+  `Engine.ServeHTTP`. Follow it hop by hop: how it obtains a Context,
+  which internal method does the actual routing work, how the route
+  is matched in the tree, and how the matched handlers are run. Name
+  each function in the path from ServeHTTP down to handler execution.
+ground_truth:
+  required_strings:
+    - ServeHTTP
+    - handleHTTPRequest
+    - getValue
+    - Next
+    - handlers

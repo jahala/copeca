@@ -1,0 +1,25 @@
+name: comrak_escape_backtrace
+description: "Tier-2 backward root-cause chain (comprehension): start at the leaf HTML-escaping function html::escape and trace BACKWARD through its callers up to the public markdown_to_html entry. Reverse call-graph navigation — find who calls escape, then who calls that, up the stack."
+source: "copeca-archetypes-2026-06"
+repo: comrak
+commit: baafcb063427af6611be3e06eaf4fe9b2d28582a
+type: comprehension
+category: trace
+language: rust
+difficulty: hard
+version: 1
+prompt: |
+  In comrak, the function `escape` in src/html.rs is the low-level
+  routine that escapes HTML special characters in text. Starting from
+  that function, trace BACKWARD through the call graph: which function
+  calls it for plain text nodes, which function calls that, and so on
+  up to the public entry point that turns markdown into HTML. Name
+  each function in the upward path from the escaper to the entry.
+ground_truth:
+  # escape has ~16 callers (render_text path AND a direct call in the traversal
+  # engine), so a correct backward trace can legitimately take either path —
+  # graded on the shared backbone both reach, not one specific path.
+  required_strings:
+    - escape
+    - format_document_with_formatter
+    - format_document

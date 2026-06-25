@@ -1,0 +1,28 @@
+name: kong_rename_inferredtype
+description: "Tier-1 refactor execution (test-graded): a mutation renames Token.InferredType to DeducedKind at its definition, leaving the doc comment + call sites (incl. a test caller) referencing the old name so the build is broken; the agent must finish the rename. Grader: no reference to the old name remains AND `go test ./...` passes. Distinctive name (grep noise 6) → native grep/sed competitive; the honest compiled-refactor contrast to the trace tasks."
+source: "copeca-archetypes-2026-06"
+repo: kong
+commit: 6a2ac8db2c741e274b1f1f3484e22159b1a21031
+type: edit
+category: fix
+language: go
+difficulty: medium
+version: 1
+prompt: |
+  In the kong codebase, the `Token` method `InferredType` was renamed to
+  `DeducedKind`, but its doc comment and call sites (including in test files)
+  still use the old name `InferredType`, so the build is broken. Finish the
+  rename: update every remaining reference so that no occurrence of
+  `InferredType` remains, the project builds, and all tests pass.
+ground_truth:
+  required_strings: []
+  test_command:
+    - bash
+    - -c
+    - "! grep -rqI 'InferredType' --include='*.go' . && go test ./... -count=1"
+mutations:
+  - file: scanner.go
+    action: replace
+    find: "func (t Token) InferredType() TokenType"
+    replace: "func (t Token) DeducedKind() TokenType"
+    occurrence: 1
