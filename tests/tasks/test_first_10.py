@@ -25,6 +25,7 @@ APPROVED_SOURCE_PREFIXES = (
     "Terminal-Bench 2.0",  # Apache-2.0 — CLI tasks
     "tilth-benchmark",  # MIT — migrated tasks
     "copeca-control",  # MIT — first-party tool-neutral control tasks (#52)
+    "copeca-archetypes",  # MIT — first-party archetype tasks
 )
 # Sources that are explicitly disallowed (NWC/NC/ND, contaminated, deprecated).
 BLOCKED_SOURCE_PREFIXES = (

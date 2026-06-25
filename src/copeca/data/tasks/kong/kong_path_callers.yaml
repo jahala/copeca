@@ -1,0 +1,22 @@
+name: kong_path_callers
+description: "Tier-3 impact / complete caller set (comprehension): find every call site of the Node.Path() method across kong. The bare name 'Path' is ubiquitous (grep noise 117, dominated by the *Path type), so the challenge is enumerating the actual method call sites — which span context.go, kong.go, help.go and model.go — completely and without false positives."
+source: "copeca-archetypes-2026-06"
+repo: kong
+commit: 6a2ac8db2c741e274b1f1f3484e22159b1a21031
+type: comprehension
+category: trace
+language: go
+difficulty: medium
+version: 1
+prompt: |
+  In kong, the `Node` type has a method `Path()`. Find every place in
+  the codebase that calls this method. List each call site by the
+  file and the enclosing function. Be complete — the name "Path"
+  appears in many unrelated places, so report only the actual calls
+  to Node.Path().
+ground_truth:
+  required_strings:
+    - Path
+    - context.go
+    - kong.go
+    - help.go

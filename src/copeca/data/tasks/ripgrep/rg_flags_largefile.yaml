@@ -1,0 +1,21 @@
+name: rg_flags_largefile
+description: "Large-file structural comprehension: ripgrep declares all ~100 CLI flags in one ~7800-line file, each a struct implementing a shared trait. Identify the file, the trait, and the trait's required methods. Tests outlining a 58k-token file structurally rather than reading it whole."
+source: "copeca-archetypes-2026-06"
+repo: ripgrep
+commit: 0a88cccd5188074de96f54a4b6b44a63971ac157
+type: comprehension
+category: locate
+language: rust
+difficulty: medium
+version: 1
+prompt: |
+  ripgrep declares all of its command-line flags in a single, very
+  large source file — each flag is a struct that implements one
+  shared trait. Find that file and name it. Name the trait every
+  flag implements, and name one method that trait requires every
+  flag to provide.
+ground_truth:
+  required_strings:
+    - defs.rs
+    - Flag
+    - name_long

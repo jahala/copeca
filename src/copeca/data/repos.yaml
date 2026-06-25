@@ -42,3 +42,25 @@ express:
   setup_command:
     - npm
     - install
+
+# Non-memorized repos for the tilth-advantage archetype probe (deep-chain /
+# refactor / impact tasks). kong = small layered Go CLI parser (builds+tests in
+# ~3s → objective edit grading). comrak = Rust CommonMark parser+renderer
+# (deep parse→AST→render chain → comprehension traces; no build needed).
+kong:
+  url: https://github.com/alecthomas/kong.git
+  commit: 6a2ac8db2c741e274b1f1f3484e22159b1a21031
+  language: go
+  toolchain:
+    go: "1.23.0"
+  setup_command:
+    - go
+    - mod
+    - download
+
+comrak:
+  url: https://github.com/kivikakk/comrak.git
+  commit: baafcb063427af6611be3e06eaf4fe9b2d28582a
+  language: rust
+  toolchain:
+    rust: "1.80.0"

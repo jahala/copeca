@@ -24,5 +24,18 @@ repos/_worktrees/
 # Working/research docs — product docs (docs/*.md) and the tend map (docs/tend/) stay tracked
 docs/ideas/
 docs/research/
+docs/plans/
 docs/copeca-build-workflow.md
 docs/tend-feedback.md
+
+# ── Personal benchmarking config — run-specs + tool-under-test modes (not the tool) ──
+# Scenarios are your experiment run-specs (like results/); keep example.yaml as the template.
+/scenarios/*.yaml
+!/scenarios/example.yaml
+# Modes: the 5 generic A/B primitives stay tracked (they're the tool); tool-under-test modes are personal.
+src/copeca/data/defaults/modes/*.yaml
+!src/copeca/data/defaults/modes/baseline.yaml
+!src/copeca/data/defaults/modes/hook.yaml
+!src/copeca/data/defaults/modes/indexed.yaml
+!src/copeca/data/defaults/modes/proxy.yaml
+!src/copeca/data/defaults/modes/wrapper.yaml
