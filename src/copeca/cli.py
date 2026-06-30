@@ -26,6 +26,26 @@ _BLOCKLIST_LOCAL = Path("scripts") / "contamination_blocklist.txt"
 _BLOCKLIST_PACKAGED = data_path("contamination_blocklist.txt")
 
 
+def _discover_repos_path(task: Path, cwd: Path | None = None) -> Path:
+    """Resolve the repos.yaml for *task*, in precedence order:
+
+    1. ``repos.yaml`` in the working directory (an init'd benchmark dir),
+    2. a ``repos.yaml`` beside the task's parent dir (a self-contained corpus),
+    3. the **bundled** corpus repos.yaml (``data_path``) — so the shipped tasks
+       resolve their repo URLs out of the box with no local repos.yaml.
+
+    Pure given *cwd* (defaults to the process cwd) so it is unit-testable.
+    """
+    cwd = cwd if cwd is not None else Path.cwd()
+    local = cwd / "repos.yaml"
+    if local.exists():
+        return local
+    sibling = task.parent.parent / "repos.yaml"
+    if task.parent.parent.name and sibling.exists():
+        return sibling
+    return data_path("repos.yaml")
+
+
 # ── Contamination provenance helpers (pure logic + thin I/O) ──────────────
 
 
@@ -360,11 +380,7 @@ def run(
             typer.echo(f"Error: invalid signing key: {e}", err=True)
             raise typer.Exit(code=2) from e
 
-    repos_path = Path("repos.yaml")
-    if not repos_path.exists():
-        repos_path = (
-            task.parent.parent / "repos.yaml" if task.parent.parent.name else Path("repos.yaml")
-        )
+    repos_path = _discover_repos_path(task)
     repos = load_repos(repos_path) if repos_path.exists() else {}
 
     # ── Resolve runner dirs: project-local first, then the packaged defaults.

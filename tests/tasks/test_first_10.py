@@ -25,6 +25,7 @@ APPROVED_SOURCE_PREFIXES = (
     "Terminal-Bench 2.0",  # Apache-2.0 — CLI tasks
     "tilth-benchmark",  # MIT — migrated tasks
     "copeca-control",  # MIT — first-party tool-neutral control tasks (#52)
+    "copeca-archetypes",  # MIT — first-party archetype tasks
 )
 # Sources that are explicitly disallowed (NWC/NC/ND, contaminated, deprecated).
 BLOCKED_SOURCE_PREFIXES = (
@@ -119,10 +120,12 @@ class TestComprehensionTasks:
 
 class TestEditTasks:
     def test_edit_tasks_have_mutations_and_test_command(self):
-        """All edit tasks have a non-empty mutations or mutation_sequence, plus a test_command.
+        """All edit tasks define a bug source (mutation, mutation_sequence, or a
+        pinned base commit) plus a test_command.
 
-        debug-category edit tasks use mutation_sequence (committed history) instead of
-        the plain mutations list — both are valid ways to introduce a regression.
+        Three valid bug sources: plain ``mutations``; ``mutation_sequence`` (committed
+        history, for debug-category tasks); or a pinned ``commit`` where the bug already
+        exists — base-broken tasks (e.g. verbatim SWE-bench), graded by test_command.
         """
         edit_count = 0
         for path in _discover_task_files():
@@ -137,9 +140,12 @@ class TestEditTasks:
             assert isinstance(mutation_sequence, list), (
                 f"{path.name}: mutation_sequence must be a list"
             )
-            assert len(mutations) > 0 or len(mutation_sequence) > 0, (
-                f"{path.name}: edit task must have at least one mutation "
-                f"(in 'mutations' or 'mutation_sequence')"
+            has_bug_source = (
+                len(mutations) > 0 or len(mutation_sequence) > 0 or bool(task.get("commit"))
+            )
+            assert has_bug_source, (
+                f"{path.name}: edit task must introduce its bug via 'mutations', "
+                f"'mutation_sequence', or a pinned 'commit' (a base-broken task)"
             )
 
             gt = task.get("ground_truth", {})

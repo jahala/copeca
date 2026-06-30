@@ -1,0 +1,58 @@
+name: swebl_flask_5637
+description: 'SWE-bench-Live pallets__flask-5637 (verbatim): real GitHub-issue fix, graded on FAIL_TO_PASS (1); 488 PASS_TO_PASS recorded but not gated (needs full env reproduction).'
+source: SWE-bench-Live (pallets__flask-5637)
+repo: flask
+commit: 10bdf61a0f751f3cb000f8f8ac5ac5b4bb535677
+type: edit
+category: fix
+language: python
+difficulty: hard
+version: 1
+prompt: |
+  configure and check `request.trusted_hosts`
+  If `request.trusted_hosts` is set, it will be checked when accessing `request.host`/`url`/etc. Add `TRUSTED_HOSTS` config, and check it during routing.
+ground_truth:
+  required_strings: []
+  forbidden_strings:
+  - I cannot
+  - unable to
+  test_command:
+  - bash
+  - -lc
+  - |
+    set -e
+    TP="$(mktemp)"; IDS="$(mktemp)"
+    cat > "$TP" <<'COPECA_TP_EOF'
+    diff --git a/tests/test_request.py b/tests/test_request.py
+    index 7839a69339..3e95ab320c 100644
+    --- a/tests/test_request.py
+    +++ b/tests/test_request.py
+    @@ -52,3 +52,19 @@ def test_limit_config(app: Flask):
+             assert r.max_content_length == 90
+             assert r.max_form_memory_size == 30
+             assert r.max_form_parts == 4
+    +
+    +
+    +def test_trusted_hosts_config(app: Flask) -> None:
+    +    app.config["TRUSTED_HOSTS"] = ["example.test", ".other.test"]
+    +
+    +    @app.get("/")
+    +    def index() -> str:
+    +        return ""
+    +
+    +    client = app.test_client()
+    +    r = client.get(base_url="http://example.test")
+    +    assert r.status_code == 200
+    +    r = client.get(base_url="http://a.other.test")
+    +    assert r.status_code == 200
+    +    r = client.get(base_url="http://bad.test")
+    +    assert r.status_code == 400
+    COPECA_TP_EOF
+    cat > "$IDS" <<'COPECA_IDS_EOF'
+    tests/test_request.py::test_trusted_hosts_config
+    COPECA_IDS_EOF
+    git checkout HEAD -- "tests/test_request.py" 2>/dev/null || true
+    git apply "$TP"
+    args=(); while IFS= read -r line; do args+=("$line"); done < "$IDS"
+    .venv/bin/python -m pytest -q -p no:cacheprovider "${args[@]}"
+mutations: []
