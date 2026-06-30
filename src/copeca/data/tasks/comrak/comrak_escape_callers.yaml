@@ -1,0 +1,21 @@
+name: comrak_escape_callers
+description: "Tier-3 impact / complete caller set (comprehension): find every place that calls the html::escape function in comrak. The token 'escape' is extremely common (grep noise 216 — escape_href, escape_inline, Context::escape wrapper, doc comments), so enumerating the true callers (render_text, render_code, render_code_block, ...) cleanly is the discriminating challenge."
+source: "copeca-archetypes-2026-06"
+repo: comrak
+commit: baafcb063427af6611be3e06eaf4fe9b2d28582a
+type: comprehension
+category: trace
+language: rust
+difficulty: medium
+version: 1
+prompt: |
+  In comrak, the function `escape` in src/html.rs escapes HTML
+  special characters. Find the rendering functions that call this
+  specific `escape` function (not its relatives like escape_href).
+  List each calling function. Be complete — the word "escape" appears
+  in many places, so report only the real callers of html::escape.
+ground_truth:
+  required_strings:
+    - render_text
+    - render_code
+    - render_code_block

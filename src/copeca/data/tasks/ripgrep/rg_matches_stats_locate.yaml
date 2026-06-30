@@ -1,0 +1,20 @@
+name: rg_matches_stats_locate
+description: "Disambiguate a common method name: ripgrep has several methods named `matches`; locate the one on the printer Stats struct returning the total count. Tests pinpointing one definition among many same-named hits (grep returns 613 undifferentiated lines)."
+source: "copeca-archetypes-2026-06"
+repo: ripgrep
+commit: 0a88cccd5188074de96f54a4b6b44a63971ac157
+type: comprehension
+category: locate
+language: rust
+difficulty: medium
+version: 1
+prompt: |
+  ripgrep defines a method named `matches` on more than one type.
+  Find the one defined on the printer's statistics struct that
+  returns the total number of matches. Name the file it is in, the
+  struct it belongs to, and the method's return type.
+ground_truth:
+  required_strings:
+    - stats.rs
+    - Stats
+    - u64

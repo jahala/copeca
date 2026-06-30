@@ -42,3 +42,39 @@ express:
   setup_command:
     - npm
     - install
+
+# Non-memorized repos for the tilth-advantage archetype probe (deep-chain /
+# refactor / impact tasks). kong = small layered Go CLI parser (builds+tests in
+# ~3s → objective edit grading). comrak = Rust CommonMark parser+renderer
+# (deep parse→AST→render chain → comprehension traces; no build needed).
+kong:
+  url: https://github.com/alecthomas/kong.git
+  commit: 6a2ac8db2c741e274b1f1f3484e22159b1a21031
+  language: go
+  toolchain:
+    go: "1.23.0"
+  setup_command:
+    - go
+    - mod
+    - download
+
+comrak:
+  url: https://github.com/kivikakk/comrak.git
+  commit: baafcb063427af6611be3e06eaf4fe9b2d28582a
+  language: rust
+  toolchain:
+    rust: "1.80.0"
+
+flask:
+  url: https://github.com/pallets/flask.git
+  commit: 10bdf61a0f751f3cb000f8f8ac5ac5b4bb535677
+  language: python
+  toolchain:
+    python: "3.11"
+  # Per-worktree venv with the repo's PINNED test deps (newer pytest breaks old
+  # conftests). This isolation is what lets verbatim SWE-bench-Live python tasks
+  # run at arbitrary base_commits without colliding across parallel worktrees.
+  setup_command:
+    - bash
+    - -lc
+    - "uv venv .venv && uv pip install --python .venv/bin/python -q -e . -r requirements/tests.txt"

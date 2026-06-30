@@ -1,0 +1,22 @@
+name: kong_apply_chain
+description: "Tier-2 forward deep call-chain (comprehension): trace how kong takes a parsed command-line flag value and applies it to the user's target struct field, from Kong.Parse down through Trace and parseFlag to Value.Apply and the reflect write into Target. Multi-hop across kong.go, context.go, model.go — each hop discoverable only after the last."
+source: "copeca-archetypes-2026-06"
+repo: kong
+commit: 6a2ac8db2c741e274b1f1f3484e22159b1a21031
+type: comprehension
+category: trace
+language: go
+difficulty: hard
+version: 1
+prompt: |
+  In kong, trace what happens to a command-line flag value after
+  parsing: starting from `Kong.Parse`, follow the call chain down to
+  the point where the parsed value is actually written into the
+  user's target struct field. Name each function in the path and
+  explain how the final assignment to the target field happens.
+ground_truth:
+  required_strings:
+    - parseFlag
+    - Trace
+    - Apply
+    - Target

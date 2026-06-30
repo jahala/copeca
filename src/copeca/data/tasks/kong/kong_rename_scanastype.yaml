@@ -1,0 +1,28 @@
+name: kong_rename_scanastype
+description: "Tier-1 refactor execution (test-graded): a mutation renames the package-level ScanAsType function to MakeTypedScanner at its definition, leaving 5 call sites across scanner.go + mapper.go broken; the agent must finish the rename. Grader: no reference to the old name remains AND `go test ./...` passes. Distinctive name (grep noise 7) → honest compiled-refactor contrast to the trace tasks."
+source: "copeca-archetypes-2026-06"
+repo: kong
+commit: 6a2ac8db2c741e274b1f1f3484e22159b1a21031
+type: edit
+category: fix
+language: go
+difficulty: medium
+version: 1
+prompt: |
+  In the kong codebase, the package-level function `ScanAsType` (in scanner.go)
+  was renamed to `MakeTypedScanner`, but its call sites across the package still
+  use the old name `ScanAsType`, so the build is broken. Finish the rename:
+  update every remaining reference so that no occurrence of `ScanAsType` remains,
+  the project builds, and all tests pass.
+ground_truth:
+  required_strings: []
+  test_command:
+    - bash
+    - -c
+    - "! grep -rqI 'ScanAsType' --include='*.go' . && go test ./... -count=1"
+mutations:
+  - file: scanner.go
+    action: replace
+    find: "func ScanAsType(ttype TokenType, args ...string) *Scanner"
+    replace: "func MakeTypedScanner(ttype TokenType, args ...string) *Scanner"
+    occurrence: 1

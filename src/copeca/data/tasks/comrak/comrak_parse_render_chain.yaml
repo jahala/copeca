@@ -1,0 +1,21 @@
+name: comrak_parse_render_chain
+description: "Tier-2 forward deep call-chain (comprehension): trace comrak's pipeline from the public markdown_to_html entry through document parsing, inline parsing, and AST construction to the function that renders a single node's HTML. 6+ hops across lib.rs, parser/, html.rs."
+source: "copeca-archetypes-2026-06"
+repo: comrak
+commit: baafcb063427af6611be3e06eaf4fe9b2d28582a
+type: comprehension
+category: trace
+language: rust
+difficulty: hard
+version: 1
+prompt: |
+  In comrak, trace how a markdown string becomes HTML. Start at the
+  public entry point that converts markdown text into an HTML string,
+  and follow the call chain down through document parsing, inline
+  parsing, and into the rendering code that writes an individual AST
+  node's HTML. Name each function in the path in order.
+ground_truth:
+  required_strings:
+    - parse_document
+    - parse_inline
+    - format_node_default
