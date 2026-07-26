@@ -47,10 +47,10 @@ jobs:
       - name: Build sdist and wheel
         run: python -m build
 
-      - uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # ratchet:softprops/action-gh-release@v3
+      - uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # ratchet:softprops/action-gh-release@v3
         with:
           files: dist/*
           generate_release_notes: true
 
       # Trusted publishing (OIDC): no PYPI_TOKEN needed; provenance is automatic.
-      - uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # ratchet:pypa/gh-action-pypi-publish@release/v1
+      - uses: pypa/gh-action-pypi-publish@ba38be9e461d3875417946c167d0b5f3d385a247 # ratchet:pypa/gh-action-pypi-publish@release/v1
