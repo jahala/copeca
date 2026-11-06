@@ -16,7 +16,6 @@ repos/_bare/
 repos/_worktrees/
 .claude/settings.local.json
 .playwright-mcp/
-.petalsrc
 
 # ── Internal — not published to the public repo ───────────────────────────
 # Brand system (shared across the plotplot garden)
