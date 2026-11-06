@@ -2,6 +2,6 @@
 # the brand at .brand/products/copeca/; .brand/ is fetched and git-ignored.
 brand:
   source: https://github.com/jahala/plotplot.git
-  version: v1.14.1
+  version: v1.15.0
   product: copeca
   overrides: {}
