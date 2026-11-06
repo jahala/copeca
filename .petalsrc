@@ -1,0 +1,7 @@
+# .petalsrc: copeca takes the plotplot brand by tag. Its product layer (the mark) is canonical in
+# the brand at .brand/products/copeca/; .brand/ is fetched and git-ignored.
+brand:
+  source: https://github.com/jahala/plotplot.git
+  version: v1.15.0
+  product: copeca
+  overrides: {}

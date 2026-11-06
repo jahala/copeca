@@ -629,3 +629,30 @@ class TestToolValidity:
         report = generate_report(recs)
         assert "Tool Validity" in report
         assert "false null" not in report.lower()
+
+
+def test_every_table_lines_up_in_a_terminal():
+    """A table's pipes sit in the same columns on every row, so the report reads in a terminal."""
+    records = [
+        _make_record(task="locate_symbol", mode="baseline", total_cost_usd=0.4, category="locate"),
+        _make_record(task="locate_symbol", mode="my-tool", total_cost_usd=0.1, category="locate"),
+        _make_record(
+            task="trace_a_long_call_chain", mode="baseline", total_cost_usd=1.25, category="trace"
+        ),
+        _make_record(
+            task="trace_a_long_call_chain", mode="my-tool", total_cost_usd=0.5, category="trace"
+        ),
+    ]
+    lines = generate_report(records).splitlines()
+    tables: list[list[str]] = []
+    current: list[str] = []
+    for line in lines + [""]:
+        if line.startswith("|"):
+            current.append(line)
+        elif current:
+            tables.append(current)
+            current = []
+    assert len(tables) >= 3
+    for table in tables:
+        pipes = [[i for i, ch in enumerate(row) if ch == "|"] for row in table]
+        assert all(p == pipes[0] for p in pipes), "\n".join(table)

@@ -56,6 +56,51 @@ def _compute_per_task_deltas(records: list[dict[str, Any]], modes: list[str]) ->
     return deltas
 
 
+def _align_tables(lines: list[str]) -> list[str]:
+    """Pad every markdown table so its pipes line up in a terminal.
+
+    A table is a run of lines starting with "|"; its second line is the
+    separator, whose cells say each column's alignment ("--:" is right).
+    Rendered markdown is unchanged; read raw, the columns line up.
+    """
+    out: list[str] = []
+    i = 0
+    while i < len(lines):
+        if not lines[i].startswith("|"):
+            out.append(lines[i])
+            i += 1
+            continue
+        j = i
+        while j < len(lines) and lines[j].startswith("|"):
+            j += 1
+        rows = [
+            [cell.strip() for cell in line.strip().strip("|").split("|")] for line in lines[i:j]
+        ]
+        if len(rows) < 2 or len({len(row) for row in rows}) != 1:
+            out.extend(lines[i:j])
+            i = j
+            continue
+        right = [cell.endswith(":") for cell in rows[1]]
+        widths = [
+            max(3, *(len(row[c]) for k, row in enumerate(rows) if k != 1))
+            for c in range(len(rows[0]))
+        ]
+        for k, row in enumerate(rows):
+            if k == 1:
+                cells = [
+                    ("-" * (w - 1) + ":") if r else "-" * w
+                    for w, r in zip(widths, right, strict=True)
+                ]
+            else:
+                cells = [
+                    cell.rjust(w) if r else cell.ljust(w)
+                    for cell, w, r in zip(row, widths, right, strict=True)
+                ]
+            out.append("| " + " | ".join(cells) + " |")
+        i = j
+    return out
+
+
 def _has_flags(records: list[dict[str, Any]]) -> bool:
     """Check if any record carries adversarial_flags."""
     return any("adversarial_flags" in r and r["adversarial_flags"] is not None for r in records)
@@ -540,7 +585,7 @@ def generate_report(records: list[dict[str, Any]]) -> str:
     # ── 11. Control / non-regression (if records carry control tasks) ───────
     lines.extend(_control_section(records, by_mode, modes))
     lines.extend(_tool_validity_section(records, by_mode, modes))
-    return "\n".join(lines)
+    return "\n".join(_align_tables(lines))
 
 
 def _trace_gate_section(contaminated: list[dict[str, Any]]) -> list[str]:
